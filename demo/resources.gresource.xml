@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/com/mattjakeman/DocumentEngine/Demo">
+  <gresource prefix="/com/mattjakeman/TextEngine/Demo">
     <file>style.css</file>
   </gresource>
 </gresources>

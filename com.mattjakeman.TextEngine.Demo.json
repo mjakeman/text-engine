@@ -1,9 +1,9 @@
 {
-    "app-id" : "com.mattjakeman.DocumentEngine.Demo",
+    "app-id" : "com.mattjakeman.TextEngine.Demo",
     "runtime" : "org.gnome.Platform",
     "runtime-version" : "master",
     "sdk" : "org.gnome.Sdk",
-    "command" : "document-engine-demo",
+    "command" : "text-engine-demo",
     "finish-args" : [
         "--share=network",
         "--share=ipc",
@@ -36,7 +36,7 @@
             ]
         },
         {
-            "name" : "document-engine",
+            "name" : "text-engine",
             "builddir" : true,
             "buildsystem" : "meson",
             "sources" : [

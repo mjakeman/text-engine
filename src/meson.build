@@ -1,11 +1,11 @@
 api_version = '0.1'
 
-document_engine_sources = [
-  'document-engine.c',
+text_engine_sources = [
+  'text-engine.c',
 ]
 
-document_engine_headers = [
-  'document-engine.h',
+text_engine_headers = [
+  'text-engine.h',
 ]
 
 version_split = meson.project_version().split('.')
@@ -20,29 +20,29 @@ version_conf.set('MINOR_VERSION', MINOR_VERSION)
 version_conf.set('MICRO_VERSION', MICRO_VERSION)
 
 configure_file(
-  input: 'document-engine-version.h.in',
-  output: 'document-engine-version.h',
+  input: 'text-engine-version.h.in',
+  output: 'text-engine-version.h',
   configuration: version_conf,
   install: true,
-  install_dir: join_paths(get_option('includedir'), 'document-engine')
+  install_dir: join_paths(get_option('includedir'), 'text-engine')
 )
 
-document_engine_deps = [
+text_engine_deps = [
   dependency('gio-2.0', version: '>= 2.50'),
 ]
 
-document_engine_lib = shared_library('document-engine-' + api_version,
-  document_engine_sources,
-  dependencies: document_engine_deps,
+text_engine_lib = shared_library('text-engine-' + api_version,
+  text_engine_sources,
+  dependencies: text_engine_deps,
   install: true,
 )
 
-install_headers(document_engine_headers, subdir: 'document-engine')
+install_headers(text_engine_headers, subdir: 'text-engine')
 
-document_engine_dep = declare_dependency(
-  link_with: document_engine_lib,
+text_engine_dep = declare_dependency(
+  link_with: text_engine_lib,
   # include_directories: [],
-  dependencies: document_engine_deps,
+  dependencies: text_engine_deps,
   # sources: resources
 )
 
@@ -50,11 +50,11 @@ pkg = import('pkgconfig')
 
 pkg.generate(
   description: 'A shared library for ...',
-    libraries: document_engine_lib,
-         name: 'document-engine',
-     filebase: 'document-engine-' + api_version,
+    libraries: text_engine_lib,
+         name: 'text-engine',
+     filebase: 'text-engine-' + api_version,
       version: meson.project_version(),
-      subdirs: 'document-engine',
+      subdirs: 'text-engine',
      requires: 'glib-2.0',
   install_dir: join_paths(get_option('libdir'), 'pkgconfig')
 )

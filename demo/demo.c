@@ -79,7 +79,7 @@ demo_activate (GApplication *app)
 
     // Add CSS Stylesheet
     GtkCssProvider *css_provider = gtk_css_provider_new ();
-    gtk_css_provider_load_from_resource (css_provider, "/com/mattjakeman/DocumentEngine/Demo/style.css");
+    gtk_css_provider_load_from_resource (css_provider, "/com/mattjakeman/TextEngine/Demo/style.css");
 
     GdkDisplay *display = gdk_display_get_default ();
     gtk_style_context_add_provider_for_display (display, GTK_STYLE_PROVIDER (css_provider),
@@ -103,7 +103,7 @@ main (int argc, char **argv)
     AdwApplication *app;
     int ret;
 
-    app = adw_application_new ("com.mattjakeman.DocumentEngine.Demo", G_APPLICATION_FLAGS_NONE);
+    app = adw_application_new ("com.mattjakeman.TextEngine.Demo", G_APPLICATION_FLAGS_NONE);
 
     g_signal_connect (app, "activate", G_CALLBACK (demo_activate), NULL);
 

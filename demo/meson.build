@@ -3,7 +3,7 @@ demo_sources = [
 ]
 
 demo_deps = [
-  document_engine_dep,
+  text_engine_dep,
   dependency('libadwaita-1')
 ]
 
@@ -14,7 +14,7 @@ demo_sources += gnome.compile_resources('resources',
   c_name: 'resources'
 )
 
-executable('document-engine-demo', demo_sources,
+executable('text-engine-demo', demo_sources,
   dependencies: demo_deps,
   install: true,
 )

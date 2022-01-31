@@ -1,4 +1,4 @@
-/* document-engine.c
+/* text-engine.h
  *
  * Copyright 2022 Matthew Jakeman
  *
@@ -16,5 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "document-engine.h"
+#pragma once
 
+#include <glib.h>
+
+G_BEGIN_DECLS
+
+#define TEXT_ENGINE_INSIDE
+# include "text-engine-version.h"
+#undef TEXT_ENGINE_INSIDE
+
+G_END_DECLS
