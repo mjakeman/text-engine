@@ -1,5 +1,6 @@
 demo_sources = [
-  'demo.c'
+  'demo.c',
+  'widget.c'
 ]
 
 demo_deps = [

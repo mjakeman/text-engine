@@ -8,6 +8,8 @@ text_engine_headers = [
   'text-engine.h',
 ]
 
+subdir('delta')
+
 version_split = meson.project_version().split('.')
 MAJOR_VERSION = version_split[0]
 MINOR_VERSION = version_split[1]

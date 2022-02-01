@@ -25,15 +25,17 @@
 
 #include <adwaita.h>
 
+#include "widget.h"
+
 #define DEMO_TYPE_WINDOW demo_window_get_type ()
-G_DECLARE_FINAL_TYPE (DemoWindow, demo_window, DEMO, WINDOW, GtkApplicationWindow)
+G_DECLARE_FINAL_TYPE (DemoWindow, demo_window, DEMO, WINDOW, AdwApplicationWindow)
 
 struct _DemoWindow
 {
-    GtkApplicationWindow parent_instance;
+    AdwApplicationWindow parent_instance;
 };
 
-G_DEFINE_FINAL_TYPE (DemoWindow, demo_window, GTK_TYPE_APPLICATION_WINDOW)
+G_DEFINE_FINAL_TYPE (DemoWindow, demo_window, ADW_TYPE_APPLICATION_WINDOW)
 
 enum {
     PROP_0,
@@ -93,6 +95,18 @@ demo_window_class_init (DemoWindowClass *klass)
 static void
 demo_window_init (DemoWindow *self)
 {
+    RichTextWidget *view;
+    GtkWidget *header_bar;
+    GtkWidget *vbox;
+
+    vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+    adw_application_window_set_content (ADW_APPLICATION_WINDOW (self), vbox);
+
+    header_bar = adw_header_bar_new ();
+    view = rich_text_widget_new ();
+
+    gtk_box_append (GTK_BOX (vbox), header_bar);
+    gtk_box_append (GTK_BOX (vbox), GTK_WIDGET (view));
 }
 
 static void
@@ -116,6 +130,8 @@ demo_activate (GApplication *app)
     if (window == NULL)
         window = g_object_new (DEMO_TYPE_WINDOW,
                                "application", app,
+                               "default-width", 500,
+                               "default-height", 500,
                                NULL);
 
     // Ask the window manager/compositor to present the window.
