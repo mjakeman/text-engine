@@ -25,7 +25,12 @@
 
 #include "operation.h"
 
-G_DEFINE_BOXED_TYPE (TextOperation, text_operation, text_operation_copy, text_operation_free)
+#include <json-glib/json-glib.h>
+
+G_DEFINE_BOXED_TYPE_WITH_CODE (TextOperation, text_operation,
+                               text_operation_copy,
+                               text_operation_free,
+                               register_json_funcs)
 
 typedef enum
 {
@@ -91,4 +96,25 @@ text_operation_free (TextOperation *self)
     g_return_if_fail (self);
 
     g_slice_free (TextOperation, self);
+}
+
+static JsonNode *
+text_operation_serialize (gconstpointer boxed)
+{
+
+}
+
+static gpointer
+text_operation_deserialize (JsonNode *node)
+{
+
+}
+
+static void
+register_json_funcs (GType boxed_type)
+{
+    json_boxed_register_serialize_func (boxed_type, JSON_NODE_OBJECT,
+                                        text_operation_serialize);
+    json_boxed_register_deserialize_func (boxed_type, JSON_NODE_OBJECT,
+                                          text_operation_deserialize);
 }
