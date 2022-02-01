@@ -20,3 +20,4 @@ add_project_arguments([
 
 subdir('src')
 subdir('demo')
+subdir('test')
