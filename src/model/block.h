@@ -1,4 +1,4 @@
-/* node-block.h
+/* block.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -27,17 +27,19 @@
 
 #include <glib-object.h>
 
+#include "node.h"
+
 G_BEGIN_DECLS
 
-#define TEXT_TYPE_NODE_BLOCK (text_node_block_get_type())
+#define TEXT_TYPE_BLOCK (text_block_get_type())
 
-G_DECLARE_DERIVABLE_TYPE (TextNodeBlock, text_node_block, TEXT, NODE_BLOCK, GObject)
+G_DECLARE_DERIVABLE_TYPE (TextBlock, text_block, TEXT, BLOCK, TextNode)
 
-struct _TextNodeBlockClass
+struct _TextBlockClass
 {
-    GObjectClass parent_class;
+    TextNodeClass parent_class;
 };
 
-TextNodeBlock *text_node_block_new (void);
+TextBlock *text_block_new (void);
 
 G_END_DECLS

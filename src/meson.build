@@ -9,6 +9,7 @@ text_engine_headers = [
 ]
 
 subdir('delta')
+subdir('model')
 
 version_split = meson.project_version().split('.')
 MAJOR_VERSION = version_split[0]

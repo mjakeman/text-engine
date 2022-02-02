@@ -1,11 +1,13 @@
 text_engine_sources += files([
   'node.c',
-  'node-block.c',
-  'node-inline.c'
+  'run.c',
+  'block.c',
+  'frame.c'
 ])
 
 text_engine_headers += files([
   'node.h',
-  'node-block.h',
-  'node-inline.h'
+  'run.h',
+  'block.c',
+  'frame.h'
 ])

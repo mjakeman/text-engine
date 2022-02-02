@@ -1,4 +1,4 @@
-/* node-block.c
+/* block.c
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -23,9 +23,15 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "node-block.h"
+#include "block.h"
 
-G_DEFINE_TYPE (TextNodeBlock, text_node_block, G_TYPE_OBJECT)
+typedef struct
+{
+
+} TextBlockPrivate;
+
+
+G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (TextBlock, text_block, TEXT_TYPE_NODE)
 
 enum {
     PROP_0,
@@ -34,34 +40,28 @@ enum {
 
 static GParamSpec *properties [N_PROPS];
 
-/**
- * text_node_block_new:
- *
- * Create a new #TextNodeBlock.
- *
- * Returns: (transfer full): a newly created #TextNodeBlock
- */
-TextNodeBlock *
-text_node_block_new (void)
+TextBlock *
+text_block_new (void)
 {
-    return g_object_new (TEXT_TYPE_NODE_BLOCK, NULL);
+    return g_object_new (TEXT_TYPE_BLOCK, NULL);
 }
 
 static void
-text_node_block_finalize (GObject *object)
+text_block_finalize (GObject *object)
 {
-    TextNodeBlock *self = (TextNodeBlock *)object;
+    TextBlock *self = (TextBlock *)object;
+    TextBlockPrivate *priv = text_block_get_instance_private (self);
 
-    G_OBJECT_CLASS (text_node_block_parent_class)->finalize (object);
+    G_OBJECT_CLASS (text_block_parent_class)->finalize (object);
 }
 
 static void
-text_node_block_get_property (GObject    *object,
-                              guint       prop_id,
-                              GValue     *value,
-                              GParamSpec *pspec)
+text_block_get_property (GObject    *object,
+                         guint       prop_id,
+                         GValue     *value,
+                         GParamSpec *pspec)
 {
-    TextNodeBlock *self = TEXT_NODE_BLOCK (object);
+    TextBlock *self = TEXT_BLOCK (object);
 
     switch (prop_id)
       {
@@ -71,12 +71,12 @@ text_node_block_get_property (GObject    *object,
 }
 
 static void
-text_node_block_set_property (GObject      *object,
-                              guint         prop_id,
-                              const GValue *value,
-                              GParamSpec   *pspec)
+text_block_set_property (GObject      *object,
+                         guint         prop_id,
+                         const GValue *value,
+                         GParamSpec   *pspec)
 {
-    TextNodeBlock *self = TEXT_NODE_BLOCK (object);
+    TextBlock *self = TEXT_BLOCK (object);
 
     switch (prop_id)
       {
@@ -86,16 +86,16 @@ text_node_block_set_property (GObject      *object,
 }
 
 static void
-text_node_block_class_init (TextNodeBlockClass *klass)
+text_block_class_init (TextBlockClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-    object_class->finalize = text_node_block_finalize;
-    object_class->get_property = text_node_block_get_property;
-    object_class->set_property = text_node_block_set_property;
+    object_class->finalize = text_block_finalize;
+    object_class->get_property = text_block_get_property;
+    object_class->set_property = text_block_set_property;
 }
 
 static void
-text_node_block_init (TextNodeBlock *self)
+text_block_init (TextBlock *self)
 {
 }

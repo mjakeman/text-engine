@@ -25,7 +25,17 @@
 
 #include "node.h"
 
-G_DEFINE_ABSTRACT_TYPE (TextNode, text_node, G_TYPE_OBJECT)
+typedef struct
+{
+    TextNode *parent;
+    TextNode *prev;
+    TextNode *next;
+
+    TextNode **children;
+    int n_children;
+} TextNodePrivate;
+
+G_DEFINE_FINAL_TYPE_WITH_PRIVATE (TextNode, text_node, G_TYPE_OBJECT)
 
 enum {
     PROP_0,
@@ -34,10 +44,24 @@ enum {
 
 static GParamSpec *properties [N_PROPS];
 
+/**
+ * text_node_new:
+ *
+ * Create a new #TextNode.
+ *
+ * Returns: (transfer full): a newly created #TextNode
+ */
+TextNode *
+text_node_new (void)
+{
+    return g_object_new (TEXT_TYPE_NODE, NULL);
+}
+
 static void
 text_node_finalize (GObject *object)
 {
     TextNode *self = (TextNode *)object;
+    TextNodePrivate *priv = text_node_get_instance_private (self);
 
     G_OBJECT_CLASS (text_node_parent_class)->finalize (object);
 }

@@ -1,4 +1,4 @@
-/* widget.c
+/* frame.c
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -23,16 +23,14 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "widget.h"
+#include "frame.h"
 
-#include <text-engine/text-engine.h>
-
-struct _RichTextWidget
+typedef struct
 {
-    GtkWidget parent_instance;
-};
 
-G_DEFINE_FINAL_TYPE (RichTextWidget, rich_text_widget, GTK_TYPE_WIDGET)
+} TextFramePrivate;
+
+G_DEFINE_FINAL_TYPE_WITH_PRIVATE (TextFrame, text_frame, TEXT_TYPE_BLOCK)
 
 enum {
     PROP_0,
@@ -41,27 +39,35 @@ enum {
 
 static GParamSpec *properties [N_PROPS];
 
-RichTextWidget *
-rich_text_widget_new (void)
+/**
+ * text_frame_new:
+ *
+ * Create a new #TextFrame.
+ *
+ * Returns: (transfer full): a newly created #TextFrame
+ */
+TextFrame *
+text_frame_new (void)
 {
-    return g_object_new (RICH_TEXT_TYPE_WIDGET, NULL);
+    return g_object_new (TEXT_TYPE_FRAME, NULL);
 }
 
 static void
-rich_text_widget_finalize (GObject *object)
+text_frame_finalize (GObject *object)
 {
-    RichTextWidget *self = (RichTextWidget *)object;
+    TextFrame *self = (TextFrame *)object;
+    TextFramePrivate *priv = text_frame_get_instance_private (self);
 
-    G_OBJECT_CLASS (rich_text_widget_parent_class)->finalize (object);
+    G_OBJECT_CLASS (text_frame_parent_class)->finalize (object);
 }
 
 static void
-rich_text_widget_get_property (GObject    *object,
-                               guint       prop_id,
-                               GValue     *value,
-                               GParamSpec *pspec)
+text_frame_get_property (GObject    *object,
+                         guint       prop_id,
+                         GValue     *value,
+                         GParamSpec *pspec)
 {
-    RichTextWidget *self = RICH_TEXT_WIDGET (object);
+    TextFrame *self = TEXT_FRAME (object);
 
     switch (prop_id)
       {
@@ -71,12 +77,12 @@ rich_text_widget_get_property (GObject    *object,
 }
 
 static void
-rich_text_widget_set_property (GObject      *object,
-                               guint         prop_id,
-                               const GValue *value,
-                               GParamSpec   *pspec)
+text_frame_set_property (GObject      *object,
+                         guint         prop_id,
+                         const GValue *value,
+                         GParamSpec   *pspec)
 {
-    RichTextWidget *self = RICH_TEXT_WIDGET (object);
+    TextFrame *self = TEXT_FRAME (object);
 
     switch (prop_id)
       {
@@ -86,16 +92,22 @@ rich_text_widget_set_property (GObject      *object,
 }
 
 static void
-rich_text_widget_class_init (RichTextWidgetClass *klass)
+text_frame_append_block (TextFrame *self, TextBlock *block)
+{
+
+}
+
+static void
+text_frame_class_init (TextFrameClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-    object_class->finalize = rich_text_widget_finalize;
-    object_class->get_property = rich_text_widget_get_property;
-    object_class->set_property = rich_text_widget_set_property;
+    object_class->finalize = text_frame_finalize;
+    object_class->get_property = text_frame_get_property;
+    object_class->set_property = text_frame_set_property;
 }
 
 static void
-rich_text_widget_init (RichTextWidget *self)
+text_frame_init (TextFrame *self)
 {
 }

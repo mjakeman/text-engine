@@ -1,4 +1,4 @@
-/* node-inline.c
+/* run.c
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -23,9 +23,20 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "node-inline.h"
+#include "run.h"
 
-G_DEFINE_TYPE (TextNodeInline, text_node_inline, G_TYPE_OBJECT)
+struct _TextRun
+{
+    GObject parent_instance;
+};
+
+typedef struct
+{
+
+} TextRunPrivate;
+
+
+G_DEFINE_FINAL_TYPE_WITH_PRIVATE (TextRun, text_run, G_TYPE_OBJECT)
 
 enum {
     PROP_0,
@@ -34,34 +45,28 @@ enum {
 
 static GParamSpec *properties [N_PROPS];
 
-/**
- * text_node_inline_new:
- *
- * Create a new #TextNodeInline.
- *
- * Returns: (transfer full): a newly created #TextNodeInline
- */
-TextNodeInline *
-text_node_inline_new (void)
+TextRun *
+text_run_new (void)
 {
-    return g_object_new (TEXT_TYPE_NODE_INLINE, NULL);
+    return g_object_new (TEXT_TYPE_RUN, NULL);
 }
 
 static void
-text_node_inline_finalize (GObject *object)
+text_run_finalize (GObject *object)
 {
-    TextNodeInline *self = (TextNodeInline *)object;
+    TextRun *self = (TextRun *)object;
+    TextRunPrivate *priv = text_run_get_instance_private (self);
 
-    G_OBJECT_CLASS (text_node_inline_parent_class)->finalize (object);
+    G_OBJECT_CLASS (text_run_parent_class)->finalize (object);
 }
 
 static void
-text_node_inline_get_property (GObject    *object,
-                               guint       prop_id,
-                               GValue     *value,
-                               GParamSpec *pspec)
+text_run_get_property (GObject    *object,
+                       guint       prop_id,
+                       GValue     *value,
+                       GParamSpec *pspec)
 {
-    TextNodeInline *self = TEXT_NODE_INLINE (object);
+    TextRun *self = TEXT_RUN (object);
 
     switch (prop_id)
       {
@@ -71,12 +76,12 @@ text_node_inline_get_property (GObject    *object,
 }
 
 static void
-text_node_inline_set_property (GObject      *object,
-                               guint         prop_id,
-                               const GValue *value,
-                               GParamSpec   *pspec)
+text_run_set_property (GObject      *object,
+                       guint         prop_id,
+                       const GValue *value,
+                       GParamSpec   *pspec)
 {
-    TextNodeInline *self = TEXT_NODE_INLINE (object);
+    TextRun *self = TEXT_RUN (object);
 
     switch (prop_id)
       {
@@ -86,16 +91,16 @@ text_node_inline_set_property (GObject      *object,
 }
 
 static void
-text_node_inline_class_init (TextNodeInlineClass *klass)
+text_run_class_init (TextRunClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-    object_class->finalize = text_node_inline_finalize;
-    object_class->get_property = text_node_inline_get_property;
-    object_class->set_property = text_node_inline_set_property;
+    object_class->finalize = text_run_finalize;
+    object_class->get_property = text_run_get_property;
+    object_class->set_property = text_run_set_property;
 }
 
 static void
-text_node_inline_init (TextNodeInline *self)
+text_run_init (TextRun *self)
 {
 }

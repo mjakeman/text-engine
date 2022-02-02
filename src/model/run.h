@@ -1,4 +1,4 @@
-/* node-inline.h
+/* run.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -27,17 +27,14 @@
 
 #include <glib-object.h>
 
+#include "node.h"
+
 G_BEGIN_DECLS
 
-#define TEXT_TYPE_NODE_INLINE (text_node_inline_get_type())
+#define TEXT_TYPE_RUN (text_run_get_type())
 
-G_DECLARE_DERIVABLE_TYPE (TextNodeInline, text_node_inline, TEXT, NODE_INLINE, GObject)
+G_DECLARE_FINAL_TYPE (TextRun, text_run, TEXT, RUN, TextNode)
 
-struct _TextNodeInlineClass
-{
-    GObjectClass parent_class;
-};
-
-TextNodeInline *text_node_inline_new (void);
+TextRun *text_run_new (void);
 
 G_END_DECLS
