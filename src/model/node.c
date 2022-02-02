@@ -31,7 +31,8 @@ typedef struct
     TextNode *prev;
     TextNode *next;
 
-    TextNode **children;
+    TextNode *first_child;
+    TextNode *last_child;
     int n_children;
 } TextNodePrivate;
 
@@ -96,6 +97,209 @@ text_node_set_property (GObject      *object,
       }
 }
 
+TextNode *
+text_node_get_first_child (TextNode *self)
+{
+    TextNodePrivate *priv = text_node_get_instance_private (self);
+    return priv->first_child;
+}
+
+TextNode *
+text_node_get_last_child (TextNode *self)
+{
+    TextNodePrivate *priv = text_node_get_instance_private (self);
+    return priv->last_child;
+}
+
+TextNode *
+text_node_get_previous (TextNode *self)
+{
+    TextNodePrivate *priv = text_node_get_instance_private (self);
+    return priv->prev;
+}
+
+TextNode *
+text_node_get_next (TextNode *self)
+{
+    TextNodePrivate *priv = text_node_get_instance_private (self);
+    return priv->next;
+}
+
+TextNode *
+text_node_get_parent (TextNode *self)
+{
+    TextNodePrivate *priv = text_node_get_instance_private (self);
+    return priv->parent;
+}
+
+static void
+_insert_between (TextNode *node,
+                 TextNode *before,
+                 TextNode *after)
+{
+    TextNodePrivate *node_priv, *before_priv, *after_priv;
+
+    g_assert (node != NULL);
+    g_assert (before != NULL);
+    g_assert (after != NULL);
+
+    node_priv = text_node_get_instance_private (node);
+    before_priv = text_node_get_instance_private (before);
+    after_priv = text_node_get_instance_private (after);
+
+    node_priv->prev = before;
+    before_priv->next = node;
+
+    node_priv->next = after;
+    after_priv->prev = node;
+}
+
+static int
+_get_index_of (TextNode *self,
+               TextNode *child)
+{
+    TextNode *iter;
+    int index;
+
+    index = 0;
+
+    for (iter = text_node_get_first_child (self);
+         iter != NULL;
+         iter = text_node_get_next (self))
+    {
+        if (iter == child)
+            return index;
+
+        index++;
+    }
+
+    return -1;
+}
+
+void
+text_node_insert_child (TextNode *self,
+                        TextNode *child,
+                        int       index)
+{
+    int cmp_index;
+    TextNode *before, *after, *iter;
+    TextNodePrivate *priv, *child_priv, *before_priv, *after_priv;
+
+    priv = text_node_get_instance_private (self);
+    child_priv = text_node_get_instance_private (child);
+
+    g_assert (index >= 0 && index <= priv->n_children);
+
+    g_object_ref_sink (child);
+
+    // No children
+    if (priv->n_children == 0)
+    {
+        priv->first_child = child;
+        priv->last_child = child;
+        priv->n_children = 1;
+        return;
+    }
+
+    // Prepend
+    if (index == 0)
+    {
+        after = priv->first_child;
+
+        after_priv = text_node_get_instance_private (after);
+
+        after_priv->prev = child;
+        child_priv->next = after;
+
+        priv->first_child = child;
+        priv->n_children++;
+        return;
+    }
+
+    // Append
+    if (index == priv->n_children)
+    {
+        before = priv->last_child;
+
+        before_priv = text_node_get_instance_private (before);
+
+        before_priv->next = child;
+        child_priv->prev = before;
+
+        priv->last_child = child;
+        priv->n_children++;
+        return;
+    }
+
+    // Insert (After)
+    cmp_index = 0;
+    iter = text_node_get_first_child (self);
+
+    while (cmp_index++ < index) {
+        iter = text_node_get_next (iter);
+        g_assert (iter != NULL);
+    }
+
+    _insert_between (child, iter, text_node_get_next (iter));
+}
+
+void
+text_node_prepend_child (TextNode *self,
+                         TextNode *child)
+{
+    text_node_insert_child (self, child, 0);
+}
+
+void
+text_node_append_child (TextNode *self,
+                        TextNode *child)
+{
+    TextNodePrivate *priv = text_node_get_instance_private (self);
+    text_node_insert_child (self, child, priv->n_children);
+}
+
+void
+text_node_insert_child_before (TextNode *self,
+                               TextNode *child,
+                               TextNode *compare)
+{
+    int index, index_to_insert;
+
+    index = _get_index_of (self, compare);
+
+    if (index == -1)
+    {
+        g_critical ("Provided compare node is not a child of this text node.");
+        return;
+    }
+
+    if ((index - 1) == 0)
+    {
+        text_node_prepend_child (self, child);
+        return;
+    }
+
+    text_node_insert_child (self, child, index-1);
+}
+
+void
+text_node_insert_child_after (TextNode *self,
+                              TextNode *child,
+                              TextNode *compare)
+{
+    int index;
+
+    index = _get_index_of (self, compare);
+
+    if (index == -1)
+    {
+        g_critical ("Provided compare node is not a child of this text node.");
+        return;
+    }
+
+    text_node_insert_child (self, child, index);
+}
+
 static void
 text_node_class_init (TextNodeClass *klass)
 {
@@ -109,4 +313,8 @@ text_node_class_init (TextNodeClass *klass)
 static void
 text_node_init (TextNode *self)
 {
+    TextNodePrivate *priv = text_node_get_instance_private (self);
+    priv->first_child = NULL;
+    priv->last_child = NULL;
+    priv->n_children = 0;
 }

@@ -38,4 +38,17 @@ struct _TextNodeClass
     GObjectClass parent_class;
 };
 
+// Implementors Only
+TextNode *text_node_get_parent          (TextNode *self);
+TextNode *text_node_get_next            (TextNode *self);
+TextNode *text_node_get_previous        (TextNode *self);
+TextNode *text_node_get_first_child     (TextNode *self);
+TextNode *text_node_get_last_child      (TextNode *self);
+
+void      text_node_insert_child        (TextNode *self, TextNode *child, int index);
+void      text_node_prepend_child       (TextNode *self, TextNode *child);
+void      text_node_append_child        (TextNode *self, TextNode *child);
+void      text_node_insert_child_before (TextNode *self, TextNode *child, TextNode *compare);
+void      text_node_insert_child_after  (TextNode *self, TextNode *child, TextNode *compare);
+
 G_END_DECLS
