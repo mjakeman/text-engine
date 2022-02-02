@@ -45,7 +45,7 @@ install_headers(text_engine_headers, subdir: 'text-engine')
 
 text_engine_dep = declare_dependency(
   link_with: text_engine_lib,
-  # include_directories: [],
+  include_directories: include_directories('.'),
   dependencies: text_engine_deps,
   # sources: resources
 )

@@ -40,6 +40,4 @@ struct _TextBlockClass
     TextNodeClass parent_class;
 };
 
-TextBlock *text_block_new (void);
-
 G_END_DECLS

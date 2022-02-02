@@ -25,7 +25,12 @@
 
 #include "widget.h"
 
-#include <text-engine/text-engine.h>
+#include <text-engine.h>
+
+#include <model/node.h>
+#include <model/block.h>
+#include <model/frame.h>
+#include <model/paragraph.h>
 
 struct _RichTextWidget
 {
@@ -98,4 +103,17 @@ rich_text_widget_class_init (RichTextWidgetClass *klass)
 static void
 rich_text_widget_init (RichTextWidget *self)
 {
+    TextFrame *frame = text_frame_new ();
+
+    TextParagraph *block1 = text_paragraph_new ();
+    text_paragraph_append_run (block1, text_run_new ("This is some text."));
+    text_frame_append_block (frame, TEXT_BLOCK (block1));
+
+    TextParagraph *block2 = text_paragraph_new ();
+    text_paragraph_append_run (block2, text_run_new ("Some more text!"));
+    text_frame_append_block (frame, TEXT_BLOCK (block2));
+
+    TextParagraph *block3 = text_paragraph_new ();
+    text_paragraph_append_run (block3, text_run_new ("One final paragraph :D"));
+    text_frame_append_block (frame, TEXT_BLOCK (block3));
 }

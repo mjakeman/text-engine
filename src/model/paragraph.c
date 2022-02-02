@@ -1,4 +1,4 @@
-/* block.c
+/* paragraph.c
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -23,14 +23,14 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "block.h"
+#include "paragraph.h"
 
-typedef struct
+struct _TextParagraph
 {
+    TextBlock parent_instance;
+};
 
-} TextBlockPrivate;
-
-G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (TextBlock, text_block, TEXT_TYPE_NODE)
+G_DEFINE_FINAL_TYPE (TextParagraph, text_paragraph, TEXT_TYPE_BLOCK)
 
 enum {
     PROP_0,
@@ -39,56 +39,71 @@ enum {
 
 static GParamSpec *properties [N_PROPS];
 
-static void
-text_block_finalize (GObject *object)
+TextParagraph *
+text_paragraph_new (void)
 {
-    TextBlock *self = (TextBlock *)object;
-    TextBlockPrivate *priv = text_block_get_instance_private (self);
-
-    G_OBJECT_CLASS (text_block_parent_class)->finalize (object);
+    return g_object_new (TEXT_TYPE_PARAGRAPH, NULL);
 }
 
 static void
-text_block_get_property (GObject    *object,
-                         guint       prop_id,
-                         GValue     *value,
-                         GParamSpec *pspec)
+text_paragraph_finalize (GObject *object)
 {
-    TextBlock *self = TEXT_BLOCK (object);
+    TextParagraph *self = (TextParagraph *)object;
+
+    G_OBJECT_CLASS (text_paragraph_parent_class)->finalize (object);
+}
+
+static void
+text_paragraph_get_property (GObject    *object,
+                             guint       prop_id,
+                             GValue     *value,
+                             GParamSpec *pspec)
+{
+    TextParagraph *self = TEXT_PARAGRAPH (object);
 
     switch (prop_id)
-    {
-    default:
+      {
+      default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-    }
+      }
 }
 
 static void
-text_block_set_property (GObject      *object,
-                         guint         prop_id,
-                         const GValue *value,
-                         GParamSpec   *pspec)
+text_paragraph_set_property (GObject      *object,
+                             guint         prop_id,
+                             const GValue *value,
+                             GParamSpec   *pspec)
 {
-    TextBlock *self = TEXT_BLOCK (object);
+    TextParagraph *self = TEXT_PARAGRAPH (object);
 
     switch (prop_id)
-    {
-    default:
+      {
+      default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-    }
+      }
+}
+
+void
+text_paragraph_append_run (TextParagraph *self,
+                           TextRun       *run)
+{
+    g_return_if_fail (TEXT_IS_PARAGRAPH (self));
+    g_return_if_fail (TEXT_IS_RUN (run));
+
+    text_node_append_child (TEXT_NODE (self), TEXT_NODE (run));
 }
 
 static void
-text_block_class_init (TextBlockClass *klass)
+text_paragraph_class_init (TextParagraphClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-    object_class->finalize = text_block_finalize;
-    object_class->get_property = text_block_get_property;
-    object_class->set_property = text_block_set_property;
+    object_class->finalize = text_paragraph_finalize;
+    object_class->get_property = text_paragraph_get_property;
+    object_class->set_property = text_paragraph_set_property;
 }
 
 static void
-text_block_init (TextBlock *self)
+text_paragraph_init (TextParagraph *self)
 {
 }

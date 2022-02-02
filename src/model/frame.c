@@ -91,10 +91,24 @@ text_frame_set_property (GObject      *object,
       }
 }
 
-static void
-text_frame_append_block (TextFrame *self, TextBlock *block)
+void
+text_frame_append_block (TextFrame *self,
+                         TextBlock *block)
 {
+    g_return_if_fail (TEXT_IS_FRAME (self));
+    g_return_if_fail (TEXT_IS_BLOCK (block));
 
+    text_node_append_child (TEXT_NODE (self), TEXT_NODE (block));
+}
+
+void
+text_frame_prepend_block (TextFrame *self,
+                          TextBlock *block)
+{
+    g_return_if_fail (TEXT_IS_FRAME (self));
+    g_return_if_fail (TEXT_IS_BLOCK (block));
+
+    text_node_prepend_child (TEXT_NODE (self), TEXT_NODE (block));
 }
 
 static void

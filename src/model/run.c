@@ -27,35 +27,33 @@
 
 struct _TextRun
 {
-    GObject parent_instance;
+    TextNode parent_instance;
+    gchar *text;
 };
 
-typedef struct
-{
 
-} TextRunPrivate;
-
-
-G_DEFINE_FINAL_TYPE_WITH_PRIVATE (TextRun, text_run, G_TYPE_OBJECT)
+G_DEFINE_FINAL_TYPE (TextRun, text_run, TEXT_TYPE_NODE)
 
 enum {
     PROP_0,
+    PROP_TEXT,
     N_PROPS
 };
 
 static GParamSpec *properties [N_PROPS];
 
 TextRun *
-text_run_new (void)
+text_run_new (const gchar *text)
 {
-    return g_object_new (TEXT_TYPE_RUN, NULL);
+    return g_object_new (TEXT_TYPE_RUN,
+                         "text", text,
+                         NULL);
 }
 
 static void
 text_run_finalize (GObject *object)
 {
     TextRun *self = (TextRun *)object;
-    TextRunPrivate *priv = text_run_get_instance_private (self);
 
     G_OBJECT_CLASS (text_run_parent_class)->finalize (object);
 }
@@ -69,10 +67,13 @@ text_run_get_property (GObject    *object,
     TextRun *self = TEXT_RUN (object);
 
     switch (prop_id)
-      {
-      default:
+    {
+    case PROP_TEXT:
+        g_value_set_string (value, self->text);
+        break;
+    default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      }
+    }
 }
 
 static void
@@ -84,10 +85,15 @@ text_run_set_property (GObject      *object,
     TextRun *self = TEXT_RUN (object);
 
     switch (prop_id)
-      {
-      default:
+    {
+    case PROP_TEXT:
+        if (self->text)
+            g_free (self->text);
+        self->text = g_value_dup_string (value);
+        break;
+    default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      }
+    }
 }
 
 static void
@@ -98,6 +104,15 @@ text_run_class_init (TextRunClass *klass)
     object_class->finalize = text_run_finalize;
     object_class->get_property = text_run_get_property;
     object_class->set_property = text_run_set_property;
+
+    properties [PROP_TEXT]
+        = g_param_spec_string ("text",
+                               "Text",
+                               "Text",
+                               NULL,
+                               G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
+
+    g_object_class_install_properties (object_class, N_PROPS, properties);
 }
 
 static void

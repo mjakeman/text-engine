@@ -41,6 +41,8 @@ struct _TextFrameClass
     TextBlockClass parent_class;
 };
 
-TextFrame *text_frame_new (void);
+TextFrame *text_frame_new           (void);
+void       text_frame_append_block  (TextFrame *self, TextBlock *block);
+void       text_frame_prepend_block (TextFrame *self, TextBlock *block);
 
 G_END_DECLS

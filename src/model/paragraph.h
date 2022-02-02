@@ -1,4 +1,4 @@
-/* run.h
+/* paragraph.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -28,13 +28,16 @@
 #include <glib-object.h>
 
 #include "node.h"
+#include "block.h"
+#include "run.h"
 
 G_BEGIN_DECLS
 
-#define TEXT_TYPE_RUN (text_run_get_type())
+#define TEXT_TYPE_PARAGRAPH (text_paragraph_get_type())
 
-G_DECLARE_FINAL_TYPE (TextRun, text_run, TEXT, RUN, TextNode)
+G_DECLARE_FINAL_TYPE (TextParagraph, text_paragraph, TEXT, PARAGRAPH, TextBlock)
 
-TextRun *text_run_new (const gchar *text);
+TextParagraph *text_paragraph_new    (void);
+void           text_block_append_run (TextParagraph *para, TextRun *run);
 
 G_END_DECLS

@@ -36,7 +36,7 @@ typedef struct
     int n_children;
 } TextNodePrivate;
 
-G_DEFINE_FINAL_TYPE_WITH_PRIVATE (TextNode, text_node, G_TYPE_OBJECT)
+G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (TextNode, text_node, G_TYPE_OBJECT)
 
 enum {
     PROP_0,
@@ -263,7 +263,7 @@ text_node_insert_child_before (TextNode *self,
                                TextNode *child,
                                TextNode *compare)
 {
-    int index, index_to_insert;
+    int index;
 
     index = _get_index_of (self, compare);
 
@@ -275,6 +275,7 @@ text_node_insert_child_before (TextNode *self,
 
     if ((index - 1) == 0)
     {
+        g_object_ref_sink (child);
         text_node_prepend_child (self, child);
         return;
     }
