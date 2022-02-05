@@ -6,10 +6,12 @@ text_engine_sources += files([
   'paragraph.c'
 ])
 
-text_engine_headers += files([
+model_headers = [
   'node.h',
   'run.h',
   'block.h',
   'frame.h',
   'paragraph.h'
-])
+]
+
+install_headers(model_headers, subdir : header_dir / 'model')

@@ -2,6 +2,8 @@ text_engine_sources += files([
   'display.c',
 ])
 
-text_engine_headers += files([
+ui_headers = [
   'display.h',
-])
+]
+
+install_headers(ui_headers, subdir : header_dir / 'ui')
