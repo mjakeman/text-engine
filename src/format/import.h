@@ -1,4 +1,4 @@
-/* parser.h
+/* import.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -27,10 +27,10 @@
 
 #include <glib.h>
 
-#include <model/frame.h>
+#include "../model/frame.h"
 
 G_BEGIN_DECLS
 
-TextFrame *parse_comment_html (const gchar *html);
+TextFrame *format_parse_html (const gchar *html);
 
 G_END_DECLS

@@ -1,13 +1,11 @@
 demo_sources = [
   'demo.c',
-  'widget.c',
-  'parser.c'
+  'widget.c'
 ]
 
 demo_deps = [
   text_engine_dep,
-  dependency('libadwaita-1'),
-  dependency('libxml-2.0')
+  dependency('libadwaita-1')
 ]
 
 gnome = import('gnome')

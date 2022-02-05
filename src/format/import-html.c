@@ -1,4 +1,4 @@
-/* parser.c
+/* import-html.c
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -23,14 +23,14 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "parser.h"
-
-#include <model/paragraph.h>
-#include <model/block.h>
-#include <model/run.h>
+#include "import.h"
 
 #include <libxml/HTMLparser.h>
 #include <libxml/HTMLtree.h>
+
+#include "../model/paragraph.h"
+#include "../model/block.h"
+#include "../model/run.h"
 
 static void
 build_text_frame_recursive (xmlNode        *nodes,
@@ -88,7 +88,7 @@ build_text_frame (xmlNode   *nodes,
 }
 
 TextFrame *
-parse_comment_html (const gchar *html)
+format_parse_html (const gchar *html)
 {
     htmlDocPtr doc;
     xmlNode *root;

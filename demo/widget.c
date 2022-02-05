@@ -25,14 +25,14 @@
 
 #include "widget.h"
 
-#include "parser.h"
-
 #include <text-engine.h>
 
 #include <model/node.h>
 #include <model/block.h>
 #include <model/frame.h>
 #include <model/paragraph.h>
+
+#include <format/import.h>
 
 struct _RichTextWidget
 {
@@ -179,5 +179,5 @@ rich_text_widget_init (RichTextWidget *self)
     // Sample comment from extensions.gnome.org with line break added in
     const gchar *test = "<p>There was an Old Man with a beard\nWho said, &quot;It is just as I feared!</p><p> &gt; Two Owls and a Hen,<br> &gt; Four Larks and a Wren,</p><p>Have all built their nests in my beard!&quot;</p>";
 
-    self->frame = parse_comment_html (test);
+    self->frame = format_parse_html (test);
 }
