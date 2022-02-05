@@ -25,6 +25,8 @@
 
 #include "widget.h"
 
+#include "parser.h"
+
 #include <text-engine.h>
 
 #include <model/node.h>
@@ -144,6 +146,8 @@ rich_text_widget_snapshot (GtkWidget   *widget,
 
             PangoLayout *layout = pango_layout_new (context);
             pango_layout_set_text (layout, text, -1);
+            pango_layout_set_wrap (layout, PANGO_WRAP_WORD_CHAR);
+            pango_layout_set_width (layout, PANGO_SCALE * gtk_widget_get_width (widget));
             pango_layout_get_pixel_size (layout, NULL, &height);
 
             gtk_snapshot_append_layout (snapshot, layout, &fg_color);
@@ -172,21 +176,8 @@ rich_text_widget_class_init (RichTextWidgetClass *klass)
 static void
 rich_text_widget_init (RichTextWidget *self)
 {
-    self->frame = text_frame_new ();
+    // Sample comment from extensions.gnome.org with line break added in
+    const gchar *test = "<p>There was an Old Man with a beard\nWho said, &quot;It is just as I feared!</p><p> &gt; Two Owls and a Hen,<br> &gt; Four Larks and a Wren,</p><p>Have all built their nests in my beard!&quot;</p>";
 
-    TextParagraph *block1 = text_paragraph_new ();
-    text_paragraph_append_run (block1, text_run_new ("This is some text."));
-    text_paragraph_append_run (block1, text_run_new (" Comprised of multiple runs"));
-    text_paragraph_append_run (block1, text_run_new (" which could each have their own..."));
-    text_paragraph_append_run (block1, text_run_new (" FORMATTING!"));
-    text_paragraph_append_run (block1, text_run_new (" (yay)"));
-    text_frame_append_block (self->frame, TEXT_BLOCK (block1));
-
-    TextParagraph *block2 = text_paragraph_new ();
-    text_paragraph_append_run (block2, text_run_new ("Some more text!"));
-    text_frame_append_block (self->frame, TEXT_BLOCK (block2));
-
-    TextParagraph *block3 = text_paragraph_new ();
-    text_paragraph_append_run (block3, text_run_new ("One final paragraph :D"));
-    text_frame_append_block (self->frame, TEXT_BLOCK (block3));
+    self->frame = parse_comment_html (test);
 }
