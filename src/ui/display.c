@@ -1,4 +1,4 @@
-/* widget.c
+/* display.c
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -23,82 +23,98 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "widget.h"
+#include "display.h"
 
-#include <text-engine.h>
+#include "../model/paragraph.h"
 
-#include <model/node.h>
-#include <model/block.h>
-#include <model/frame.h>
-#include <model/paragraph.h>
-
-#include <format/import.h>
-
-struct _RichTextWidget
+struct _TextDisplay
 {
     GtkWidget parent_instance;
 
     TextFrame *frame;
 };
 
-G_DEFINE_FINAL_TYPE (RichTextWidget, rich_text_widget, GTK_TYPE_WIDGET)
+G_DEFINE_FINAL_TYPE (TextDisplay, text_display, GTK_TYPE_WIDGET)
 
 enum {
     PROP_0,
+    PROP_FRAME,
     N_PROPS
 };
 
 static GParamSpec *properties [N_PROPS];
 
-RichTextWidget *
-rich_text_widget_new (void)
+/**
+ * text_display_new:
+ * @frame: The #TextFrame to display or %NULL
+ *
+ * Creates a new #TextDisplay widget which displays the rich text
+ * document stored inside @frame.
+ *
+ * Returns: A new #TextDisplay widget
+ */
+TextDisplay *
+text_display_new (TextFrame *frame)
 {
-    return g_object_new (RICH_TEXT_TYPE_WIDGET, NULL);
+    return g_object_new (TEXT_TYPE_DISPLAY,
+                         "frame", frame,
+                         NULL);
 }
 
 static void
-rich_text_widget_finalize (GObject *object)
+text_display_finalize (GObject *object)
 {
-    RichTextWidget *self = (RichTextWidget *)object;
+    TextDisplay *self = (TextDisplay *)object;
 
-    G_OBJECT_CLASS (rich_text_widget_parent_class)->finalize (object);
+    G_OBJECT_CLASS (text_display_parent_class)->finalize (object);
 }
 
 static void
-rich_text_widget_get_property (GObject    *object,
-                               guint       prop_id,
-                               GValue     *value,
-                               GParamSpec *pspec)
+text_display_get_property (GObject    *object,
+                           guint       prop_id,
+                           GValue     *value,
+                           GParamSpec *pspec)
 {
-    RichTextWidget *self = RICH_TEXT_WIDGET (object);
+    TextDisplay *self = TEXT_DISPLAY (object);
 
     switch (prop_id)
-      {
-      default:
+    {
+    case PROP_FRAME:
+        g_value_set_object (value, self->frame);
+        break;
+    default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      }
+    }
 }
 
 static void
-rich_text_widget_set_property (GObject      *object,
-                               guint         prop_id,
-                               const GValue *value,
-                               GParamSpec   *pspec)
+text_display_set_property (GObject      *object,
+                           guint         prop_id,
+                           const GValue *value,
+                           GParamSpec   *pspec)
 {
-    RichTextWidget *self = RICH_TEXT_WIDGET (object);
+    TextDisplay *self = TEXT_DISPLAY (object);
 
     switch (prop_id)
-      {
-      default:
+    {
+    case PROP_FRAME:
+        self->frame = g_value_get_object (value);
+        break;
+    default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      }
+    }
 }
 
 static void
-rich_text_widget_snapshot (GtkWidget   *widget,
-                           GtkSnapshot *snapshot)
+text_display_snapshot (GtkWidget   *widget,
+                       GtkSnapshot *snapshot)
 {
-    RichTextWidget *self = RICH_TEXT_WIDGET (widget);
+    g_return_if_fail (TEXT_IS_DISPLAY (widget));
+
+    TextDisplay *self = TEXT_DISPLAY (widget);
+
+    if (!self->frame)
+        return;
 
     TextFrame *frame = self->frame;
     PangoContext *context = gtk_widget_get_pango_context (widget);
@@ -160,24 +176,29 @@ rich_text_widget_snapshot (GtkWidget   *widget,
 }
 
 static void
-rich_text_widget_class_init (RichTextWidgetClass *klass)
+text_display_class_init (TextDisplayClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-    object_class->finalize = rich_text_widget_finalize;
-    object_class->get_property = rich_text_widget_get_property;
-    object_class->set_property = rich_text_widget_set_property;
+    object_class->finalize = text_display_finalize;
+    object_class->get_property = text_display_get_property;
+    object_class->set_property = text_display_set_property;
+
+    properties [PROP_FRAME]
+        = g_param_spec_object ("frame",
+                               "Frame",
+                               "Frame",
+                               TEXT_TYPE_FRAME,
+                               G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
+
+    g_object_class_install_properties (object_class, N_PROPS, properties);
 
     GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-    widget_class->snapshot = rich_text_widget_snapshot;
+    widget_class->snapshot = text_display_snapshot;
 }
 
 static void
-rich_text_widget_init (RichTextWidget *self)
+text_display_init (TextDisplay *self)
 {
-    // Sample comment from extensions.gnome.org with line break added in
-    const gchar *test = "<p>There was an Old Man with a beard\nWho said, &quot;It is just as I feared!</p><p> &gt; Two Owls and a Hen,<br> &gt; Four Larks and a Wren,</p><p>Have all built their nests in my beard!&quot;</p>";
-
-    self->frame = format_parse_html (test);
 }

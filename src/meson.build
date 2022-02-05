@@ -11,6 +11,7 @@ text_engine_headers = [
 subdir('delta')
 subdir('model')
 subdir('format')
+subdir('ui')
 
 version_split = meson.project_version().split('.')
 MAJOR_VERSION = version_split[0]
@@ -34,7 +35,8 @@ configure_file(
 text_engine_deps = [
   dependency('gio-2.0', version: '>= 2.50'),
   dependency('json-glib-1.0'),
-  dependency('libxml-2.0')
+  dependency('libxml-2.0'),
+  dependency('gtk4')
 ]
 
 text_engine_lib = shared_library('text-engine-' + api_version,
