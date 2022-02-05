@@ -175,6 +175,79 @@ text_display_snapshot (GtkWidget   *widget,
     }
 }
 
+static GtkSizeRequestMode
+text_display_get_request_mode (GtkWidget* widget)
+{
+    return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
+}
+
+static void
+text_display_measure (GtkWidget      *widget,
+                      GtkOrientation  orientation,
+                      int             for_size,
+                      int            *minimum,
+                      int            *natural,
+                      int            *minimum_baseline,
+                      int            *natural_baseline)
+{
+    if (orientation == GTK_ORIENTATION_VERTICAL)
+    {
+        int min_height = 0;
+        TextFrame *frame = TEXT_DISPLAY (widget)->frame;
+        PangoContext *context = gtk_widget_get_pango_context (widget);
+
+        // TODO: Remove duplication between snapshot and measure
+        for (TextNode *node = text_node_get_first_child (TEXT_NODE (frame));
+             node != NULL;
+             node = text_node_get_next (node))
+        {
+            g_assert (TEXT_IS_BLOCK (node));
+
+            // Let's treat paragraphs opaquely for now. In the future, we need
+            // to manually consider each text run in order for inline equations
+            // and images.
+            if (TEXT_IS_PARAGRAPH (node))
+            {
+                GString *str = g_string_new ("");
+                for (TextNode *run = text_node_get_first_child (node);
+                     run != NULL;
+                     run = text_node_get_next (run))
+                {
+                    const gchar *run_text;
+                    g_object_get (run, "text", &run_text, NULL);
+                    g_string_append (str, run_text);
+                }
+
+                int height;
+                gchar *text = g_string_free (str, FALSE);
+
+                PangoLayout *layout = pango_layout_new (context);
+                pango_layout_set_text (layout, text, -1);
+                pango_layout_set_wrap (layout, PANGO_WRAP_WORD_CHAR);
+                pango_layout_set_width (layout, PANGO_SCALE * for_size);
+                pango_layout_get_pixel_size (layout, NULL, &height);
+
+                min_height += height;
+
+                g_object_unref (layout);
+                g_free (text);
+            }
+        }
+
+        *minimum = *natural = min_height;
+    }
+    else if (orientation == GTK_ORIENTATION_HORIZONTAL)
+    {
+        GTK_WIDGET_CLASS (text_display_parent_class)->measure (widget,
+                                                               orientation,
+                                                               for_size,
+                                                               minimum,
+                                                               natural,
+                                                               minimum_baseline,
+                                                               natural_baseline);
+    }
+}
+
 static void
 text_display_class_init (TextDisplayClass *klass)
 {
@@ -196,6 +269,8 @@ text_display_class_init (TextDisplayClass *klass)
     GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
     widget_class->snapshot = text_display_snapshot;
+    widget_class->get_request_mode = text_display_get_request_mode;
+    widget_class->measure = text_display_measure;
 }
 
 static void
