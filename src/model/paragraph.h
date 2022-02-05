@@ -37,7 +37,7 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (TextParagraph, text_paragraph, TEXT, PARAGRAPH, TextBlock)
 
-TextParagraph *text_paragraph_new    (void);
-void           text_block_append_run (TextParagraph *para, TextRun *run);
+TextParagraph *text_paragraph_new        (void);
+void           text_paragraph_append_run (TextParagraph *para, TextRun *run);
 
 G_END_DECLS
