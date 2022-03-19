@@ -6,5 +6,5 @@ can be used wherever rich text display and editing is needed.
 ## Matrix
 Development of text-engine and bluetype takes place on matrix.
 
-Join [#bluetype](https://matrix.to/#/#bluetype:matrix.org) if want to chat
-about the project or you'd like to get involved. Come say hello!
+Join [#bluetype](https://matrix.to/#/#bluetype:matrix.org) to chat
+about the project or if you would like to get involved. Come say hello!

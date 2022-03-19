@@ -1,4 +1,4 @@
-/* widget.c
+/* item.c
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -23,14 +23,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "widget.h"
+#include "item.h"
 
-struct _RichTextWidget
-{
-    GtkWidget parent_instance;
-};
-
-G_DEFINE_FINAL_TYPE (RichTextWidget, rich_text_widget, GTK_TYPE_WIDGET)
+G_DEFINE_TYPE (TextItem, text_item, TEXT_TYPE_NODE)
 
 enum {
     PROP_0,
@@ -39,27 +34,34 @@ enum {
 
 static GParamSpec *properties [N_PROPS];
 
-RichTextWidget *
-rich_text_widget_new (void)
+/**
+ * text_item_new:
+ *
+ * Create a new #TextItem.
+ *
+ * Returns: (transfer full): a newly created #TextItem
+ */
+TextItem *
+text_item_new (void)
 {
-    return g_object_new (RICH_TEXT_TYPE_WIDGET, NULL);
+    return g_object_new (TEXT_TYPE_ITEM, NULL);
 }
 
 static void
-rich_text_widget_finalize (GObject *object)
+text_item_finalize (GObject *object)
 {
-    RichTextWidget *self = (RichTextWidget *)object;
+    TextItem *self = (TextItem *)object;
 
-    G_OBJECT_CLASS (rich_text_widget_parent_class)->finalize (object);
+    G_OBJECT_CLASS (text_item_parent_class)->finalize (object);
 }
 
 static void
-rich_text_widget_get_property (GObject    *object,
-                               guint       prop_id,
-                               GValue     *value,
-                               GParamSpec *pspec)
+text_item_get_property (GObject    *object,
+                        guint       prop_id,
+                        GValue     *value,
+                        GParamSpec *pspec)
 {
-    RichTextWidget *self = RICH_TEXT_WIDGET (object);
+    TextItem *self = TEXT_ITEM (object);
 
     switch (prop_id)
       {
@@ -69,12 +71,12 @@ rich_text_widget_get_property (GObject    *object,
 }
 
 static void
-rich_text_widget_set_property (GObject      *object,
-                               guint         prop_id,
-                               const GValue *value,
-                               GParamSpec   *pspec)
+text_item_set_property (GObject      *object,
+                        guint         prop_id,
+                        const GValue *value,
+                        GParamSpec   *pspec)
 {
-    RichTextWidget *self = RICH_TEXT_WIDGET (object);
+    TextItem *self = TEXT_ITEM (object);
 
     switch (prop_id)
       {
@@ -84,16 +86,16 @@ rich_text_widget_set_property (GObject      *object,
 }
 
 static void
-rich_text_widget_class_init (RichTextWidgetClass *klass)
+text_item_class_init (TextItemClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-    object_class->finalize = rich_text_widget_finalize;
-    object_class->get_property = rich_text_widget_get_property;
-    object_class->set_property = rich_text_widget_set_property;
+    object_class->finalize = text_item_finalize;
+    object_class->get_property = text_item_get_property;
+    object_class->set_property = text_item_set_property;
 }
 
 static void
-rich_text_widget_init (RichTextWidget *self)
+text_item_init (TextItem *self)
 {
 }

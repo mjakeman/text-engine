@@ -1,4 +1,5 @@
 api_version = '0.1'
+header_dir = 'text-engine'
 
 text_engine_sources = [
   'text-engine.c',
@@ -8,7 +9,15 @@ text_engine_headers = [
   'text-engine.h',
 ]
 
+# Utility
 subdir('delta')
+subdir('format')
+
+# Trees
+subdir('tree')
+subdir('model')
+subdir('layout')
+subdir('ui')
 
 version_split = meson.project_version().split('.')
 MAJOR_VERSION = version_split[0]
@@ -26,11 +35,14 @@ configure_file(
   output: 'text-engine-version.h',
   configuration: version_conf,
   install: true,
-  install_dir: join_paths(get_option('includedir'), 'text-engine')
+  install_dir: join_paths(get_option('includedir'), header_dir)
 )
 
 text_engine_deps = [
   dependency('gio-2.0', version: '>= 2.50'),
+  dependency('json-glib-1.0'),
+  dependency('libxml-2.0'),
+  dependency('gtk4')
 ]
 
 text_engine_lib = shared_library('text-engine-' + api_version,
@@ -39,11 +51,11 @@ text_engine_lib = shared_library('text-engine-' + api_version,
   install: true,
 )
 
-install_headers(text_engine_headers, subdir: 'text-engine')
+install_headers(text_engine_headers, subdir: header_dir)
 
 text_engine_dep = declare_dependency(
   link_with: text_engine_lib,
-  # include_directories: [],
+  include_directories: include_directories('.'),
   dependencies: text_engine_deps,
   # sources: resources
 )

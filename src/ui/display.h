@@ -1,4 +1,4 @@
-/* widget.h
+/* display.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -27,12 +27,14 @@
 
 #include <gtk/gtk.h>
 
+#include "../model/frame.h"
+
 G_BEGIN_DECLS
 
-#define RICH_TEXT_TYPE_WIDGET (rich_text_widget_get_type())
+#define TEXT_TYPE_DISPLAY (text_display_get_type())
 
-G_DECLARE_FINAL_TYPE (RichTextWidget, rich_text_widget, RICH_TEXT, WIDGET, GtkWidget)
+G_DECLARE_FINAL_TYPE (TextDisplay, text_display, TEXT, DISPLAY, GtkWidget)
 
-RichTextWidget *rich_text_widget_new (void);
+TextDisplay *text_display_new (TextFrame *frame);
 
 G_END_DECLS

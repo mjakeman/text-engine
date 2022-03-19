@@ -2,6 +2,8 @@ text_engine_sources += files([
   'delta.c',
 ])
 
-text_engine_headers += files([
-  'delta.h',
-])
+delta_headers = [
+  'delta.h'
+]
+
+install_headers(delta_headers, subdir : header_dir / 'delta')
