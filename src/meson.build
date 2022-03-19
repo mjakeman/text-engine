@@ -9,10 +9,14 @@ text_engine_headers = [
   'text-engine.h',
 ]
 
+# Utility
 subdir('delta')
+subdir('format')
+
+# Trees
 subdir('tree')
 subdir('model')
-subdir('format')
+subdir('layout')
 subdir('ui')
 
 version_split = meson.project_version().split('.')
