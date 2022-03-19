@@ -1,4 +1,4 @@
-/* base.h
+/* item.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -30,15 +30,15 @@
 
 G_BEGIN_DECLS
 
-#define TEXT_TYPE_BASE (text_base_get_type())
+#define TEXT_TYPE_ITEM (text_item_get_type())
 
-G_DECLARE_DERIVABLE_TYPE (TextBase, text_base, TEXT, BASE, TextNode)
+G_DECLARE_DERIVABLE_TYPE (TextItem, text_item, TEXT, ITEM, TextNode)
 
-struct _TextBaseClass
+struct _TextItemClass
 {
     TextNodeClass parent_class;
 };
 
-TextBase *text_base_new (void);
+TextItem *text_item_new (void);
 
 G_END_DECLS

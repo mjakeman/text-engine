@@ -27,12 +27,12 @@
 
 struct _TextRun
 {
-    TextBase parent_instance;
+    TextItem parent_instance;
     gchar *text;
 };
 
 
-G_DEFINE_FINAL_TYPE (TextRun, text_run, TEXT_TYPE_BASE)
+G_DEFINE_FINAL_TYPE (TextRun, text_run, TEXT_TYPE_ITEM)
 
 enum {
     PROP_0,

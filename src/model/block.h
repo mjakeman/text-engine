@@ -27,13 +27,13 @@
 
 #include <glib-object.h>
 
-#include "base.h"
+#include "item.h"
 
 G_BEGIN_DECLS
 
 #define TEXT_TYPE_BLOCK (text_block_get_type())
 
-G_DECLARE_DERIVABLE_TYPE (TextBlock, text_block, TEXT, BLOCK, TextBase)
+G_DECLARE_DERIVABLE_TYPE (TextBlock, text_block, TEXT, BLOCK, TextItem)
 
 struct _TextBlockClass
 {

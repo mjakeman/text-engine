@@ -140,7 +140,7 @@ text_display_snapshot (GtkWidget   *widget,
          node != NULL;
          node = text_node_get_next (node))
     {
-        g_assert (TEXT_IS_BASE (node));
+        g_assert (TEXT_IS_ITEM (node));
         g_assert (TEXT_IS_BLOCK (node));
 
         // Let's treat paragraphs opaquely for now. In the future, we need

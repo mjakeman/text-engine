@@ -1,4 +1,4 @@
-/* base.c
+/* item.c
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -23,9 +23,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "base.h"
+#include "item.h"
 
-G_DEFINE_TYPE (TextBase, text_base, TEXT_TYPE_NODE)
+G_DEFINE_TYPE (TextItem, text_item, TEXT_TYPE_NODE)
 
 enum {
     PROP_0,
@@ -35,33 +35,33 @@ enum {
 static GParamSpec *properties [N_PROPS];
 
 /**
- * text_base_new:
+ * text_item_new:
  *
- * Create a new #TextBase.
+ * Create a new #TextItem.
  *
- * Returns: (transfer full): a newly created #TextBase
+ * Returns: (transfer full): a newly created #TextItem
  */
-TextBase *
-text_base_new (void)
+TextItem *
+text_item_new (void)
 {
-    return g_object_new (TEXT_TYPE_BASE, NULL);
+    return g_object_new (TEXT_TYPE_ITEM, NULL);
 }
 
 static void
-text_base_finalize (GObject *object)
+text_item_finalize (GObject *object)
 {
-    TextBase *self = (TextBase *)object;
+    TextItem *self = (TextItem *)object;
 
-    G_OBJECT_CLASS (text_base_parent_class)->finalize (object);
+    G_OBJECT_CLASS (text_item_parent_class)->finalize (object);
 }
 
 static void
-text_base_get_property (GObject    *object,
+text_item_get_property (GObject    *object,
                         guint       prop_id,
                         GValue     *value,
                         GParamSpec *pspec)
 {
-    TextBase *self = TEXT_BASE (object);
+    TextItem *self = TEXT_ITEM (object);
 
     switch (prop_id)
       {
@@ -71,12 +71,12 @@ text_base_get_property (GObject    *object,
 }
 
 static void
-text_base_set_property (GObject      *object,
+text_item_set_property (GObject      *object,
                         guint         prop_id,
                         const GValue *value,
                         GParamSpec   *pspec)
 {
-    TextBase *self = TEXT_BASE (object);
+    TextItem *self = TEXT_ITEM (object);
 
     switch (prop_id)
       {
@@ -86,16 +86,16 @@ text_base_set_property (GObject      *object,
 }
 
 static void
-text_base_class_init (TextBaseClass *klass)
+text_item_class_init (TextItemClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-    object_class->finalize = text_base_finalize;
-    object_class->get_property = text_base_get_property;
-    object_class->set_property = text_base_set_property;
+    object_class->finalize = text_item_finalize;
+    object_class->get_property = text_item_get_property;
+    object_class->set_property = text_item_set_property;
 }
 
 static void
-text_base_init (TextBase *self)
+text_item_init (TextItem *self)
 {
 }

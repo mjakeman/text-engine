@@ -30,7 +30,7 @@ typedef struct
     int _padding;
 } TextBlockPrivate;
 
-G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (TextBlock, text_block, TEXT_TYPE_BASE)
+G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (TextBlock, text_block, TEXT_TYPE_ITEM)
 
 enum {
     PROP_0,

@@ -27,7 +27,7 @@
 
 #include <glib-object.h>
 
-#include "base.h"
+#include "item.h"
 #include "block.h"
 #include "run.h"
 

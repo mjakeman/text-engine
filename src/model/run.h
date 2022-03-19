@@ -27,13 +27,13 @@
 
 #include <glib-object.h>
 
-#include "base.h"
+#include "item.h"
 
 G_BEGIN_DECLS
 
 #define TEXT_TYPE_RUN (text_run_get_type())
 
-G_DECLARE_FINAL_TYPE (TextRun, text_run, TEXT, RUN, TextBase)
+G_DECLARE_FINAL_TYPE (TextRun, text_run, TEXT, RUN, TextItem)
 
 TextRun *text_run_new (const gchar *text);
 
