@@ -27,7 +27,7 @@
 
 typedef struct
 {
-
+    int _padding;
 } TextFramePrivate;
 
 G_DEFINE_FINAL_TYPE_WITH_PRIVATE (TextFrame, text_frame, TEXT_TYPE_BLOCK)

@@ -1,4 +1,4 @@
-/* block.c
+/* base.c
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -23,14 +23,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "block.h"
+#include "base.h"
 
-typedef struct
-{
-    int _padding;
-} TextBlockPrivate;
-
-G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (TextBlock, text_block, TEXT_TYPE_BASE)
+G_DEFINE_TYPE (TextBase, text_base, TEXT_TYPE_NODE)
 
 enum {
     PROP_0,
@@ -39,56 +34,68 @@ enum {
 
 static GParamSpec *properties [N_PROPS];
 
-static void
-text_block_finalize (GObject *object)
+/**
+ * text_base_new:
+ *
+ * Create a new #TextBase.
+ *
+ * Returns: (transfer full): a newly created #TextBase
+ */
+TextBase *
+text_base_new (void)
 {
-    TextBlock *self = (TextBlock *)object;
-    TextBlockPrivate *priv = text_block_get_instance_private (self);
-
-    G_OBJECT_CLASS (text_block_parent_class)->finalize (object);
+    return g_object_new (TEXT_TYPE_BASE, NULL);
 }
 
 static void
-text_block_get_property (GObject    *object,
-                         guint       prop_id,
-                         GValue     *value,
-                         GParamSpec *pspec)
+text_base_finalize (GObject *object)
 {
-    TextBlock *self = TEXT_BLOCK (object);
+    TextBase *self = (TextBase *)object;
+
+    G_OBJECT_CLASS (text_base_parent_class)->finalize (object);
+}
+
+static void
+text_base_get_property (GObject    *object,
+                        guint       prop_id,
+                        GValue     *value,
+                        GParamSpec *pspec)
+{
+    TextBase *self = TEXT_BASE (object);
 
     switch (prop_id)
-    {
-    default:
+      {
+      default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-    }
+      }
 }
 
 static void
-text_block_set_property (GObject      *object,
-                         guint         prop_id,
-                         const GValue *value,
-                         GParamSpec   *pspec)
+text_base_set_property (GObject      *object,
+                        guint         prop_id,
+                        const GValue *value,
+                        GParamSpec   *pspec)
 {
-    TextBlock *self = TEXT_BLOCK (object);
+    TextBase *self = TEXT_BASE (object);
 
     switch (prop_id)
-    {
-    default:
+      {
+      default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-    }
+      }
 }
 
 static void
-text_block_class_init (TextBlockClass *klass)
+text_base_class_init (TextBaseClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-    object_class->finalize = text_block_finalize;
-    object_class->get_property = text_block_get_property;
-    object_class->set_property = text_block_set_property;
+    object_class->finalize = text_base_finalize;
+    object_class->get_property = text_base_get_property;
+    object_class->set_property = text_base_set_property;
 }
 
 static void
-text_block_init (TextBlock *self)
+text_base_init (TextBase *self)
 {
 }

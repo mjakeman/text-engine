@@ -1,5 +1,5 @@
 text_engine_sources += files([
-  'node.c',
+  'base.c',
   'run.c',
   'block.c',
   'frame.c',
@@ -7,7 +7,7 @@ text_engine_sources += files([
 ])
 
 model_headers = [
-  'node.h',
+  'base.h',
   'run.h',
   'block.h',
   'frame.h',

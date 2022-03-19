@@ -10,6 +10,7 @@ text_engine_headers = [
 ]
 
 subdir('delta')
+subdir('tree')
 subdir('model')
 subdir('format')
 subdir('ui')

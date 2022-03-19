@@ -1,4 +1,4 @@
-/* frame.h
+/* base.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -26,23 +26,19 @@
 #pragma once
 
 #include <glib-object.h>
-
-#include "base.h"
-#include "block.h"
+#include "../tree/node.h"
 
 G_BEGIN_DECLS
 
-#define TEXT_TYPE_FRAME (text_frame_get_type())
+#define TEXT_TYPE_BASE (text_base_get_type())
 
-G_DECLARE_DERIVABLE_TYPE (TextFrame, text_frame, TEXT, FRAME, TextBlock)
+G_DECLARE_DERIVABLE_TYPE (TextBase, text_base, TEXT, BASE, TextNode)
 
-struct _TextFrameClass
+struct _TextBaseClass
 {
-    TextBlockClass parent_class;
+    TextNodeClass parent_class;
 };
 
-TextFrame *text_frame_new           (void);
-void       text_frame_append_block  (TextFrame *self, TextBlock *block);
-void       text_frame_prepend_block (TextFrame *self, TextBlock *block);
+TextBase *text_base_new (void);
 
 G_END_DECLS
