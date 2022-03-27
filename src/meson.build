@@ -10,7 +10,6 @@ text_engine_headers = [
 ]
 
 # Utility
-subdir('delta')
 subdir('format')
 
 # Trees
