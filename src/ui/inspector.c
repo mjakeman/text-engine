@@ -101,7 +101,6 @@ text_inspector_set_property (GObject      *object,
     {
     case PROP_OBJECT:
         self->object = g_value_get_object (value);
-        gtk_label_set_text (GTK_LABEL (self->label), g_type_name_from_instance ((GTypeInstance *)self->object));
 
         if (TEXT_IS_DISPLAY (self->object))
         {
@@ -325,7 +324,8 @@ text_inspector_init (TextInspector *self)
     self->vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_parent (self->vbox, GTK_WIDGET (self));
 
-    self->label = gtk_label_new ("");
+    self->label = gtk_label_new ("Select a TextDisplay widget to view its document");
+    gtk_label_set_xalign (GTK_LABEL (self->label), 0);
     gtk_box_append (GTK_BOX (self->vbox), self->label);
 
     self->colview = setup_colview ();
