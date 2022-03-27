@@ -124,6 +124,9 @@ demo_activate (GApplication *app)
 
     g_assert (G_IS_APPLICATION (app));
 
+    // Initialise text-engine for inspector page
+    text_engine_init ();
+
     // Add CSS Stylesheet
     GtkCssProvider *css_provider = gtk_css_provider_new ();
     gtk_css_provider_load_from_resource (css_provider, "/com/mattjakeman/TextEngine/Demo/style.css");

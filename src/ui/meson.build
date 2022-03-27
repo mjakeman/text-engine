@@ -1,5 +1,6 @@
 text_engine_sources += files([
   'display.c',
+  'inspector.c'
 ])
 
 ui_headers = [
