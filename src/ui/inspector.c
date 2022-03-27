@@ -198,7 +198,7 @@ text_inspector_class_init (TextInspectorClass *klass)
 }
 
 void
-item_setup (GtkSignalListItemFactory *self,
+type_setup (GtkSignalListItemFactory *self,
             GtkListItem              *listitem,
             gpointer                  user_data)
 {
@@ -214,7 +214,7 @@ item_setup (GtkSignalListItemFactory *self,
 }
 
 void
-item_bind (GtkSignalListItemFactory *self,
+type_bind (GtkSignalListItemFactory *self,
            GtkListItem              *listitem,
            gpointer                  user_data)
 {
@@ -240,6 +240,51 @@ item_bind (GtkSignalListItemFactory *self,
     gtk_label_set_text (GTK_LABEL (label), type);
 }
 
+void
+text_setup (GtkSignalListItemFactory *self,
+            GtkListItem              *listitem,
+            gpointer                  user_data)
+{
+    GtkWidget *label;
+
+    label = gtk_label_new ("");
+    gtk_label_set_xalign (GTK_LABEL (label), 0);
+    gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
+
+    gtk_list_item_set_child (listitem, label);
+}
+
+void
+text_bind (GtkSignalListItemFactory *self,
+           GtkListItem              *listitem,
+           gpointer                  user_data)
+{
+    GtkWidget *label;
+    GtkTreeListRow *row;
+    TextItem *item;
+    const gchar *type;
+
+    label = gtk_list_item_get_child (listitem);
+    row = GTK_TREE_LIST_ROW (gtk_list_item_get_item (listitem));
+
+    item = gtk_tree_list_row_get_item (row);
+
+    g_assert (GTK_IS_TREE_LIST_ROW (row));
+    g_assert (TEXT_IS_ITEM (item));
+
+    if (TEXT_IS_RUN (item))
+    {
+        const gchar *text;
+
+        g_object_get (item, "text", &text, NULL);
+        gtk_label_set_text (GTK_LABEL (label), text);
+    }
+    else
+    {
+        gtk_label_set_text (GTK_LABEL (label), NULL);
+    }
+}
+
 static GtkWidget *
 setup_colview ()
 {
@@ -248,14 +293,27 @@ setup_colview ()
     GtkListItemFactory *factory;
 
     colview = gtk_column_view_new (NULL);
+    gtk_column_view_set_reorderable (GTK_COLUMN_VIEW (colview), FALSE);
+    gtk_column_view_set_show_column_separators (GTK_COLUMN_VIEW (colview), TRUE);
     gtk_widget_set_vexpand (colview, TRUE);
+    gtk_widget_add_css_class (colview, "data-table");
 
     factory = gtk_signal_list_item_factory_new ();
-    g_signal_connect (factory, "setup", G_CALLBACK (item_setup), NULL);
-    g_signal_connect (factory, "bind", G_CALLBACK (item_bind), NULL);
+    g_signal_connect (factory, "setup", G_CALLBACK (type_setup), NULL);
+    g_signal_connect (factory, "bind", G_CALLBACK (type_bind), NULL);
 
     column = gtk_column_view_column_new ("Type", factory);
+    gtk_column_view_column_set_expand (column, FALSE);
+    gtk_column_view_column_set_resizable (column, TRUE);
+    gtk_column_view_append_column (GTK_COLUMN_VIEW (colview), column);
+
+    factory = gtk_signal_list_item_factory_new ();
+    g_signal_connect (factory, "setup", G_CALLBACK (text_setup), NULL);
+    g_signal_connect (factory, "bind", G_CALLBACK (text_bind), NULL);
+
+    column = gtk_column_view_column_new ("Contents", factory);
     gtk_column_view_column_set_expand (column, TRUE);
+    gtk_column_view_column_set_resizable (column, TRUE);
     gtk_column_view_append_column (GTK_COLUMN_VIEW (colview), column);
 
     return colview;
