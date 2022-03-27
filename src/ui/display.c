@@ -30,6 +30,11 @@ struct _TextDisplay
     TextFrame *frame;
     TextLayout *layout;
     TextLayoutBox *layout_tree;
+
+    GtkIMContext *context;
+
+    int index;
+    TextRun *run;
 };
 
 G_DEFINE_FINAL_TYPE (TextDisplay, text_display, GTK_TYPE_WIDGET)
@@ -172,7 +177,7 @@ text_display_snapshot (GtkWidget   *widget,
 }
 
 static GtkSizeRequestMode
-text_display_get_request_mode (GtkWidget* widget)
+text_display_get_request_mode (GtkWidget *widget)
 {
     return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
 }
@@ -238,8 +243,115 @@ text_display_class_init (TextDisplayClass *klass)
     widget_class->measure = text_display_measure;
 }
 
+TextItem *
+go_up (TextItem *item)
+{
+    TextNode *parent;
+    TextNode *sibling;
+
+    parent = text_node_get_parent (TEXT_NODE (item));
+
+    if (parent && TEXT_IS_ITEM (parent))
+    {
+        sibling = text_node_get_next (parent);
+        if (sibling && TEXT_IS_ITEM (sibling))
+        {
+            return TEXT_ITEM (sibling);
+        }
+        else
+        {
+            return go_up (TEXT_ITEM (parent));
+        }
+    }
+
+    return NULL;
+}
+
+TextRun *
+walk_until_next_run (TextItem *item)
+{
+    TextNode *child;
+    TextNode *sibling;
+    TextItem *parent;
+
+    child = text_node_get_first_child (TEXT_NODE (item));
+
+    if (child && TEXT_IS_ITEM (child)) {
+        if (TEXT_IS_RUN (child)) {
+            return TEXT_RUN (child);
+        }
+
+        return walk_until_next_run (TEXT_ITEM (child));
+    }
+
+    sibling = text_node_get_next (TEXT_NODE (item));
+
+    if (sibling && TEXT_IS_ITEM (sibling)) {
+        if (TEXT_IS_RUN (sibling)) {
+            return TEXT_RUN (sibling);
+        }
+
+        return walk_until_next_run (TEXT_ITEM (sibling));
+    }
+
+    parent = go_up (item);
+
+    if (parent) {
+        if (TEXT_IS_RUN (parent)) {
+            return TEXT_RUN (parent);
+        }
+
+        return walk_until_next_run (parent);
+    }
+
+    return NULL;
+}
+
+void
+commit (GtkIMContext *context,
+        gchar        *str,
+        TextDisplay  *self)
+{
+    g_return_if_fail (TEXT_IS_DISPLAY (self));
+    g_return_if_fail (GTK_IS_IM_CONTEXT (context));
+
+    g_assert (context == self->context);
+
+    if (!TEXT_IS_FRAME (self->frame))
+        return;
+
+    if (!TEXT_IS_RUN (self->run))
+        self->run = walk_until_next_run (TEXT_ITEM (self->frame));
+
+    char *text;
+    g_object_get (self->run, "text", &text, NULL);
+    g_object_set (self->run, "text", str, NULL);
+
+    // Queue redraw for now
+    // Later on, we should invalidate the model which
+    // then bubbles up and invalidates the style
+    // which then bubbles up and invalidates the layout
+    // which then causes a partial redraw - simple right?
+    gtk_widget_queue_draw (GTK_WIDGET (self));
+
+    g_print ("commit: %s\n", str);
+}
+
 static void
 text_display_init (TextDisplay *self)
 {
+    GtkEventController *controller;
+
     self->layout = text_layout_new ();
+
+    self->context = gtk_im_context_simple_new ();
+    gtk_im_context_set_client_widget (self->context, GTK_WIDGET (self));
+
+    g_signal_connect (self->context, "commit", G_CALLBACK (commit), self);
+
+    controller = gtk_event_controller_key_new ();
+    gtk_event_controller_key_set_im_context (GTK_EVENT_CONTROLLER_KEY (controller), self->context);
+
+    gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
+    gtk_widget_add_controller (GTK_WIDGET (self), controller);
 }
