@@ -8,3 +8,6 @@ Development of text-engine and bluetype takes place on matrix.
 
 Join [#bluetype](https://matrix.to/#/#bluetype:matrix.org) to chat
 about the project or if you would like to get involved. Come say hello!
+
+## Licence
+Text Engine is licensed under `LGPL-3.0-or-later`.
