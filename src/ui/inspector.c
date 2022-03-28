@@ -31,7 +31,6 @@ struct _TextInspector
     TextFrame *frame;
 
     GtkWidget *vbox;
-    GtkWidget *label;
     GtkWidget *colview;
 };
 
@@ -321,12 +320,18 @@ setup_colview ()
 static void
 text_inspector_init (TextInspector *self)
 {
+    GtkWidget *infobar;
+    GtkWidget *label;
+
     self->vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_parent (self->vbox, GTK_WIDGET (self));
 
-    self->label = gtk_label_new ("Select a TextDisplay widget to view its document");
-    gtk_label_set_xalign (GTK_LABEL (self->label), 0);
-    gtk_box_append (GTK_BOX (self->vbox), self->label);
+    label = gtk_label_new ("Select a TextDisplay widget to view its document");
+    gtk_label_set_xalign (GTK_LABEL (label), 0);
+
+    infobar = gtk_info_bar_new ();
+    gtk_info_bar_add_child (GTK_INFO_BAR (infobar), label);
+    gtk_box_append (GTK_BOX (self->vbox), infobar);
 
     self->colview = setup_colview ();
     gtk_box_append (GTK_BOX (self->vbox), self->colview);
