@@ -28,4 +28,6 @@ G_BEGIN_DECLS
 # include "text-engine-version.h"
 #undef TEXT_ENGINE_INSIDE
 
+void text_engine_init ();
+
 G_END_DECLS

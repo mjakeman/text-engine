@@ -25,6 +25,8 @@
 
 #include <adwaita.h>
 
+#include <text-engine.h>
+
 #include <ui/display.h>
 #include <format/import.h>
 
@@ -102,6 +104,7 @@ demo_window_init (DemoWindow *self)
 
     GtkWidget *header_bar;
     GtkWidget *vbox;
+    GtkWidget *inspector_btn;
 
     vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     adw_application_window_set_content (ADW_APPLICATION_WINDOW (self), vbox);
@@ -115,6 +118,14 @@ demo_window_init (DemoWindow *self)
 
     gtk_box_append (GTK_BOX (vbox), header_bar);
     gtk_box_append (GTK_BOX (vbox), GTK_WIDGET (display));
+
+    inspector_btn = gtk_button_new_with_label ("Inspector");
+    g_signal_connect_swapped (inspector_btn,
+                              "clicked",
+                              G_CALLBACK (gtk_window_set_interactive_debugging),
+                              (gpointer) TRUE);
+
+    adw_header_bar_pack_start (ADW_HEADER_BAR (header_bar), inspector_btn);
 }
 
 static void
@@ -123,6 +134,9 @@ demo_activate (GApplication *app)
     GtkWindow *window;
 
     g_assert (G_IS_APPLICATION (app));
+
+    // Initialise text-engine for inspector page
+    text_engine_init ();
 
     // Add CSS Stylesheet
     GtkCssProvider *css_provider = gtk_css_provider_new ();

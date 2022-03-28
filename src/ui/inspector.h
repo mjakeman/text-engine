@@ -1,4 +1,4 @@
-/* text-engine.c
+/* inspector.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -18,20 +18,16 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "text-engine.h"
+#pragma once
 
-#include "ui/inspector.h"
+#include <gtk/gtk.h>
 
-#include <gio/gio.h>
+G_BEGIN_DECLS
 
-void
-text_engine_init ()
-{
-    // Add a GTK Inspector page for debugging documents
-    if (g_io_extension_point_lookup ("gtk-inspector-page"))
-    g_io_extension_point_implement ("gtk-inspector-page",
-                                    TEXT_TYPE_INSPECTOR,
-                                    "text-engine",
-                                    10);
+#define TEXT_TYPE_INSPECTOR (text_inspector_get_type())
 
-}
+G_DECLARE_FINAL_TYPE (TextInspector, text_inspector, TEXT, INSPECTOR, GtkWidget)
+
+TextInspector *text_inspector_new (void);
+
+G_END_DECLS
