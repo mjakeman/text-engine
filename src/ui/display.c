@@ -249,17 +249,28 @@ go_up (TextItem *item)
     TextNode *parent;
     TextNode *sibling;
 
+    g_return_val_if_fail (TEXT_IS_ITEM (item), NULL);
+
+    printf ("item: %s\n", g_type_name_from_instance ((GTypeInstance *) item));
+
     parent = text_node_get_parent (TEXT_NODE (item));
+
+    printf ("parent: %s\n", g_type_name_from_instance ((GTypeInstance *) parent));
 
     if (parent && TEXT_IS_ITEM (parent))
     {
         sibling = text_node_get_next (parent);
+
+        printf ("sibling: %s\n", g_type_name_from_instance ((GTypeInstance *) sibling));
+
         if (sibling && TEXT_IS_ITEM (sibling))
         {
+            printf("sibling\n");
             return TEXT_ITEM (sibling);
         }
         else
         {
+            printf("recurse\n");
             return go_up (TEXT_ITEM (parent));
         }
     }
@@ -337,6 +348,72 @@ commit (GtkIMContext *context,
     g_print ("commit: %s\n", str);
 }
 
+void
+move_left (TextDisplay *self)
+{
+    if (self->index - 1 < 0) {
+        // later move to new index
+        printf("Cannot move left!\n");
+        return;
+    }
+
+    self->index--;
+}
+
+void
+move_right (TextDisplay *self)
+{
+    int length;
+    char *text;
+    TextRun *next;
+
+    if (!self->run)
+        return;
+
+    g_object_get (self->run, "text", &text, NULL);
+    length = strlen (text);
+
+    if (self->index + 1 > length) {
+        next = walk_until_next_run (TEXT_ITEM (self->run));
+
+        if (next) {
+            self->run = next;
+            self->index = 0;
+            return;
+        }
+
+        // do not move at all
+        printf("Cannot move right!\n");
+        return;
+    }
+
+    self->index++;
+}
+
+gboolean
+key_pressed (GtkEventControllerKey *controller,
+             guint                  keyval,
+             guint                  keycode,
+             GdkModifierType        state,
+             TextDisplay           *self)
+{
+    if (state & GDK_CONTROL_MASK) {
+        // Control pressed
+    }
+
+    if (keyval == GDK_KEY_Left) {
+        move_left (self);
+        return TRUE;
+    }
+
+    if (keyval == GDK_KEY_Right) {
+        move_right (self);
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
 static void
 text_display_init (TextDisplay *self)
 {
@@ -351,6 +428,7 @@ text_display_init (TextDisplay *self)
 
     controller = gtk_event_controller_key_new ();
     gtk_event_controller_key_set_im_context (GTK_EVENT_CONTROLLER_KEY (controller), self->context);
+    g_signal_connect (controller, "key-pressed", G_CALLBACK (key_pressed), self);
 
     gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
     gtk_widget_add_controller (GTK_WIDGET (self), controller);
