@@ -193,6 +193,9 @@ text_node_insert_child (TextNode *self,
         priv->first_child = child;
         priv->last_child = child;
         priv->n_children = 1;
+
+        // TODO: Weak reference?
+        child_priv->parent = self;
         return;
     }
 
@@ -208,6 +211,9 @@ text_node_insert_child (TextNode *self,
 
         priv->first_child = child;
         priv->n_children++;
+
+        // TODO: Weak reference?
+        child_priv->parent = self;
         return;
     }
 
@@ -223,6 +229,9 @@ text_node_insert_child (TextNode *self,
 
         priv->last_child = child;
         priv->n_children++;
+
+        // TODO: Weak reference?
+        child_priv->parent = self;
         return;
     }
 
@@ -234,6 +243,9 @@ text_node_insert_child (TextNode *self,
         iter = text_node_get_next (iter);
         g_assert (iter != NULL);
     }
+
+    // TODO: Weak reference?
+    child_priv->parent = self;
 
     _insert_between (child, iter, text_node_get_next (iter));
 }
