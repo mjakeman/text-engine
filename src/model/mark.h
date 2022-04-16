@@ -1,4 +1,4 @@
-/* display.h
+/* mark.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -20,17 +20,26 @@
 
 #pragma once
 
-#include <gtk/gtk.h>
-
-#include "../model/frame.h"
-#include "../model/document.h"
+#include <glib-object.h>
+#include "run.h"
 
 G_BEGIN_DECLS
 
-#define TEXT_TYPE_DISPLAY (text_display_get_type())
+#define TEXT_TYPE_MARK (text_mark_get_type ())
 
-G_DECLARE_FINAL_TYPE (TextDisplay, text_display, TEXT, DISPLAY, GtkWidget)
+typedef struct _TextMark TextMark;
 
-TextDisplay *text_display_new (TextDocument *document);
+struct _TextMark
+{
+    TextRun *parent;
+    int index;
+};
+
+GType         text_mark_get_type (void) G_GNUC_CONST;
+TextMark     *text_mark_new      (TextRun *parent, int index);
+TextMark     *text_mark_copy     (TextMark *self);
+void          text_mark_free     (TextMark *self);
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (TextMark, text_mark_free)
 
 G_END_DECLS

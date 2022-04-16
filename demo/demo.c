@@ -29,6 +29,7 @@
 
 #include <ui/display.h>
 #include <format/import.h>
+#include <model/document.h>
 
 #define DEMO_TYPE_WINDOW demo_window_get_type ()
 G_DECLARE_FINAL_TYPE (DemoWindow, demo_window, DEMO, WINDOW, AdwApplicationWindow)
@@ -100,6 +101,7 @@ demo_window_init (DemoWindow *self)
 {
     TextFrame *frame;
     TextDisplay *display;
+    TextDocument *document;
     const gchar *test;
 
     GtkWidget *header_bar;
@@ -112,9 +114,11 @@ demo_window_init (DemoWindow *self)
     // Example rich text document (uses html subset)
     test = "<p>There was an Old Man with a beard\nWho said, &quot;It is just as I feared!</p><p> &gt; Two Owls and a Hen,<br> &gt; Four Larks and a Wren,</p><p>Have all built their nests in my beard!&quot;</p>";
     frame = format_parse_html (test);
+    document = text_document_new ();
+    document->frame = frame;
 
     header_bar = adw_header_bar_new ();
-    display = text_display_new (frame);
+    display = text_display_new (document);
 
     gtk_box_append (GTK_BOX (vbox), header_bar);
     gtk_box_append (GTK_BOX (vbox), GTK_WIDGET (display));

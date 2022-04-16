@@ -20,28 +20,29 @@
 
 #include "display.h"
 
+#include "../model/mark.h"
 #include "../model/paragraph.h"
 #include "../layout/layout.h"
+#include "../model/document.h"
 
 struct _TextDisplay
 {
     GtkWidget parent_instance;
 
-    TextFrame *frame;
+    TextDocument *document;
     TextLayout *layout;
     TextLayoutBox *layout_tree;
 
     GtkIMContext *context;
 
-    int index;
-    TextRun *run;
+    TextMark *cursor;
 };
 
 G_DEFINE_FINAL_TYPE (TextDisplay, text_display, GTK_TYPE_WIDGET)
 
 enum {
     PROP_0,
-    PROP_FRAME,
+    PROP_DOCUMENT,
     N_PROPS
 };
 
@@ -49,18 +50,18 @@ static GParamSpec *properties [N_PROPS];
 
 /**
  * text_display_new:
- * @frame: The #TextFrame to display or %NULL
+ * @document: The #TextDocument to display or %NULL
  *
  * Creates a new #TextDisplay widget which displays the rich text
- * document stored inside @frame.
+ * document stored inside @document.
  *
  * Returns: A new #TextDisplay widget
  */
 TextDisplay *
-text_display_new (TextFrame *frame)
+text_display_new (TextDocument *document)
 {
     return g_object_new (TEXT_TYPE_DISPLAY,
-                         "frame", frame,
+                         "document", document,
                          NULL);
 }
 
@@ -82,8 +83,8 @@ text_display_get_property (GObject    *object,
 
     switch (prop_id)
     {
-    case PROP_FRAME:
-        g_value_set_object (value, self->frame);
+    case PROP_DOCUMENT:
+        g_value_set_object (value, self->document);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -100,9 +101,9 @@ text_display_set_property (GObject      *object,
 
     switch (prop_id)
     {
-    case PROP_FRAME:
+    case PROP_DOCUMENT:
         g_clear_object (&self->layout_tree);
-        self->frame = g_value_get_object (value);
+        self->document = g_value_get_object (value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -155,7 +156,7 @@ text_display_snapshot (GtkWidget   *widget,
 
     TextDisplay *self = TEXT_DISPLAY (widget);
 
-    if (!self->frame)
+    if (!self->document)
         return;
 
     if (!self->layout_tree)
@@ -165,7 +166,7 @@ text_display_snapshot (GtkWidget   *widget,
     g_clear_object (&self->layout_tree);
     self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                        gtk_widget_get_pango_context (GTK_WIDGET (self)),
-                                                       self->frame,
+                                                       self->document->frame,
                                                        gtk_widget_get_width (GTK_WIDGET (self)));
 
     GdkRGBA fg_color;
@@ -199,7 +200,7 @@ text_display_measure (GtkWidget      *widget,
         g_clear_object (&self->layout_tree);
         self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                            context,
-                                                           self->frame,
+                                                           self->document->frame,
                                                            for_size);
 
         *minimum = *natural = text_layout_box_get_bbox (self->layout_tree)->height;
@@ -227,11 +228,11 @@ text_display_class_init (TextDisplayClass *klass)
     object_class->get_property = text_display_get_property;
     object_class->set_property = text_display_set_property;
 
-    properties [PROP_FRAME]
-        = g_param_spec_object ("frame",
-                               "Frame",
-                               "Frame",
-                               TEXT_TYPE_FRAME,
+    properties [PROP_DOCUMENT]
+        = g_param_spec_object ("document",
+                               "Document",
+                               "Document",
+                               TEXT_TYPE_DOCUMENT,
                                G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
 
     g_object_class_install_properties (object_class, N_PROPS, properties);
@@ -278,6 +279,8 @@ go_up (TextItem *item)
     return NULL;
 }
 
+// START EDITOR INTERFACE
+
 TextRun *
 walk_until_next_run (TextItem *item)
 {
@@ -321,13 +324,17 @@ walk_until_next_run (TextItem *item)
 void
 move_left (TextDisplay *self)
 {
-    if (self->index - 1 < 0) {
+    TextMark *cursor;
+
+    cursor = self->cursor;
+
+    if (cursor->index - 1 < 0) {
         // later move to new index
         printf("Cannot move left!\n");
         return;
     }
 
-    self->index--;
+    cursor->index--;
 }
 
 void
@@ -336,19 +343,22 @@ move_right (TextDisplay *self)
     int length;
     char *text;
     TextRun *next;
+    TextMark *cursor;
 
-    if (!self->run)
+    cursor = self->cursor;
+
+    if (!cursor->parent)
         return;
 
-    g_object_get (self->run, "text", &text, NULL);
+    g_object_get (cursor->parent, "text", &text, NULL);
     length = strlen (text);
 
-    if (self->index + 1 > length) {
-        next = walk_until_next_run (TEXT_ITEM (self->run));
+    if (cursor->index + 1 > length) {
+        next = walk_until_next_run (TEXT_ITEM (cursor->parent));
 
         if (next) {
-            self->run = next;
-            self->index = 0;
+            cursor->parent = next;
+            cursor->index = 0;
             return;
         }
 
@@ -357,38 +367,33 @@ move_right (TextDisplay *self)
         return;
     }
 
-    self->index++;
+    cursor->index++;
 }
 
 void
-commit (GtkIMContext *context,
-        gchar        *str,
-        TextDisplay  *self)
+editor_insert (TextDisplay *self,
+               gchar       *str)
 {
+    // Encapsulates insertion inside an editor module/object.
+    // This should accept user input in the form of Operational
+    // Transformation commands. This will aid with undo/redo.
+
     char *text;
     GString *modified;
+    TextMark *cursor;
 
-    g_return_if_fail (TEXT_IS_DISPLAY (self));
-    g_return_if_fail (GTK_IS_IM_CONTEXT (context));
+    cursor = self->cursor;
 
-    g_assert (context == self->context);
-
-    if (!TEXT_IS_FRAME (self->frame))
-        return;
-
-    if (!TEXT_IS_RUN (self->run))
-        self->run = walk_until_next_run (TEXT_ITEM (self->frame));
-
-    // TODO: Encapsulate this inside an editor module/object
-    // which accepts user input in the form of Operational
-    // Transformation commands. This will aid with undo/redo.
+    if (!TEXT_IS_RUN (cursor->parent)) {
+        cursor->parent = walk_until_next_run (TEXT_ITEM (self->document->frame));
+    }
 
     // TODO: Replace with hybrid tree/piece-table structure?
     // Textual data is stored in buffers and indexed by the tree
-    g_object_get (self->run, "text", &text, NULL);
+    g_object_get (cursor->parent, "text", &text, NULL);
     modified = g_string_new (text);
-    modified = g_string_insert (modified, self->index, str);
-    g_object_set (self->run, "text", modified->str, NULL);
+    modified = g_string_insert (modified, cursor->index, str);
+    g_object_set (cursor->parent, "text", modified->str, NULL);
     g_string_free (modified, TRUE);
 
     // Move left/right by one
@@ -397,6 +402,24 @@ commit (GtkIMContext *context,
     // remains fixed at a given point in the text no matter how
     // the text changes (i.e. a cursor).
     move_right (self);
+}
+
+// END EDITOR INTERFACE
+
+void
+commit (GtkIMContext *context,
+        gchar        *str,
+        TextDisplay  *self)
+{
+    g_return_if_fail (TEXT_IS_DISPLAY (self));
+    g_return_if_fail (GTK_IS_IM_CONTEXT (context));
+
+    g_assert (context == self->context);
+
+    if (!TEXT_IS_DOCUMENT (self->document))
+        return;
+
+    editor_insert (self, str);
 
     // Queue redraw for now
     // Later on, we should invalidate the model which
@@ -438,6 +461,7 @@ text_display_init (TextDisplay *self)
     GtkEventController *controller;
 
     self->layout = text_layout_new ();
+    self->cursor = text_mark_new (NULL, 0);
 
     self->context = gtk_im_context_simple_new ();
     gtk_im_context_set_client_widget (self->context, GTK_WIDGET (self));

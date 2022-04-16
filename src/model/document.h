@@ -1,4 +1,4 @@
-/* display.h
+/* document.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -20,17 +20,26 @@
 
 #pragma once
 
-#include <gtk/gtk.h>
+#include <glib-object.h>
 
-#include "../model/frame.h"
-#include "../model/document.h"
+#include "frame.h"
+#include "mark.h"
+
+struct _TextDocument
+{
+    GObject parent_instance;
+
+    TextFrame *frame;
+    TextMark *cursor;
+    TextMark *selection;
+};
 
 G_BEGIN_DECLS
 
-#define TEXT_TYPE_DISPLAY (text_display_get_type())
+#define TEXT_TYPE_DOCUMENT (text_document_get_type())
 
-G_DECLARE_FINAL_TYPE (TextDisplay, text_display, TEXT, DISPLAY, GtkWidget)
+G_DECLARE_FINAL_TYPE (TextDocument, text_document, TEXT, DOCUMENT, GObject)
 
-TextDisplay *text_display_new (TextDocument *document);
+TextDocument *text_document_new (void);
 
 G_END_DECLS
