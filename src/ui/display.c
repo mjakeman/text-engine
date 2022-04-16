@@ -319,36 +319,6 @@ walk_until_next_run (TextItem *item)
 }
 
 void
-commit (GtkIMContext *context,
-        gchar        *str,
-        TextDisplay  *self)
-{
-    g_return_if_fail (TEXT_IS_DISPLAY (self));
-    g_return_if_fail (GTK_IS_IM_CONTEXT (context));
-
-    g_assert (context == self->context);
-
-    if (!TEXT_IS_FRAME (self->frame))
-        return;
-
-    if (!TEXT_IS_RUN (self->run))
-        self->run = walk_until_next_run (TEXT_ITEM (self->frame));
-
-    char *text;
-    g_object_get (self->run, "text", &text, NULL);
-    g_object_set (self->run, "text", str, NULL);
-
-    // Queue redraw for now
-    // Later on, we should invalidate the model which
-    // then bubbles up and invalidates the style
-    // which then bubbles up and invalidates the layout
-    // which then causes a partial redraw - simple right?
-    gtk_widget_queue_draw (GTK_WIDGET (self));
-
-    g_print ("commit: %s\n", str);
-}
-
-void
 move_left (TextDisplay *self)
 {
     if (self->index - 1 < 0) {
@@ -388,6 +358,54 @@ move_right (TextDisplay *self)
     }
 
     self->index++;
+}
+
+void
+commit (GtkIMContext *context,
+        gchar        *str,
+        TextDisplay  *self)
+{
+    char *text;
+    GString *modified;
+
+    g_return_if_fail (TEXT_IS_DISPLAY (self));
+    g_return_if_fail (GTK_IS_IM_CONTEXT (context));
+
+    g_assert (context == self->context);
+
+    if (!TEXT_IS_FRAME (self->frame))
+        return;
+
+    if (!TEXT_IS_RUN (self->run))
+        self->run = walk_until_next_run (TEXT_ITEM (self->frame));
+
+    // TODO: Encapsulate this inside an editor module/object
+    // which accepts user input in the form of Operational
+    // Transformation commands. This will aid with undo/redo.
+
+    // TODO: Replace with hybrid tree/piece-table structure?
+    // Textual data is stored in buffers and indexed by the tree
+    g_object_get (self->run, "text", &text, NULL);
+    modified = g_string_new (text);
+    modified = g_string_insert (modified, self->index, str);
+    g_object_set (self->run, "text", modified->str, NULL);
+    g_string_free (modified, TRUE);
+
+    // Move left/right by one
+    // TODO: Move by the amount changed
+    // This should be handled by an auxiliary anchor object which
+    // remains fixed at a given point in the text no matter how
+    // the text changes (i.e. a cursor).
+    move_right (self);
+
+    // Queue redraw for now
+    // Later on, we should invalidate the model which
+    // then bubbles up and invalidates the style
+    // which then bubbles up and invalidates the layout
+    // which then causes a partial redraw - simple right?
+    gtk_widget_queue_draw (GTK_WIDGET (self));
+
+    g_print ("commit: %s\n", str);
 }
 
 gboolean
