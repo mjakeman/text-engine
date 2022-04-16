@@ -46,8 +46,7 @@ text_layout_box_set_item (TextLayoutBox *self,
                           TextItem      *item);
 
 TextItem *
-text_layout_box_get_item (TextLayoutBox *self,
-                          TextItem      *item);
+text_layout_box_get_item (TextLayoutBox *self);
 
 void
 text_layout_box_layout (TextLayoutBox *self,

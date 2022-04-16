@@ -179,8 +179,7 @@ text_layout_box_set_item (TextLayoutBox *self,
 }
 
 TextItem *
-text_layout_box_get_item (TextLayoutBox *self,
-                          TextItem      *item)
+text_layout_box_get_item (TextLayoutBox *self)
 {
     TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
     return priv->item;
