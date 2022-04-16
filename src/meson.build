@@ -16,6 +16,7 @@ subdir('format')
 subdir('tree')
 subdir('model')
 subdir('layout')
+subdir('editor')
 subdir('ui')
 
 version_split = meson.project_version().split('.')

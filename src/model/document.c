@@ -86,4 +86,6 @@ text_document_class_init (TextDocumentClass *klass)
 static void
 text_document_init (TextDocument *self)
 {
+    self->cursor = text_mark_new (NULL, 0);
+    self->selection = text_mark_new (NULL, 0);
 }

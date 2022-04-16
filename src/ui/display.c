@@ -24,12 +24,14 @@
 #include "../model/paragraph.h"
 #include "../layout/layout.h"
 #include "../model/document.h"
+#include "../editor/editor.h"
 
 struct _TextDisplay
 {
     GtkWidget parent_instance;
 
     TextDocument *document;
+    TextEditor *editor;
     TextLayout *layout;
     TextLayoutBox *layout_tree;
 
@@ -104,6 +106,11 @@ text_display_set_property (GObject      *object,
     case PROP_DOCUMENT:
         g_clear_object (&self->layout_tree);
         self->document = g_value_get_object (value);
+
+        if (self->editor) {
+            g_object_unref (self->editor);
+        }
+        self->editor = text_editor_new (self->document);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -244,168 +251,6 @@ text_display_class_init (TextDisplayClass *klass)
     widget_class->measure = text_display_measure;
 }
 
-TextItem *
-go_up (TextItem *item)
-{
-    TextNode *parent;
-    TextNode *sibling;
-
-    g_return_val_if_fail (TEXT_IS_ITEM (item), NULL);
-
-    printf ("item: %s\n", g_type_name_from_instance ((GTypeInstance *) item));
-
-    parent = text_node_get_parent (TEXT_NODE (item));
-
-    printf ("parent: %s\n", g_type_name_from_instance ((GTypeInstance *) parent));
-
-    if (parent && TEXT_IS_ITEM (parent))
-    {
-        sibling = text_node_get_next (parent);
-
-        printf ("sibling: %s\n", g_type_name_from_instance ((GTypeInstance *) sibling));
-
-        if (sibling && TEXT_IS_ITEM (sibling))
-        {
-            printf("sibling\n");
-            return TEXT_ITEM (sibling);
-        }
-        else
-        {
-            printf("recurse\n");
-            return go_up (TEXT_ITEM (parent));
-        }
-    }
-
-    return NULL;
-}
-
-// START EDITOR INTERFACE
-
-TextRun *
-walk_until_next_run (TextItem *item)
-{
-    TextNode *child;
-    TextNode *sibling;
-    TextItem *parent;
-
-    child = text_node_get_first_child (TEXT_NODE (item));
-
-    if (child && TEXT_IS_ITEM (child)) {
-        if (TEXT_IS_RUN (child)) {
-            return TEXT_RUN (child);
-        }
-
-        return walk_until_next_run (TEXT_ITEM (child));
-    }
-
-    sibling = text_node_get_next (TEXT_NODE (item));
-
-    if (sibling && TEXT_IS_ITEM (sibling)) {
-        if (TEXT_IS_RUN (sibling)) {
-            return TEXT_RUN (sibling);
-        }
-
-        return walk_until_next_run (TEXT_ITEM (sibling));
-    }
-
-    parent = go_up (item);
-
-    if (parent) {
-        if (TEXT_IS_RUN (parent)) {
-            return TEXT_RUN (parent);
-        }
-
-        return walk_until_next_run (parent);
-    }
-
-    return NULL;
-}
-
-void
-move_left (TextDisplay *self)
-{
-    TextMark *cursor;
-
-    cursor = self->cursor;
-
-    if (cursor->index - 1 < 0) {
-        // later move to new index
-        printf("Cannot move left!\n");
-        return;
-    }
-
-    cursor->index--;
-}
-
-void
-move_right (TextDisplay *self)
-{
-    int length;
-    char *text;
-    TextRun *next;
-    TextMark *cursor;
-
-    cursor = self->cursor;
-
-    if (!cursor->parent)
-        return;
-
-    g_object_get (cursor->parent, "text", &text, NULL);
-    length = strlen (text);
-
-    if (cursor->index + 1 > length) {
-        next = walk_until_next_run (TEXT_ITEM (cursor->parent));
-
-        if (next) {
-            cursor->parent = next;
-            cursor->index = 0;
-            return;
-        }
-
-        // do not move at all
-        printf("Cannot move right!\n");
-        return;
-    }
-
-    cursor->index++;
-}
-
-void
-editor_insert (TextDisplay *self,
-               gchar       *str)
-{
-    // Encapsulates insertion inside an editor module/object.
-    // This should accept user input in the form of Operational
-    // Transformation commands. This will aid with undo/redo.
-
-    char *text;
-    GString *modified;
-    TextMark *cursor;
-
-    cursor = self->cursor;
-
-    if (!TEXT_IS_RUN (cursor->parent)) {
-        cursor->parent = walk_until_next_run (TEXT_ITEM (self->document->frame));
-    }
-
-    // TODO: Replace with hybrid tree/piece-table structure?
-    // Textual data is stored in buffers and indexed by the tree
-    g_object_get (cursor->parent, "text", &text, NULL);
-    modified = g_string_new (text);
-    modified = g_string_insert (modified, cursor->index, str);
-    g_object_set (cursor->parent, "text", modified->str, NULL);
-    g_string_free (modified, TRUE);
-
-    // Move left/right by one
-    // TODO: Move by the amount changed
-    // This should be handled by an auxiliary anchor object which
-    // remains fixed at a given point in the text no matter how
-    // the text changes (i.e. a cursor).
-    move_right (self);
-}
-
-// END EDITOR INTERFACE
-
 void
 commit (GtkIMContext *context,
         gchar        *str,
@@ -419,7 +264,7 @@ commit (GtkIMContext *context,
     if (!TEXT_IS_DOCUMENT (self->document))
         return;
 
-    editor_insert (self, str);
+    text_editor_insert (self->editor, str);
 
     // Queue redraw for now
     // Later on, we should invalidate the model which
@@ -443,12 +288,12 @@ key_pressed (GtkEventControllerKey *controller,
     }
 
     if (keyval == GDK_KEY_Left) {
-        move_left (self);
+        text_editor_move_left (self->editor);
         return TRUE;
     }
 
     if (keyval == GDK_KEY_Right) {
-        move_right (self);
+        text_editor_move_right (self->editor);
         return TRUE;
     }
 
@@ -461,7 +306,6 @@ text_display_init (TextDisplay *self)
     GtkEventController *controller;
 
     self->layout = text_layout_new ();
-    self->cursor = text_mark_new (NULL, 0);
 
     self->context = gtk_im_context_simple_new ();
     gtk_im_context_set_client_widget (self->context, GTK_WIDGET (self));
