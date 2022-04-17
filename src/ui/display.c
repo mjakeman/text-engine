@@ -133,7 +133,7 @@ layout_snapshot_recursive (GtkWidget     *widget,
         g_assert (TEXT_IS_LAYOUT_BOX (node));
 
         int delta_height;
-        layout_snapshot_recursive (widget, node, snapshot, fg_color, &delta_height);
+        layout_snapshot_recursive (widget, TEXT_LAYOUT_BOX (node), snapshot, fg_color, &delta_height);
         offset += delta_height;
     }
 
@@ -148,6 +148,12 @@ layout_snapshot_recursive (GtkWidget     *widget,
         gtk_snapshot_restore (snapshot);
 
         offset = bbox->height;
+    }
+
+    const TextDimensions *cursor;
+    if (text_layout_box_get_cursor (layout_box, &cursor))
+    {
+        gtk_snapshot_append_color (snapshot, fg_color, &GRAPHENE_RECT_INIT (cursor->x, cursor->y, 1, cursor->height));
     }
 
     gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->height));
@@ -173,6 +179,7 @@ text_display_snapshot (GtkWidget   *widget,
     g_clear_object (&self->layout_tree);
     self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                        gtk_widget_get_pango_context (GTK_WIDGET (self)),
+                                                       self->document->cursor,
                                                        self->document->frame,
                                                        gtk_widget_get_width (GTK_WIDGET (self)));
 
@@ -207,6 +214,7 @@ text_display_measure (GtkWidget      *widget,
         g_clear_object (&self->layout_tree);
         self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                            context,
+                                                           self->document->cursor,
                                                            self->document->frame,
                                                            for_size);
 
@@ -287,13 +295,16 @@ key_pressed (GtkEventControllerKey *controller,
         // Control pressed
     }
 
+    // TODO: Can we draw cursors/selections on another layer?
     if (keyval == GDK_KEY_Left) {
         text_editor_move_left (self->editor);
+        gtk_widget_queue_draw (GTK_WIDGET (self));
         return TRUE;
     }
 
     if (keyval == GDK_KEY_Right) {
         text_editor_move_right (self->editor);
+        gtk_widget_queue_draw (GTK_WIDGET (self));
         return TRUE;
     }
 
