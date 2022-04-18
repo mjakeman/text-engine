@@ -30,6 +30,7 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (TextRun, text_run, TEXT, RUN, TextItem)
 
-TextRun *text_run_new (const gchar *text);
+TextRun *text_run_new        (const gchar *text);
+int      text_run_get_length (TextRun *self);
 
 G_END_DECLS

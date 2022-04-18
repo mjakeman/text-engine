@@ -331,7 +331,15 @@ key_pressed (GtkEventControllerKey *controller,
 
     if (keyval == GDK_KEY_Delete)
     {
-        text_editor_delete (self->editor);
+        text_editor_delete (self->editor, self->document->cursor, 1);
+        gtk_widget_queue_draw (GTK_WIDGET (self));
+        return TRUE;
+    }
+
+    if (keyval == GDK_KEY_BackSpace)
+    {
+        text_editor_move_left (self->editor);
+        text_editor_delete (self->editor, self->document->cursor, 1);
         gtk_widget_queue_draw (GTK_WIDGET (self));
         return TRUE;
     }

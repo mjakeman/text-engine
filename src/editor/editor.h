@@ -37,6 +37,6 @@ void        text_editor_move_right (TextEditor *self);
 void        text_editor_move_left  (TextEditor *self);
 void        text_editor_move_first (TextEditor *self);
 void        text_editor_move_last  (TextEditor *self);
-void        text_editor_delete     (TextEditor *self);
+void        text_editor_delete     (TextEditor *self, TextMark *start, int length);
 
 G_END_DECLS
