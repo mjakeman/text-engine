@@ -234,12 +234,12 @@ walk_until_next_run (TextItem *item)
 
 void
 text_editor_move_left (TextEditor *self,
+                       TextMark   *mark,
                        int         amount)
 {
     // TODO: Why does this overstep by 1 index?
 
     TextRun *iter;
-    TextMark *cursor;
     int amount_moved;
     int iter_length;
     gboolean first;
@@ -248,19 +248,18 @@ text_editor_move_left (TextEditor *self,
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
     g_return_if_fail (amount > 0);
 
-    cursor = self->document->cursor;
-    iter = cursor->parent;
+    iter = mark->parent;
     amount_moved = 0;
     first = TRUE;
 
     // Handle first run
-    if (cursor->index - amount >= 0)
+    if (mark->index - amount >= 0)
     {
-        cursor->index -= amount;
+        mark->index -= amount;
         return;
     }
 
-    amount_moved += cursor->index;
+    amount_moved += mark->index;
     iter = walk_until_previous_run (TEXT_ITEM (iter));
     iter_length = text_run_get_length (iter);
 
@@ -283,18 +282,18 @@ text_editor_move_left (TextEditor *self,
         break;
     }
 
-    cursor->index = iter_length - (amount - amount_moved);
-    cursor->parent = iter;
+    mark->index = iter_length - (amount - amount_moved);
+    mark->parent = iter;
 }
 
 void
 text_editor_move_right (TextEditor *self,
+                        TextMark   *mark,
                         int         amount)
 {
     // TODO: Why does this overstep by 1 index?
 
     TextRun *iter;
-    TextMark *cursor;
     int amount_moved;
     gboolean first;
 
@@ -302,19 +301,18 @@ text_editor_move_right (TextEditor *self,
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
     g_return_if_fail (amount > 0);
 
-    cursor = self->document->cursor;
-    iter = cursor->parent;
+    iter = mark->parent;
     amount_moved = 0;
     first = TRUE;
 
     // Handle first run
-    if (cursor->index + amount <= text_run_get_length (iter))
+    if (mark->index + amount <= text_run_get_length (iter))
     {
-        cursor->index += amount;
+        mark->index += amount;
         return;
     }
 
-    amount_moved += (text_run_get_length (iter) - cursor->index);
+    amount_moved += (text_run_get_length (iter) - mark->index);
     iter = walk_until_next_run (TEXT_ITEM (iter));
 
     while (amount_moved < amount)
@@ -338,42 +336,37 @@ text_editor_move_right (TextEditor *self,
         break;
     }
 
-    cursor->index = amount - amount_moved;
-    cursor->parent = iter;
+    mark->index = amount - amount_moved;
+    mark->parent = iter;
 }
 
 void
-text_editor_move_first (TextEditor *self)
+text_editor_move_first (TextEditor *self,
+                        TextMark   *mark)
 {
-    TextMark *cursor;
-
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
 
-    cursor = self->document->cursor;
-
-    cursor->parent = walk_until_next_run (TEXT_ITEM (self->document->frame));
-    cursor->index = 0;
+    mark->parent = walk_until_next_run (TEXT_ITEM (self->document->frame));
+    mark->index = 0;
 }
 
 void
-text_editor_move_last (TextEditor *self)
+text_editor_move_last (TextEditor *self,
+                       TextMark   *mark)
 {
-    TextMark *cursor;
     char *text;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
 
-    cursor = self->document->cursor;
+    mark->parent = walk_until_previous_run (TEXT_ITEM (self->document->frame));
+    mark->index = 0;
 
-    cursor->parent = walk_until_previous_run (TEXT_ITEM (self->document->frame));
-    cursor->index = 0;
-
-    if (cursor->parent)
+    if (mark->parent)
     {
-        g_object_get (cursor->parent, "text", &text, NULL);
-        cursor->index = strlen (text);
+        g_object_get (mark->parent, "text", &text, NULL);
+        mark->index = strlen (text);
     }
 }
 
@@ -458,7 +451,7 @@ text_editor_delete (TextEditor *self,
 
     if (length < 0)
     {
-        text_editor_move_left (self, -length);
+        text_editor_move_left (self, self->document->cursor, -length);
         text_editor_delete (self, start, -length);
         return;
     }
@@ -593,7 +586,7 @@ text_editor_insert (TextEditor *self,
     // This should be handled by an auxiliary anchor object which
     // remains fixed at a given point in the text no matter how
     // the text changes (i.e. a cursor).
-    text_editor_move_right (self, strlen (str));
+    text_editor_move_right (self, self->document->cursor, strlen (str));
 }
 
 static void

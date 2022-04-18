@@ -113,7 +113,7 @@ text_display_set_property (GObject      *object,
                 g_object_unref (self->editor);
 
             self->editor = text_editor_new (self->document);
-            text_editor_move_first (self->editor);
+            text_editor_move_first (self->editor, self->document->cursor);
         }
         break;
     default:
@@ -296,54 +296,75 @@ key_pressed (GtkEventControllerKey *controller,
              GdkModifierType        state,
              TextDisplay           *self)
 {
-    // Control pressed
-    if (state & GDK_CONTROL_MASK)
-    {
-        if (keyval == GDK_KEY_Home)
-        {
-            text_editor_move_first (self->editor);
-            gtk_widget_queue_draw (GTK_WIDGET (self));
-            return TRUE;
-        }
+    TextMark *cursor;
+    TextMark *selection;
 
-        if (keyval == GDK_KEY_End)
-        {
-            text_editor_move_last (self->editor);
-            gtk_widget_queue_draw (GTK_WIDGET (self));
-            return TRUE;
-        }
+    gboolean ctrl_pressed;
+    gboolean shift_pressed;
+
+    cursor = self->document->cursor;
+    selection = self->document->selection;
+
+    ctrl_pressed = state & GDK_CONTROL_MASK;
+    shift_pressed = state & GDK_SHIFT_MASK;
+
+    // Setup selection
+    if (shift_pressed && !selection)
+    {
+        g_print ("No selection!\n");
+        selection = text_mark_copy (cursor);
+        self->document->selection = selection;
+    }
+    else if (selection)
+    {
+        g_clear_pointer (&self->document->selection, text_mark_free);
     }
 
+    // Handle Home/End
+    if (ctrl_pressed && keyval == GDK_KEY_Home)
+    {
+        text_editor_move_first (self->editor, cursor);
+        goto handled;
+    }
+
+    if (ctrl_pressed && keyval == GDK_KEY_End)
+    {
+        text_editor_move_last (self->editor, cursor);
+        goto handled;
+    }
+
+    // Handle directional movemenent
     // TODO: Can we draw cursors/selections on another layer?
     if (keyval == GDK_KEY_Left)
     {
-        text_editor_move_left (self->editor, 1);
-        gtk_widget_queue_draw (GTK_WIDGET (self));
-        return TRUE;
+        text_editor_move_left (self->editor, shift_pressed ? selection : cursor, 1);
+        goto handled;
     }
 
     if (keyval == GDK_KEY_Right)
     {
-        text_editor_move_right (self->editor, 1);
-        gtk_widget_queue_draw (GTK_WIDGET (self));
-        return TRUE;
+        text_editor_move_right (self->editor, shift_pressed ? selection : cursor, 1);
+        goto handled;
     }
 
+    // Handle deletion
     if (keyval == GDK_KEY_Delete)
     {
         text_editor_delete (self->editor, self->document->cursor, 1);
-        gtk_widget_queue_draw (GTK_WIDGET (self));
-        return TRUE;
+        goto handled;
     }
 
     if (keyval == GDK_KEY_BackSpace)
     {
         text_editor_delete (self->editor, self->document->cursor, -1);
-        gtk_widget_queue_draw (GTK_WIDGET (self));
-        return TRUE;
+        goto handled;
     }
 
     return FALSE;
+
+handled:
+    gtk_widget_queue_draw (GTK_WIDGET (self));
+    return TRUE;
 }
 
 static void
