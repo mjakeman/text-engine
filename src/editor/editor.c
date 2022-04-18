@@ -109,7 +109,8 @@ text_editor_class_init (TextEditorClass *klass)
 }
 
 static TextItem *
-go_up (TextItem *item)
+go_up (TextItem *item,
+       gboolean  forwards)
 {
     TextNode *parent;
     TextNode *sibling;
@@ -124,7 +125,9 @@ go_up (TextItem *item)
 
     if (parent && TEXT_IS_ITEM (parent))
     {
-        sibling = text_node_get_next (parent);
+        sibling = forwards
+            ? text_node_get_next (parent)
+            : text_node_get_previous (parent);
 
         printf ("sibling: %s\n", g_type_name_from_instance ((GTypeInstance *) sibling));
 
@@ -136,8 +139,48 @@ go_up (TextItem *item)
         else
         {
             printf("recurse\n");
-            return go_up (TEXT_ITEM (parent));
+            return go_up (TEXT_ITEM (parent), forwards);
         }
+    }
+
+    return NULL;
+}
+
+static TextRun *
+walk_until_previous_run (TextItem *item)
+{
+    TextNode *child;
+    TextNode *sibling;
+    TextItem *parent;
+
+    child = text_node_get_last_child (TEXT_NODE (item));
+
+    if (child && TEXT_IS_ITEM (child)) {
+        if (TEXT_IS_RUN (child)) {
+            return TEXT_RUN (child);
+        }
+
+        return walk_until_previous_run (TEXT_ITEM (child));
+    }
+
+    sibling = text_node_get_previous (TEXT_NODE (item));
+
+    if (sibling && TEXT_IS_ITEM (sibling)) {
+        if (TEXT_IS_RUN (sibling)) {
+            return TEXT_RUN (sibling);
+        }
+
+        return walk_until_previous_run (TEXT_ITEM (sibling));
+    }
+
+    parent = go_up (item, FALSE);
+
+    if (parent) {
+        if (TEXT_IS_RUN (parent)) {
+            return TEXT_RUN (parent);
+        }
+
+        return walk_until_previous_run (parent);
     }
 
     return NULL;
@@ -170,7 +213,7 @@ walk_until_next_run (TextItem *item)
         return walk_until_next_run (TEXT_ITEM (sibling));
     }
 
-    parent = go_up (item);
+    parent = go_up (item, TRUE);
 
     if (parent) {
         if (TEXT_IS_RUN (parent)) {
@@ -186,6 +229,7 @@ walk_until_next_run (TextItem *item)
 void
 text_editor_move_left (TextEditor *self)
 {
+    TextRun *prev;
     TextMark *cursor;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
@@ -194,7 +238,22 @@ text_editor_move_left (TextEditor *self)
     cursor = self->document->cursor;
 
     if (cursor->index - 1 < 0) {
-        // later move to new index
+        prev = walk_until_previous_run (TEXT_ITEM (cursor->parent));
+
+        if (prev) {
+            int length;
+            char *text;
+
+            g_assert (TEXT_IS_RUN (prev));
+            g_object_get (prev, "text", &text, NULL);
+            length = strlen (text);
+
+            cursor->parent = prev;
+            cursor->index = length;
+            return;
+        }
+
+        // do not move at all
         printf("Cannot move left!\n");
         return;
     }
