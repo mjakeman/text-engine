@@ -233,9 +233,9 @@ walk_until_next_run (TextItem *item)
 }
 
 void
-text_editor_move_left (TextEditor *self,
-                       TextMark   *mark,
-                       int         amount)
+text_editor_move_mark_left (TextEditor *self,
+                            TextMark   *mark,
+                            int         amount)
 {
     // TODO: Why does this overstep by 1 index?
 
@@ -287,9 +287,9 @@ text_editor_move_left (TextEditor *self,
 }
 
 void
-text_editor_move_right (TextEditor *self,
-                        TextMark   *mark,
-                        int         amount)
+text_editor_move_mark_right (TextEditor *self,
+                             TextMark   *mark,
+                             int         amount)
 {
     // TODO: Why does this overstep by 1 index?
 
@@ -341,8 +341,8 @@ text_editor_move_right (TextEditor *self,
 }
 
 void
-text_editor_move_first (TextEditor *self,
-                        TextMark   *mark)
+text_editor_move_mark_first (TextEditor *self,
+                             TextMark   *mark)
 {
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
@@ -352,8 +352,8 @@ text_editor_move_first (TextEditor *self,
 }
 
 void
-text_editor_move_last (TextEditor *self,
-                       TextMark   *mark)
+text_editor_move_mark_last (TextEditor *self,
+                            TextMark   *mark)
 {
     char *text;
 
@@ -432,9 +432,9 @@ _erase_text (TextRun *run,
 }
 
 void
-text_editor_delete (TextEditor *self,
-                    TextMark   *start,
-                    int         length)
+text_editor_delete_at_mark (TextEditor *self,
+                            TextMark   *start,
+                            int         length)
 {
     // TODO: Rework to use an Iter instead of a Mark
     // TODO: Update all marks associated with a document
@@ -451,8 +451,8 @@ text_editor_delete (TextEditor *self,
 
     if (length < 0)
     {
-        text_editor_move_left (self, self->document->cursor, -length);
-        text_editor_delete (self, start, -length);
+        text_editor_move_mark_left (self, self->document->cursor, -length);
+        text_editor_delete_at_mark (self, start, -length);
         return;
     }
 
@@ -547,10 +547,10 @@ _length_between_marks (TextMark *start,
 }
 
 void
-text_editor_replace (TextEditor *self,
-                     TextMark   *start,
-                     TextMark   *end,
-                     gchar      *text)
+text_editor_replace_at_mark (TextEditor *self,
+                             TextMark   *start,
+                             TextMark   *end,
+                             gchar      *text)
 {
     // TODO: Find a way to determine whether start is before end?
 
@@ -561,14 +561,14 @@ text_editor_replace (TextEditor *self,
 
     length = _length_between_marks (start, end);
     g_print ("length %d\n", length);
-    text_editor_delete (self, start, length);
-    text_editor_insert (self, start, text);
+    text_editor_delete_at_mark (self, start, length);
+    text_editor_insert_at_mark (self, start, text);
 }
 
 void
-text_editor_insert (TextEditor *self,
-                    TextMark   *start,
-                    gchar      *str)
+text_editor_insert_at_mark (TextEditor *self,
+                            TextMark   *start,
+                            gchar      *str)
 {
     // Encapsulates insertion inside an editor module/object.
     // This should accept user input in the form of Operational
@@ -598,7 +598,74 @@ text_editor_insert (TextEditor *self,
     // This should be handled by an auxiliary anchor object which
     // remains fixed at a given point in the text no matter how
     // the text changes (i.e. a cursor).
-    text_editor_move_right (self, self->document->cursor, strlen (str));
+    text_editor_move_mark_right (self, self->document->cursor, strlen (str));
+}
+
+TextMark *
+_get_mark (TextEditor         *self,
+           TextEditorMarkType  type)
+{
+    g_return_val_if_fail (TEXT_IS_EDITOR (self), NULL);
+    g_return_val_if_fail (TEXT_IS_DOCUMENT (self->document), NULL);
+
+    return (type == TEXT_EDITOR_CURSOR)
+        ? self->document->cursor
+        : self->document->selection;
+}
+
+void
+text_editor_move_first (TextEditor         *self,
+                        TextEditorMarkType  type)
+{
+    text_editor_move_mark_first (self, _get_mark (self, type));
+}
+
+void
+text_editor_move_last (TextEditor         *self,
+                       TextEditorMarkType  type)
+{
+    text_editor_move_mark_last (self, _get_mark (self, type));
+}
+
+void
+text_editor_move_right (TextEditor         *self,
+                        TextEditorMarkType  type,
+                        int                 amount)
+{
+    text_editor_move_mark_right (self, _get_mark (self, type), amount);
+}
+
+void
+text_editor_move_left (TextEditor         *self,
+                       TextEditorMarkType  type,
+                       int                 amount)
+{
+    text_editor_move_mark_left (self, _get_mark (self, type), amount);
+}
+
+void
+text_editor_insert (TextEditor         *self,
+                    TextEditorMarkType  type,
+                    gchar              *str)
+{
+    text_editor_insert_at_mark (self, _get_mark (self, type), str);
+}
+
+void
+text_editor_delete (TextEditor         *self,
+                    TextEditorMarkType  type,
+                    int                 length)
+{
+    text_editor_delete_at_mark (self, _get_mark (self, type), length);
+}
+
+void
+text_editor_replace (TextEditor         *self,
+                     TextEditorMarkType  start_type,
+                     TextEditorMarkType  end_type,
+                     gchar              *text)
+{
+    text_editor_replace_at_mark (self, _get_mark (self, start_type), _get_mark (self, end_type), text);
 }
 
 static void

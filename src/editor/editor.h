@@ -30,14 +30,28 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (TextEditor, text_editor, TEXT, EDITOR, GObject)
 
+typedef enum
+{
+    TEXT_EDITOR_CURSOR,
+    TEXT_EDITOR_SELECTION
+} TextEditorMarkType;
+
 TextEditor *text_editor_new        (TextDocument *document);
 
-void        text_editor_move_first (TextEditor *self, TextMark *mark);
-void        text_editor_move_last  (TextEditor *self, TextMark *mark);
-void        text_editor_move_right (TextEditor *self, TextMark *mark, int amount);
-void        text_editor_move_left  (TextEditor *self, TextMark *mark, int amount);
-void        text_editor_insert     (TextEditor *self, TextMark *start, gchar *str);
-void        text_editor_delete     (TextEditor *self, TextMark *start, int length);
-void        text_editor_replace    (TextEditor *self, TextMark *start, TextMark *end, gchar *text);
+void        text_editor_move_mark_first (TextEditor *self, TextMark *mark);
+void        text_editor_move_mark_last  (TextEditor *self, TextMark *mark);
+void        text_editor_move_mark_right (TextEditor *self, TextMark *mark, int amount);
+void        text_editor_move_mark_left  (TextEditor *self, TextMark *mark, int amount);
+void        text_editor_insert_at_mark  (TextEditor *self, TextMark *start, gchar *str);
+void        text_editor_delete_at_mark  (TextEditor *self, TextMark *start, int length);
+void        text_editor_replace_at_mark (TextEditor *self, TextMark *start, TextMark *end, gchar *text);
+
+void        text_editor_move_first      (TextEditor *self, TextEditorMarkType type);
+void        text_editor_move_last       (TextEditor *self, TextEditorMarkType type);
+void        text_editor_move_right      (TextEditor *self, TextEditorMarkType type, int amount);
+void        text_editor_move_left       (TextEditor *self, TextEditorMarkType type, int amount);
+void        text_editor_insert          (TextEditor *self, TextEditorMarkType type, gchar *str);
+void        text_editor_delete          (TextEditor *self, TextEditorMarkType type, int length);
+void        text_editor_replace         (TextEditor *self, TextEditorMarkType start_type, TextEditorMarkType end_type, gchar *text);
 
 G_END_DECLS

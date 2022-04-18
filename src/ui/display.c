@@ -113,7 +113,7 @@ text_display_set_property (GObject      *object,
                 g_object_unref (self->editor);
 
             self->editor = text_editor_new (self->document);
-            text_editor_move_first (self->editor, self->document->cursor);
+            text_editor_move_first (self->editor, TEXT_EDITOR_CURSOR);
         }
         break;
     default:
@@ -285,8 +285,8 @@ commit (GtkIMContext *context,
         return;
 
     self->document->selection != NULL
-        ? text_editor_replace (self->editor, self->document->cursor, self->document->selection, str)
-        : text_editor_insert (self->editor, self->document->cursor, str);
+        ? text_editor_replace (self->editor, TEXT_EDITOR_CURSOR, TEXT_EDITOR_SELECTION, str)
+        : text_editor_insert (self->editor, TEXT_EDITOR_CURSOR, str);
 
     _unset_selection (self->document);
 
@@ -335,13 +335,13 @@ key_pressed (GtkEventControllerKey *controller,
     // Handle Home/End
     if (ctrl_pressed && keyval == GDK_KEY_Home)
     {
-        text_editor_move_first (self->editor, shift_pressed ? selection : cursor);
+        text_editor_move_first (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
         goto handled;
     }
 
     if (ctrl_pressed && keyval == GDK_KEY_End)
     {
-        text_editor_move_last (self->editor, shift_pressed ? selection : cursor);
+        text_editor_move_last (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
         goto handled;
     }
 
@@ -349,13 +349,13 @@ key_pressed (GtkEventControllerKey *controller,
     // TODO: Can we draw cursors/selections on another layer?
     if (keyval == GDK_KEY_Left)
     {
-        text_editor_move_left (self->editor, shift_pressed ? selection : cursor, 1);
+        text_editor_move_left (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
         goto handled;
     }
 
     if (keyval == GDK_KEY_Right)
     {
-        text_editor_move_right (self->editor, shift_pressed ? selection : cursor, 1);
+        text_editor_move_right (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
         goto handled;
     }
 
@@ -364,11 +364,11 @@ key_pressed (GtkEventControllerKey *controller,
     {
         if (selection)
         {
-            text_editor_replace (self->editor, cursor, selection, "");
+            text_editor_replace (self->editor, TEXT_EDITOR_CURSOR, TEXT_EDITOR_SELECTION, "");
             _unset_selection (self->document);
         }
         else
-            text_editor_delete (self->editor, cursor, 1);
+            text_editor_delete (self->editor, TEXT_EDITOR_CURSOR, 1);
 
         goto handled;
     }
@@ -377,11 +377,11 @@ key_pressed (GtkEventControllerKey *controller,
     {
         if (selection)
         {
-            text_editor_replace (self->editor, cursor, selection, "");
+            text_editor_replace (self->editor, TEXT_EDITOR_CURSOR, TEXT_EDITOR_SELECTION, "");
             _unset_selection (self->document);
         }
         else
-            text_editor_delete (self->editor, cursor, -1);
+            text_editor_delete (self->editor, TEXT_EDITOR_CURSOR, -1);
 
         goto handled;
     }
