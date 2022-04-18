@@ -1,0 +1,28 @@
+Immediate TODO list for text-engine:
+ - Add basic input/editing capabilities
+   - Insertion
+   - Cursor
+   - Selection
+   - Keyboard shortcuts (Ctrl)
+   - Text manipulation
+   - Unicode
+   - Deletion
+   - Creating new items
+ - Add style module
+   - Line spacing
+   - Bold, italic, underline
+   - Colours
+   - Cascades
+   - Styles
+   - CSS Importer?
+ - Rich text content
+   - Simple equations
+   - Tables
+   - Images
+ - Rendering
+   - Invalidation
+   - Partial updates
+   - Caching
+ - Undo/redo system
+   - Piece table data structure?
+   - Operational transform?
