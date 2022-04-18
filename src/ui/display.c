@@ -291,18 +291,34 @@ key_pressed (GtkEventControllerKey *controller,
              GdkModifierType        state,
              TextDisplay           *self)
 {
-    if (state & GDK_CONTROL_MASK) {
-        // Control pressed
+    // Control pressed
+    if (state & GDK_CONTROL_MASK)
+    {
+        if (keyval == GDK_KEY_Home)
+        {
+            text_editor_move_first (self->editor);
+            gtk_widget_queue_draw (GTK_WIDGET (self));
+            return TRUE;
+        }
+
+        if (keyval == GDK_KEY_End)
+        {
+            text_editor_move_last (self->editor);
+            gtk_widget_queue_draw (GTK_WIDGET (self));
+            return TRUE;
+        }
     }
 
     // TODO: Can we draw cursors/selections on another layer?
-    if (keyval == GDK_KEY_Left) {
+    if (keyval == GDK_KEY_Left)
+    {
         text_editor_move_left (self->editor);
         gtk_widget_queue_draw (GTK_WIDGET (self));
         return TRUE;
     }
 
-    if (keyval == GDK_KEY_Right) {
+    if (keyval == GDK_KEY_Right)
+    {
         text_editor_move_right (self->editor);
         gtk_widget_queue_draw (GTK_WIDGET (self));
         return TRUE;

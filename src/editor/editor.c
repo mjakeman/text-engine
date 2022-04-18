@@ -153,6 +153,8 @@ walk_until_previous_run (TextItem *item)
     TextNode *sibling;
     TextItem *parent;
 
+    g_return_val_if_fail (TEXT_IS_ITEM (item), NULL);
+
     child = text_node_get_last_child (TEXT_NODE (item));
 
     if (child && TEXT_IS_ITEM (child)) {
@@ -192,6 +194,8 @@ walk_until_next_run (TextItem *item)
     TextNode *child;
     TextNode *sibling;
     TextItem *parent;
+
+    g_return_val_if_fail (TEXT_IS_ITEM (item), NULL);
 
     child = text_node_get_first_child (TEXT_NODE (item));
 
@@ -295,6 +299,41 @@ text_editor_move_right (TextEditor *self)
     }
 
     cursor->index++;
+}
+
+void
+text_editor_move_first (TextEditor *self)
+{
+    TextMark *cursor;
+
+    g_return_if_fail (TEXT_IS_EDITOR (self));
+    g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+
+    cursor = self->document->cursor;
+
+    cursor->parent = walk_until_next_run (TEXT_ITEM (self->document->frame));
+    cursor->index = 0;
+}
+
+void
+text_editor_move_last (TextEditor *self)
+{
+    TextMark *cursor;
+    char *text;
+
+    g_return_if_fail (TEXT_IS_EDITOR (self));
+    g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+
+    cursor = self->document->cursor;
+
+    cursor->parent = walk_until_previous_run (TEXT_ITEM (self->document->frame));
+    cursor->index = 0;
+
+    if (cursor->parent)
+    {
+        g_object_get (cursor->parent, "text", &text, NULL);
+        cursor->index = strlen (text);
+    }
 }
 
 void

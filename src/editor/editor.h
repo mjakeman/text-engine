@@ -35,5 +35,7 @@ TextEditor *text_editor_new (TextDocument *document);
 void text_editor_insert (TextEditor *self, gchar *str);
 void text_editor_move_right (TextEditor *self);
 void text_editor_move_left (TextEditor *self);
+void text_editor_move_first (TextEditor *self);
+void text_editor_move_last (TextEditor *self);
 
 G_END_DECLS
