@@ -246,7 +246,10 @@ text_editor_move_mark_left (TextEditor *self,
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
-    g_return_if_fail (amount > 0);
+    g_return_if_fail (amount >= 0);
+
+    if (amount == 0)
+        return;
 
     iter = mark->parent;
     amount_moved = 0;
@@ -299,7 +302,10 @@ text_editor_move_mark_right (TextEditor *self,
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
-    g_return_if_fail (amount > 0);
+    g_return_if_fail (amount >= 0);
+
+    if (amount == 0)
+        return;
 
     iter = mark->parent;
     amount_moved = 0;
@@ -598,7 +604,7 @@ text_editor_insert_at_mark (TextEditor *self,
     // This should be handled by an auxiliary anchor object which
     // remains fixed at a given point in the text no matter how
     // the text changes (i.e. a cursor).
-    text_editor_move_mark_right (self, self->document->cursor, strlen (str));
+    text_editor_move_mark_right (self, start, strlen (str));
 }
 
 TextMark *
