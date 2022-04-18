@@ -148,6 +148,13 @@ text_node_get_parent (TextNode *self)
     return priv->parent;
 }
 
+int
+text_node_get_num_children (TextNode *self)
+{
+    TextNodePrivate *priv = text_node_get_instance_private (self);
+    return priv->n_children;
+}
+
 static void
 _insert_between (TextNode *node,
                  TextNode *before,
@@ -168,6 +175,8 @@ _insert_between (TextNode *node,
 
     node_priv->next = after;
     after_priv->prev = node;
+
+    node_priv->n_children++;
 }
 
 static int
@@ -367,6 +376,8 @@ text_node_delete_child (TextNode *self,
             // we are the last child
             parent_priv->last_child = iter_priv->prev;
         }
+
+        parent_priv->n_children--;
 
         g_object_unref (iter);
         break;
