@@ -485,6 +485,8 @@ text_editor_delete (TextEditor *self,
     {
         int delta_length;
 
+        g_assert (iter != NULL);
+
         delta_length = text_run_get_length (iter);
 
         // Handle first element
@@ -520,11 +522,16 @@ _length_between_marks (TextMark *start,
                        TextMark *end)
 {
     TextRun *iter;
-    int length = 0;
+    int length;
 
     // TODO: Find a way to determine whether start is before end?
 
+    if (start->parent == end->parent)
+        return end->index - start->index;
+
     iter = start->parent;
+    length = text_run_get_length (iter) - start->index;
+
     while ((iter = walk_until_next_run (TEXT_ITEM (iter))) != NULL)
     {
         if (iter == end->parent)
@@ -548,7 +555,12 @@ text_editor_replace (TextEditor *self,
     // TODO: Find a way to determine whether start is before end?
 
     int length;
+
+    g_return_if_fail (TEXT_IS_RUN (start->parent));
+    g_return_if_fail (TEXT_IS_RUN (end->parent));
+
     length = _length_between_marks (start, end);
+    g_print ("length %d\n", length);
     text_editor_delete (self, start, length);
     text_editor_insert (self, start, text);
 }

@@ -265,6 +265,13 @@ text_display_class_init (TextDisplayClass *klass)
 }
 
 void
+_unset_selection (TextDocument *doc)
+{
+    if (doc->selection)
+        g_clear_pointer (&doc->selection, text_mark_free);
+}
+
+void
 commit (GtkIMContext *context,
         gchar        *str,
         TextDisplay  *self)
@@ -277,7 +284,11 @@ commit (GtkIMContext *context,
     if (!TEXT_IS_DOCUMENT (self->document))
         return;
 
-    text_editor_insert (self->editor, self->document->cursor, str);
+    self->document->selection != NULL
+        ? text_editor_replace (self->editor, self->document->cursor, self->document->selection, str)
+        : text_editor_insert (self->editor, self->document->cursor, str);
+
+    _unset_selection (self->document);
 
     // Queue redraw for now
     // Later on, we should invalidate the model which
@@ -315,21 +326,22 @@ key_pressed (GtkEventControllerKey *controller,
         selection = text_mark_copy (cursor);
         self->document->selection = selection;
     }
-    else if (selection)
+    else if (!shift_pressed && selection)
     {
-        g_clear_pointer (&self->document->selection, text_mark_free);
+        _unset_selection (self->document);
+        selection = NULL;
     }
 
     // Handle Home/End
     if (ctrl_pressed && keyval == GDK_KEY_Home)
     {
-        text_editor_move_first (self->editor, cursor);
+        text_editor_move_first (self->editor, shift_pressed ? selection : cursor);
         goto handled;
     }
 
     if (ctrl_pressed && keyval == GDK_KEY_End)
     {
-        text_editor_move_last (self->editor, cursor);
+        text_editor_move_last (self->editor, shift_pressed ? selection : cursor);
         goto handled;
     }
 
@@ -350,13 +362,27 @@ key_pressed (GtkEventControllerKey *controller,
     // Handle deletion
     if (keyval == GDK_KEY_Delete)
     {
-        text_editor_delete (self->editor, self->document->cursor, 1);
+        if (selection)
+        {
+            text_editor_replace (self->editor, cursor, selection, "");
+            _unset_selection (self->document);
+        }
+        else
+            text_editor_delete (self->editor, cursor, 1);
+
         goto handled;
     }
 
     if (keyval == GDK_KEY_BackSpace)
     {
-        text_editor_delete (self->editor, self->document->cursor, -1);
+        if (selection)
+        {
+            text_editor_replace (self->editor, cursor, selection, "");
+            _unset_selection (self->document);
+        }
+        else
+            text_editor_delete (self->editor, cursor, -1);
+
         goto handled;
     }
 

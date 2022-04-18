@@ -38,5 +38,6 @@ void        text_editor_move_right (TextEditor *self, TextMark *mark, int amount
 void        text_editor_move_left  (TextEditor *self, TextMark *mark, int amount);
 void        text_editor_insert     (TextEditor *self, TextMark *start, gchar *str);
 void        text_editor_delete     (TextEditor *self, TextMark *start, int length);
+void        text_editor_replace    (TextEditor *self, TextMark *start, TextMark *end, gchar *text);
 
 G_END_DECLS
