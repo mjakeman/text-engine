@@ -104,13 +104,17 @@ text_display_set_property (GObject      *object,
     switch (prop_id)
     {
     case PROP_DOCUMENT:
-        g_clear_object (&self->layout_tree);
+        text_node_delete (&self->layout_tree);
         self->document = g_value_get_object (value);
 
-        if (self->editor) {
-            g_object_unref (self->editor);
+        if (self->document)
+        {
+            if (self->editor)
+                g_object_unref (self->editor);
+
+            self->editor = text_editor_new (self->document);
+            text_editor_move_first (self->editor);
         }
-        self->editor = text_editor_new (self->document);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -151,7 +155,8 @@ layout_snapshot_recursive (GtkWidget     *widget,
     }
 
     const TextDimensions *cursor;
-    if (text_layout_box_get_cursor (layout_box, &cursor))
+    if (gtk_widget_has_focus (widget) &&
+        text_layout_box_get_cursor (layout_box, &cursor))
     {
         gtk_snapshot_append_color (snapshot, fg_color, &GRAPHENE_RECT_INIT (cursor->x, cursor->y, 1, cursor->height));
     }
@@ -176,7 +181,7 @@ text_display_snapshot (GtkWidget   *widget,
         return;
 
     // TODO: Don't recreate this each time - do in size allocate instead?
-    g_clear_object (&self->layout_tree);
+    text_node_delete (&self->layout_tree);
     self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                        gtk_widget_get_pango_context (GTK_WIDGET (self)),
                                                        self->document->cursor,
@@ -211,7 +216,7 @@ text_display_measure (GtkWidget      *widget,
         TextDisplay *self = TEXT_DISPLAY (widget);
         PangoContext *context = gtk_widget_get_pango_context (widget);
 
-        g_clear_object (&self->layout_tree);
+        text_node_delete (&self->layout_tree);
         self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                            context,
                                                            self->document->cursor,
@@ -320,6 +325,13 @@ key_pressed (GtkEventControllerKey *controller,
     if (keyval == GDK_KEY_Right)
     {
         text_editor_move_right (self->editor);
+        gtk_widget_queue_draw (GTK_WIDGET (self));
+        return TRUE;
+    }
+
+    if (keyval == GDK_KEY_Delete)
+    {
+        text_editor_delete (self->editor);
         gtk_widget_queue_draw (GTK_WIDGET (self));
         return TRUE;
     }

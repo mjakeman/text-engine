@@ -20,6 +20,8 @@
 
 #include "editor.h"
 
+#include "../model/paragraph.h"
+
 struct _TextEditor
 {
     GObject parent_instance;
@@ -334,6 +336,96 @@ text_editor_move_last (TextEditor *self)
         g_object_get (cursor->parent, "text", &text, NULL);
         cursor->index = strlen (text);
     }
+}
+
+static void
+_ensure_paragraph (TextEditor *self)
+{
+    TextFrame *document_frame;
+    TextParagraph *paragraph;
+
+    document_frame = self->document->frame;
+
+    // Add paragraph with run if none exists
+    if (!walk_until_next_run (TEXT_ITEM (document_frame)))
+    {
+        paragraph = text_paragraph_new ();
+        text_frame_append_block (document_frame, TEXT_BLOCK (paragraph));
+        text_paragraph_append_run (paragraph, text_run_new (""));
+    }
+}
+
+void
+text_editor_delete (TextEditor *self)
+{
+    char *text;
+    int length;
+    GString *modified;
+    TextMark *cursor;
+    TextNode *node;
+
+    g_return_if_fail (TEXT_IS_EDITOR (self));
+    g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+
+    cursor = self->document->cursor;
+
+    if (!TEXT_IS_RUN (cursor->parent)) {
+        cursor->parent = walk_until_next_run (TEXT_ITEM (self->document->frame));
+    }
+
+    // TODO: Replace with hybrid tree/piece-table structure?
+    // Textual data is stored in buffers and indexed by the tree
+    g_object_get (cursor->parent, "text", &text, NULL);
+    length = strlen (text);
+
+    // Where the run length is 1
+    if (length - 1 <= 0)
+    {
+        node = text_node_get_parent (TEXT_NODE (cursor->parent));
+        if (TEXT_IS_PARAGRAPH (node) &&
+            text_node_get_num_children (node) == 1)
+        {
+            // Delete paragraph if we are the last run
+            cursor->parent = walk_until_previous_run (TEXT_ITEM (cursor->parent));
+            text_node_delete (&node);
+
+            // Ensure there is a paragraph remaining
+            _ensure_paragraph (self);
+
+            return;
+        }
+
+        // Delete run
+        node = TEXT_NODE (cursor->parent);
+        cursor->parent = walk_until_previous_run (TEXT_ITEM (cursor->parent));
+        text_node_delete (&node);
+
+        return;
+    }
+
+    // Where the cursor is at the end of the run
+    if (cursor->index == length)
+    {
+        // End of run
+        /*node = TEXT_NODE (walk_until_next_run (cursor->parent));
+        text_editor_delete ()*/
+        g_print ("Cannot delete at end of run\n");
+        return;
+    }
+
+    modified = g_string_new (text);
+    modified = g_string_erase (modified, cursor->index, 1);
+    g_object_set (cursor->parent, "text", modified->str, NULL);
+    g_string_free (modified, TRUE);
+
+    // TODO: Update/invalidate all marks
+
+    // Move left/right by one
+    // TODO: Move by the amount changed
+    // This should be handled by an auxiliary anchor object which
+    // remains fixed at a given point in the text no matter how
+    // the text changes (i.e. a cursor).
+    // text_editor_move_right (self);
 }
 
 void
