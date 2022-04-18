@@ -277,7 +277,7 @@ commit (GtkIMContext *context,
     if (!TEXT_IS_DOCUMENT (self->document))
         return;
 
-    text_editor_insert (self->editor, str);
+    text_editor_insert (self->editor, self->document->cursor, str);
 
     // Queue redraw for now
     // Later on, we should invalidate the model which
@@ -317,14 +317,14 @@ key_pressed (GtkEventControllerKey *controller,
     // TODO: Can we draw cursors/selections on another layer?
     if (keyval == GDK_KEY_Left)
     {
-        text_editor_move_left (self->editor);
+        text_editor_move_left (self->editor, 1);
         gtk_widget_queue_draw (GTK_WIDGET (self));
         return TRUE;
     }
 
     if (keyval == GDK_KEY_Right)
     {
-        text_editor_move_right (self->editor);
+        text_editor_move_right (self->editor, 1);
         gtk_widget_queue_draw (GTK_WIDGET (self));
         return TRUE;
     }
@@ -338,8 +338,7 @@ key_pressed (GtkEventControllerKey *controller,
 
     if (keyval == GDK_KEY_BackSpace)
     {
-        text_editor_move_left (self->editor);
-        text_editor_delete (self->editor, self->document->cursor, 1);
+        text_editor_delete (self->editor, self->document->cursor, -1);
         gtk_widget_queue_draw (GTK_WIDGET (self));
         return TRUE;
     }

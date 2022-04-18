@@ -32,11 +32,11 @@ G_DECLARE_FINAL_TYPE (TextEditor, text_editor, TEXT, EDITOR, GObject)
 
 TextEditor *text_editor_new        (TextDocument *document);
 
-void        text_editor_insert     (TextEditor *self, gchar *str);
-void        text_editor_move_right (TextEditor *self);
-void        text_editor_move_left  (TextEditor *self);
 void        text_editor_move_first (TextEditor *self);
 void        text_editor_move_last  (TextEditor *self);
+void        text_editor_move_right (TextEditor *self, int amount);
+void        text_editor_move_left  (TextEditor *self, int amount);
+void        text_editor_insert     (TextEditor *self, TextMark *start, gchar *str);
 void        text_editor_delete     (TextEditor *self, TextMark *start, int length);
 
 G_END_DECLS

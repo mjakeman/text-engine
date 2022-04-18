@@ -233,74 +233,113 @@ walk_until_next_run (TextItem *item)
 }
 
 void
-text_editor_move_left (TextEditor *self)
+text_editor_move_left (TextEditor *self,
+                       int         amount)
 {
-    TextRun *prev;
+    // TODO: Why does this overstep by 1 index?
+
+    TextRun *iter;
     TextMark *cursor;
+    int amount_moved;
+    int iter_length;
+    gboolean first;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+    g_return_if_fail (amount > 0);
 
     cursor = self->document->cursor;
+    iter = cursor->parent;
+    amount_moved = 0;
+    first = TRUE;
 
-    if (cursor->index - 1 < 0) {
-        prev = walk_until_previous_run (TEXT_ITEM (cursor->parent));
-
-        if (prev) {
-            int length;
-            char *text;
-
-            g_assert (TEXT_IS_RUN (prev));
-            g_object_get (prev, "text", &text, NULL);
-            length = strlen (text);
-
-            cursor->parent = prev;
-            cursor->index = length;
-            return;
-        }
-
-        // do not move at all
-        printf("Cannot move left!\n");
+    // Handle first run
+    if (cursor->index - amount >= 0)
+    {
+        cursor->index -= amount;
         return;
     }
 
-    cursor->index--;
+    amount_moved += cursor->index;
+    iter = walk_until_previous_run (TEXT_ITEM (iter));
+    iter_length = text_run_get_length (iter);
+
+    while (amount_moved < amount)
+    {
+        // Could be NULL (e.g. start of document)
+        if (!TEXT_IS_ITEM (iter))
+            return;
+
+        iter_length = text_run_get_length (iter);
+
+        // Run is entirely contained within amount to move
+        if (amount_moved + iter_length < amount)
+        {
+            iter = walk_until_previous_run (TEXT_ITEM (iter));
+            amount_moved += iter_length;
+            continue;
+        }
+
+        break;
+    }
+
+    cursor->index = iter_length - (amount - amount_moved);
+    cursor->parent = iter;
 }
 
 void
-text_editor_move_right (TextEditor *self)
+text_editor_move_right (TextEditor *self,
+                        int         amount)
 {
-    int length;
-    char *text;
-    TextRun *next;
+    // TODO: Why does this overstep by 1 index?
+
+    TextRun *iter;
     TextMark *cursor;
+    int amount_moved;
+    gboolean first;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+    g_return_if_fail (amount > 0);
 
     cursor = self->document->cursor;
+    iter = cursor->parent;
+    amount_moved = 0;
+    first = TRUE;
 
-    if (!cursor->parent)
-        return;
-
-    g_object_get (cursor->parent, "text", &text, NULL);
-    length = strlen (text);
-
-    if (cursor->index + 1 > length) {
-        next = walk_until_next_run (TEXT_ITEM (cursor->parent));
-
-        if (next) {
-            cursor->parent = next;
-            cursor->index = 0;
-            return;
-        }
-
-        // do not move at all
-        printf("Cannot move right!\n");
+    // Handle first run
+    if (cursor->index + amount <= text_run_get_length (iter))
+    {
+        cursor->index += amount;
         return;
     }
 
-    cursor->index++;
+    amount_moved += (text_run_get_length (iter) - cursor->index);
+    iter = walk_until_next_run (TEXT_ITEM (iter));
+
+    while (amount_moved < amount)
+    {
+        int iter_length;
+
+        // Could be NULL (e.g. end of document)
+        if (!TEXT_IS_ITEM (iter))
+            return;
+
+        iter_length = text_run_get_length (iter);
+
+        // Run is entirely contained within amount to move
+        if (amount_moved + iter_length < amount)
+        {
+            iter = walk_until_next_run (TEXT_ITEM (iter));
+            amount_moved += iter_length;
+            continue;
+        }
+
+        break;
+    }
+
+    cursor->index = amount - amount_moved;
+    cursor->parent = iter;
 }
 
 void
@@ -353,14 +392,6 @@ _ensure_paragraph (TextEditor *self)
         text_frame_append_block (document_frame, TEXT_BLOCK (paragraph));
         text_paragraph_append_run (paragraph, text_run_new (""));
     }
-}
-
-void
-text_editor_replace (TextEditor *self,
-                     TextMark   *start,
-                     TextMark   *end)
-{
-    g_print ("Not implemented\n");
 }
 
 void
@@ -425,6 +456,13 @@ text_editor_delete (TextEditor *self,
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
     g_return_if_fail (start != NULL);
 
+    if (length < 0)
+    {
+        text_editor_move_left (self, -length);
+        text_editor_delete (self, start, -length);
+        return;
+    }
+
     run = start->parent;
     run_length = text_run_get_length (run);
     cursor = self->document->cursor;
@@ -484,8 +522,47 @@ text_editor_delete (TextEditor *self,
     }
 }
 
+int
+_length_between_marks (TextMark *start,
+                       TextMark *end)
+{
+    TextRun *iter;
+    int length = 0;
+
+    // TODO: Find a way to determine whether start is before end?
+
+    iter = start->parent;
+    while ((iter = walk_until_next_run (TEXT_ITEM (iter))) != NULL)
+    {
+        if (iter == end->parent)
+        {
+            length += end->index;
+            break;
+        }
+
+        length += text_run_get_length (iter);
+    }
+
+    return length;
+}
+
+void
+text_editor_replace (TextEditor *self,
+                     TextMark   *start,
+                     TextMark   *end,
+                     gchar      *text)
+{
+    // TODO: Find a way to determine whether start is before end?
+
+    int length;
+    length = _length_between_marks (start, end);
+    text_editor_delete (self, start, length);
+    text_editor_insert (self, start, text);
+}
+
 void
 text_editor_insert (TextEditor *self,
+                    TextMark   *start,
                     gchar      *str)
 {
     // Encapsulates insertion inside an editor module/object.
@@ -494,33 +571,29 @@ text_editor_insert (TextEditor *self,
 
     char *text;
     GString *modified;
-    TextMark *cursor;
+    TextRun *run;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+    g_return_if_fail (TEXT_IS_RUN (start->parent));
 
-    cursor = self->document->cursor;
-
-    if (!TEXT_IS_RUN (cursor->parent)) {
-        cursor->parent = walk_until_next_run (TEXT_ITEM (self->document->frame));
-    }
+    run = start->parent;
 
     // TODO: Replace with hybrid tree/piece-table structure?
     // Textual data is stored in buffers and indexed by the tree
-    g_object_get (cursor->parent, "text", &text, NULL);
+    g_object_get (run, "text", &text, NULL);
     modified = g_string_new (text);
-    modified = g_string_insert (modified, cursor->index, str);
-    g_object_set (cursor->parent, "text", modified->str, NULL);
+    modified = g_string_insert (modified, start->index, str);
+    g_object_set (run, "text", modified->str, NULL);
     g_string_free (modified, TRUE);
 
     // TODO: Update all marks
 
-    // Move left/right by one
-    // TODO: Move by the amount changed
+    // Move cursor left/right by amount changed
     // This should be handled by an auxiliary anchor object which
     // remains fixed at a given point in the text no matter how
     // the text changes (i.e. a cursor).
-    text_editor_move_right (self);
+    text_editor_move_right (self, strlen (str));
 }
 
 static void
