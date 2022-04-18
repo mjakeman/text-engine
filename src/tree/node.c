@@ -54,6 +54,27 @@ text_node_new (void)
 }
 
 static void
+text_node_dispose (GObject *object)
+{
+    TextNode *iter;
+
+    TextNode *self = (TextNode *)object;
+    TextNodePrivate *priv = text_node_get_instance_private (self);
+
+    for (iter = text_node_get_first_child (self);
+         iter != NULL;
+         iter = text_node_get_next (iter))
+    {
+        g_object_unref (iter);
+    }
+
+    priv->first_child = NULL;
+    priv->last_child = NULL;
+
+    G_OBJECT_CLASS (text_node_parent_class)->dispose (object);
+}
+
+static void
 text_node_finalize (GObject *object)
 {
     TextNode *self = (TextNode *)object;
@@ -71,10 +92,10 @@ text_node_get_property (GObject    *object,
     TextNode *self = TEXT_NODE (object);
 
     switch (prop_id)
-      {
-      default:
+    {
+    default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      }
+    }
 }
 
 static void
@@ -308,12 +329,75 @@ text_node_insert_child_after (TextNode *self,
     text_node_insert_child (self, child, index);
 }
 
+void
+text_node_delete_child (TextNode *self,
+                        TextNode **child)
+{
+    TextNode *iter;
+    TextNodePrivate *iter_priv;
+    TextNodePrivate *other_priv;
+    TextNodePrivate *parent_priv;
+
+    g_return_if_fail (child != NULL);
+    g_return_if_fail (TEXT_IS_NODE (*child));
+    g_return_if_fail (TEXT_IS_NODE (self));
+
+    for (iter = text_node_get_first_child (self);
+         iter != NULL;
+         iter = text_node_get_next (iter))
+    {
+        if (iter != *child)
+            continue;
+
+        iter_priv = text_node_get_instance_private (iter);
+        parent_priv = text_node_get_instance_private (self);
+
+        if (iter_priv->prev) {
+            other_priv = text_node_get_instance_private (iter_priv->prev);
+            other_priv->next = iter_priv->next;
+        } else {
+            // we are the first child
+            parent_priv->first_child = iter_priv->next;
+        }
+
+        if (iter_priv->next) {
+            other_priv = text_node_get_instance_private (iter_priv->next);
+            other_priv->prev = iter_priv->prev;
+        } else {
+            // we are the last child
+            parent_priv->last_child = iter_priv->prev;
+        }
+
+        g_object_unref (iter);
+        break;
+    }
+
+    *child = NULL;
+}
+
+void
+text_node_delete (TextNode **self)
+{
+    TextNode *parent;
+
+    g_return_if_fail (self != NULL);
+    g_return_if_fail (TEXT_IS_NODE (*self));
+
+    parent = text_node_get_parent (*self);
+
+    if (parent == NULL)
+        g_clear_object (self);
+    else
+        text_node_delete_child (parent, self);
+}
+
 static void
 text_node_class_init (TextNodeClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
     object_class->finalize = text_node_finalize;
+    object_class->dispose = text_node_dispose;
     object_class->get_property = text_node_get_property;
     object_class->set_property = text_node_set_property;
 }

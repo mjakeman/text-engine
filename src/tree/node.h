@@ -46,4 +46,7 @@ void      text_node_append_child        (TextNode *self, TextNode *child);
 void      text_node_insert_child_before (TextNode *self, TextNode *child, TextNode *compare);
 void      text_node_insert_child_after  (TextNode *self, TextNode *child, TextNode *compare);
 
+void      text_node_delete              (TextNode **self);
+void      text_node_delete_child        (TextNode *self, TextNode **child);
+
 G_END_DECLS
