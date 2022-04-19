@@ -112,7 +112,7 @@ demo_window_init (DemoWindow *self)
     adw_application_window_set_content (ADW_APPLICATION_WINDOW (self), vbox);
 
     // Example rich text document (uses html subset)
-    test = "<p>There was an Old Man with a beard\nWho said, &quot;It is just as I feared!</p><p> &gt; Two Owls and a Hen,<br> &gt; Four Larks and a Wren,</p><p>Have all built their nests in my beard!&quot;</p>";
+    test = "<p>There was an Old Man with <b>a</b> beard</p><p>Who said, &quot;It is just as I feared!</p><p> &gt; Two Owls and a Hen,<br> &gt; Four Larks and a Wren,</p><p>Have all built their nests in my beard!&quot;</p>";
     frame = format_parse_html (test);
     document = text_document_new ();
     document->frame = frame;

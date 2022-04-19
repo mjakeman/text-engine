@@ -21,7 +21,7 @@
 #pragma once
 
 #include <glib-object.h>
-#include "run.h"
+#include "paragraph.h"
 
 G_BEGIN_DECLS
 
@@ -31,12 +31,12 @@ typedef struct _TextMark TextMark;
 
 struct _TextMark
 {
-    TextRun *parent;
+    TextParagraph *paragraph;
     int index;
 };
 
 GType         text_mark_get_type (void) G_GNUC_CONST;
-TextMark     *text_mark_new      (TextRun *parent, int index);
+TextMark     *text_mark_new      (TextParagraph *paragraph, int index);
 TextMark     *text_mark_copy     (TextMark *self);
 void          text_mark_free     (TextMark *self);
 

@@ -111,7 +111,7 @@ do_layout_recursive (TextLayout    *self,
             // paragraphs. As we do not consider individual runs, we
             // must check whether the paragraph contains a cursor and
             // then handle layout for the cursor object.
-            if (cursor->parent && (node == text_node_get_parent (TEXT_NODE (cursor->parent))))
+            if (TEXT_PARAGRAPH (node) == cursor->paragraph)
             {
                 // Paragraph contains cursor
                 text_layout_box_set_cursor (box, cursor->index);

@@ -30,13 +30,13 @@ G_DEFINE_BOXED_TYPE (TextMark, text_mark, text_mark_copy, text_mark_free)
  * Returns: (transfer full): A newly created #TextMark
  */
 TextMark *
-text_mark_new (TextRun *parent,
-               int      index)
+text_mark_new (TextParagraph *paragraph,
+               int            index)
 {
     TextMark *self;
 
     self = g_slice_new0 (TextMark);
-    self->parent = parent;
+    self->paragraph = paragraph;
     self->index = index;
 
     return self;
@@ -58,7 +58,7 @@ text_mark_copy (TextMark *self)
 
     g_return_val_if_fail (self, NULL);
 
-    copy = text_mark_new (self->parent, self->index);
+    copy = text_mark_new (self->paragraph, self->index);
 
     return copy;
 }

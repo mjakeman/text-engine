@@ -232,6 +232,90 @@ walk_until_next_run (TextItem *item)
     return NULL;
 }
 
+static TextParagraph *
+walk_until_previous_paragraph (TextItem *item)
+{
+    TextNode *child;
+    TextNode *sibling;
+    TextItem *parent;
+
+    g_return_val_if_fail (TEXT_IS_ITEM (item), NULL);
+
+    child = text_node_get_last_child (TEXT_NODE (item));
+
+    if (child && TEXT_IS_ITEM (child)) {
+        if (TEXT_IS_PARAGRAPH (child)) {
+            return TEXT_PARAGRAPH (child);
+        }
+
+        return walk_until_previous_paragraph (TEXT_ITEM (child));
+    }
+
+    sibling = text_node_get_previous (TEXT_NODE (item));
+
+    if (sibling && TEXT_IS_ITEM (sibling)) {
+        if (TEXT_IS_PARAGRAPH (sibling)) {
+            return TEXT_PARAGRAPH (sibling);
+        }
+
+        return walk_until_previous_paragraph (TEXT_ITEM (sibling));
+    }
+
+    parent = go_up (item, FALSE);
+
+    if (parent) {
+        if (TEXT_IS_PARAGRAPH (parent)) {
+            return TEXT_PARAGRAPH (parent);
+        }
+
+        return walk_until_previous_paragraph (parent);
+    }
+
+    return NULL;
+}
+
+static TextParagraph *
+walk_until_next_paragraph (TextItem *item)
+{
+    TextNode *child;
+    TextNode *sibling;
+    TextItem *parent;
+
+    g_return_val_if_fail (TEXT_IS_ITEM (item), NULL);
+
+    child = text_node_get_first_child (TEXT_NODE (item));
+
+    if (child && TEXT_IS_ITEM (child)) {
+        if (TEXT_IS_PARAGRAPH (child)) {
+            return TEXT_PARAGRAPH (child);
+        }
+
+        return walk_until_next_paragraph (TEXT_ITEM (child));
+    }
+
+    sibling = text_node_get_next (TEXT_NODE (item));
+
+    if (sibling && TEXT_IS_ITEM (sibling)) {
+        if (TEXT_IS_PARAGRAPH (sibling)) {
+            return TEXT_PARAGRAPH (sibling);
+        }
+
+        return walk_until_next_paragraph (TEXT_ITEM (sibling));
+    }
+
+    parent = go_up (item, TRUE);
+
+    if (parent) {
+        if (TEXT_IS_PARAGRAPH (parent)) {
+            return TEXT_PARAGRAPH (parent);
+        }
+
+        return walk_until_next_paragraph (parent);
+    }
+
+    return NULL;
+}
+
 void
 text_editor_move_mark_left (TextEditor *self,
                             TextMark   *mark,
@@ -239,7 +323,7 @@ text_editor_move_mark_left (TextEditor *self,
 {
     // TODO: Why does this overstep by 1 index?
 
-    TextRun *iter;
+    TextParagraph *iter;
     int amount_moved;
     int iter_length;
     gboolean first;
@@ -251,7 +335,7 @@ text_editor_move_mark_left (TextEditor *self,
     if (amount == 0)
         return;
 
-    iter = mark->parent;
+    iter = mark->paragraph;
     amount_moved = 0;
     first = TRUE;
 
@@ -263,13 +347,13 @@ text_editor_move_mark_left (TextEditor *self,
     }
 
     amount_moved += mark->index;
-    iter = walk_until_previous_run (TEXT_ITEM (iter));
+    iter = walk_until_previous_paragraph (TEXT_ITEM (iter));
 
     // Could be NULL (e.g. start of document)
     if (!TEXT_IS_ITEM (iter))
         goto start;
 
-    iter_length = text_run_get_length (iter);
+    iter_length = text_paragraph_get_length (iter);
 
     while (amount_moved < amount)
     {
@@ -277,12 +361,12 @@ text_editor_move_mark_left (TextEditor *self,
         if (!TEXT_IS_ITEM (iter))
             goto start;
 
-        iter_length = text_run_get_length (iter);
+        iter_length = text_paragraph_get_length (iter);
 
-        // Run is entirely contained within amount to move
+        // Paragraph is entirely contained within amount to move
         if (amount_moved + iter_length < amount)
         {
-            iter = walk_until_previous_run (TEXT_ITEM (iter));
+            iter = walk_until_previous_paragraph (TEXT_ITEM (iter));
             amount_moved += iter_length;
             continue;
         }
@@ -291,7 +375,7 @@ text_editor_move_mark_left (TextEditor *self,
     }
 
     mark->index = iter_length - (amount - amount_moved);
-    mark->parent = iter;
+    mark->paragraph = iter;
 
     return;
 
@@ -306,7 +390,7 @@ text_editor_move_mark_right (TextEditor *self,
 {
     // TODO: Why does this overstep by 1 index?
 
-    TextRun *iter;
+    TextParagraph *iter;
     int amount_moved;
     gboolean first;
 
@@ -317,19 +401,19 @@ text_editor_move_mark_right (TextEditor *self,
     if (amount == 0)
         return;
 
-    iter = mark->parent;
+    iter = mark->paragraph;
     amount_moved = 0;
     first = TRUE;
 
     // Handle first run
-    if (mark->index + amount <= text_run_get_length (iter))
+    if (mark->index + amount <= text_paragraph_get_length (iter))
     {
         mark->index += amount;
         return;
     }
 
-    amount_moved += (text_run_get_length (iter) - mark->index);
-    iter = walk_until_next_run (TEXT_ITEM (iter));
+    amount_moved += (text_paragraph_get_length (iter) - mark->index);
+    iter = walk_until_next_paragraph (TEXT_ITEM (iter));
 
     // Could be NULL (e.g. end of document)
     if (!TEXT_IS_ITEM (iter))
@@ -343,12 +427,12 @@ text_editor_move_mark_right (TextEditor *self,
         if (!TEXT_IS_ITEM (iter))
             goto end;
 
-        iter_length = text_run_get_length (iter);
+        iter_length = text_paragraph_get_length (iter);
 
         // Run is entirely contained within amount to move
         if (amount_moved + iter_length < amount)
         {
-            iter = walk_until_next_run (TEXT_ITEM (iter));
+            iter = walk_until_next_paragraph (TEXT_ITEM (iter));
             amount_moved += iter_length;
             continue;
         }
@@ -357,7 +441,7 @@ text_editor_move_mark_right (TextEditor *self,
     }
 
     mark->index = amount - amount_moved;
-    mark->parent = iter;
+    mark->paragraph = iter;
 
     return;
 
@@ -372,7 +456,7 @@ text_editor_move_mark_first (TextEditor *self,
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
 
-    mark->parent = walk_until_next_run (TEXT_ITEM (self->document->frame));
+    mark->paragraph = walk_until_next_paragraph (TEXT_ITEM (self->document->frame));
     mark->index = 0;
 }
 
@@ -380,18 +464,15 @@ void
 text_editor_move_mark_last (TextEditor *self,
                             TextMark   *mark)
 {
-    char *text;
-
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
 
-    mark->parent = walk_until_previous_run (TEXT_ITEM (self->document->frame));
+    mark->paragraph = walk_until_previous_paragraph (TEXT_ITEM (self->document->frame));
     mark->index = 0;
 
-    if (mark->parent)
+    if (mark->paragraph)
     {
-        g_object_get (mark->parent, "text", &text, NULL);
-        mark->index = strlen (text);
+        mark->index = text_paragraph_get_length (mark->paragraph);
     }
 }
 
@@ -469,9 +550,12 @@ text_editor_delete_at_mark (TextEditor *self,
     TextRun *iter;
     int run_length;
     int cur_deleted;
+    int run_start_index;
+    int run_offset;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+    g_return_if_fail (TEXT_IS_PARAGRAPH (start->paragraph));
     g_return_if_fail (start != NULL);
 
     if (length < 0)
@@ -481,15 +565,18 @@ text_editor_delete_at_mark (TextEditor *self,
         return;
     }
 
-    run = start->parent;
+    run = text_paragraph_get_run_at_index (start->paragraph, start->index, &run_start_index);
+    run_offset = start->index - run_start_index;
+
     run_length = text_run_get_length (run);
     cursor = self->document->cursor;
 
     // Case 1: Deleting a single run
-    if (start->index == 0 &&
+    if (run_offset == 0 &&
         length == run_length)
     {
-        cursor->parent = walk_until_previous_run (TEXT_ITEM (cursor->parent));
+        // TODO: Broken!
+        cursor->index = run_start_index;
         _delete_run (self, run);
         return;
     }
@@ -546,26 +633,26 @@ int
 _length_between_marks (TextMark *start,
                        TextMark *end)
 {
-    TextRun *iter;
+    TextParagraph *iter;
     int length;
 
     // TODO: Find a way to determine whether start is before end?
 
-    if (start->parent == end->parent)
+    if (start->paragraph == end->paragraph)
         return end->index - start->index;
 
-    iter = start->parent;
-    length = text_run_get_length (iter) - start->index;
+    iter = start->paragraph;
+    length = text_paragraph_get_length (iter) - start->index;
 
-    while ((iter = walk_until_next_run (TEXT_ITEM (iter))) != NULL)
+    while ((iter = walk_until_next_paragraph (TEXT_ITEM (iter))) != NULL)
     {
-        if (iter == end->parent)
+        if (iter == end->paragraph)
         {
             length += end->index;
             break;
         }
 
-        length += text_run_get_length (iter);
+        length += text_paragraph_get_length (iter);
     }
 
     return length;
@@ -581,8 +668,8 @@ text_editor_replace_at_mark (TextEditor *self,
 
     int length;
 
-    g_return_if_fail (TEXT_IS_RUN (start->parent));
-    g_return_if_fail (TEXT_IS_RUN (end->parent));
+    g_return_if_fail (TEXT_IS_PARAGRAPH (start->paragraph));
+    g_return_if_fail (TEXT_IS_PARAGRAPH (end->paragraph));
 
     length = _length_between_marks (start, end);
     g_print ("length %d\n", length);
@@ -602,18 +689,22 @@ text_editor_insert_at_mark (TextEditor *self,
     char *text;
     GString *modified;
     TextRun *run;
+    int run_start_index;
+    int run_offset;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
-    g_return_if_fail (TEXT_IS_RUN (start->parent));
+    g_return_if_fail (TEXT_IS_PARAGRAPH (start->paragraph));
 
-    run = start->parent;
+    run = text_paragraph_get_run_at_index (start->paragraph, start->index, &run_start_index);
+
+    run_offset = start->index - run_start_index;
 
     // TODO: Replace with hybrid tree/piece-table structure?
     // Textual data is stored in buffers and indexed by the tree
     g_object_get (run, "text", &text, NULL);
     modified = g_string_new (text);
-    modified = g_string_insert (modified, start->index, str);
+    modified = g_string_insert (modified, run_offset, str);
     g_object_set (run, "text", modified->str, NULL);
     g_string_free (modified, TRUE);
 

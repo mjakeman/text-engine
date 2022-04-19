@@ -88,6 +88,68 @@ text_paragraph_append_run (TextParagraph *self,
     text_node_append_child (TEXT_NODE (self), TEXT_NODE (run));
 }
 
+int
+text_paragraph_get_length (TextParagraph *self)
+{
+    TextNode *child;
+    int length;
+
+    g_return_val_if_fail (TEXT_IS_PARAGRAPH (self), -1);
+
+    length = 0;
+
+    for (child = text_node_get_first_child (TEXT_NODE (self));
+         child != NULL;
+         child = text_node_get_next (child))
+    {
+        g_assert (TEXT_IS_RUN (child));
+        length += text_run_get_length (TEXT_RUN (child));
+    }
+
+    return length;
+}
+
+TextRun *
+text_paragraph_get_run_at_index (TextParagraph *self,
+                                 int            index,
+                                 int           *starting_index)
+{
+    TextNode *child;
+    int length;
+
+    length = 0;
+
+    g_return_val_if_fail (TEXT_IS_PARAGRAPH (self), NULL);
+
+    for (child = text_node_get_first_child (TEXT_NODE (self));
+         child != NULL;
+         child = text_node_get_next (child))
+    {
+        int delta_length;
+        g_assert (TEXT_IS_RUN (child));
+        delta_length = text_run_get_length (TEXT_RUN (child));
+
+        // Index is considered part of a run if it is immediately
+        // after the last character in the run. For example:
+        // There is a cursor position at the end of a run
+        //
+        //     `Once upon a time there was a little dog, `
+        //                                               ^
+        //                 this index is part of the run /
+        //
+        if (length < index && index <= length + delta_length)
+        {
+            *starting_index = length;
+            return TEXT_RUN (child);
+        }
+
+        length += delta_length;
+    }
+
+    *starting_index = -1;
+    return NULL;
+}
+
 static void
 text_paragraph_class_init (TextParagraphClass *klass)
 {

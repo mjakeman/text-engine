@@ -138,6 +138,92 @@ test_right_guard (MoveFixture   *fixture,
     g_assert_cmpint (fixture->doc->cursor->index, ==, 41);
 }
 
+static void
+test_left_overflow (MoveFixture   *fixture,
+                    gconstpointer  user_data)
+{
+    int amount;
+    amount = (int)user_data;
+
+    // go to index zero, run two
+    text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, 42);
+
+    // test moving left by amount
+    text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, amount);
+
+    // TODO: THIS IS NOT TRUE (ONLY AT END OF PARAGRAPH?)
+    // There is a cursor position at the end of a run
+    //
+    //     `Once upon a time there was a little dog, `
+    //                                               ^
+    //                          cursor position here /
+    //
+    // Therefore the cursor index should be equal to the
+    // length of the run (i.e. 41). We can express this as
+    // '42 - amount', where amount = 1, 10, etc.
+    g_assert_cmpint (fixture->doc->cursor->index, ==, 42 - amount);
+}
+
+static void
+test_middle_of_paragraph (MoveFixture   *fixture,
+                          gconstpointer  user_data)
+{
+    // Run one and two are within the same paragraph. Therefore, the
+    // final index of run one 'overwrites' the starting index of run
+    // two.
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 41);
+
+    // The parent run should still be run one
+    g_assert_cmpint (fixture->doc->cursor->index, ==, 41);
+    // g_assert_cmpmem (fixture->doc->cursor->parent, -1, fixture->run1, -1);
+}
+
+static void
+test_right_overflow_middle_of_paragraph (MoveFixture   *fixture,
+                                         gconstpointer  user_data)
+{
+    int amount;
+    amount = (int)user_data;
+
+    // Run one and two are within the same paragraph. Therefore, the
+    // final index of run one 'overwrites' the starting index of run
+    // two.
+    text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, 41);
+
+    // test moving right by amount
+    text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, amount);
+
+    // A movement of one at the end of a run should yield a cursor
+    // index of zero at the start of the next run.
+    // g_assert_cmpint (fixture->doc->cursor->index, ==, 42 - amount);
+}
+
+static void
+test_end_of_paragraph (MoveFixture   *fixture,
+                       gconstpointer  user_data)
+{
+    // Run one and two are within the same paragraph. Therefore, the
+    // final index of run one 'overwrites' the starting index of run
+    // two.
+    text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, 41);
+
+    // The parent run should still be run one
+    // g_assert_cmpmem (fixture->doc->cursor->parent, -1, fixture->run1, -1);
+}
+
+static void
+test_run_middle_index (MoveFixture   *fixture,
+                       gconstpointer  user_data)
+{
+    // Run one and two are within the same paragraph. Therefore, the
+    // final index of run one 'overwrites' the starting index of run
+    // two.
+    text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, 41);
+
+    // The parent run should still be run one
+    // g_assert_cmpmem (fixture->doc->cursor->parent, -1, fixture->run1, -1);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -145,7 +231,7 @@ main (int argc, char *argv[])
 
     g_test_init (&argc, &argv, NULL);
 
-    // Define the tests.
+    // Document guard tests
     g_test_add ("/text-engine/editor/move/test-left-guard-one", MoveFixture, (void*)1,
                 move_fixture_set_up_single, test_left_guard,
                 move_fixture_tear_down);
@@ -158,6 +244,16 @@ main (int argc, char *argv[])
     g_test_add ("/text-engine/editor/move/test-right-guard-ten", MoveFixture, (void*)10,
                 move_fixture_set_up_single, test_right_guard,
                 move_fixture_tear_down);
+
+    // Run boundary tests
+    g_test_add ("/text-engine/editor/move/test-left-overflow-one", MoveFixture, (void*)1,
+                move_fixture_set_up_multi, test_left_overflow,
+                move_fixture_tear_down);
+    g_test_add ("/text-engine/editor/move/test-left-overflow-ten", MoveFixture, (void*)10,
+                move_fixture_set_up_multi, test_left_overflow,
+                move_fixture_tear_down);
+
+    // Paragraph boundary tests
 
     return g_test_run ();
 }
