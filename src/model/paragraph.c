@@ -121,6 +121,15 @@ text_paragraph_get_run_at_index (TextParagraph *self,
 
     g_return_val_if_fail (TEXT_IS_PARAGRAPH (self), NULL);
 
+    if (index == 0)
+    {
+        TextNode *first;
+        first = text_node_get_first_child (TEXT_NODE (self));
+
+        *starting_index = 0;
+        return TEXT_RUN (first);
+    }
+
     for (child = text_node_get_first_child (TEXT_NODE (self));
          child != NULL;
          child = text_node_get_next (child))
