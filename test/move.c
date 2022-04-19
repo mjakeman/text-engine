@@ -65,6 +65,10 @@ move_fixture_set_up_single (MoveFixture   *fixture,
     fixture->run3 = NULL;
 }
 
+#define RUN4 "This is some text that is pa"
+#define RUN5 "RT OF TWO DIFFE"
+#define RUN6 "rent runs"
+
 static void
 move_fixture_set_up_multi (MoveFixture   *fixture,
                            gconstpointer  user_data)
@@ -76,16 +80,13 @@ move_fixture_set_up_multi (MoveFixture   *fixture,
     frame = text_frame_new ();
 
     para1 = text_paragraph_new ();
-    run1 = text_run_new (RUN1);
-    run2 = text_run_new (RUN2);
+    run1 = text_run_new (RUN4);
+    run2 = text_run_new (RUN5);
+    run3 = text_run_new (RUN6);
     text_paragraph_append_run (para1, run1);
     text_paragraph_append_run (para1, run2);
+    text_paragraph_append_run (para1, run3);
     text_frame_append_block (frame, TEXT_BLOCK (para1));
-
-    para2 = text_paragraph_new ();
-    run3 = text_run_new (RUN3);
-    text_paragraph_append_run (para2, run3);
-    text_frame_append_block (frame, TEXT_BLOCK (para2));
 
     fixture->doc = text_document_new ();
     fixture->doc->frame = frame;
@@ -138,30 +139,50 @@ test_right_guard (MoveFixture   *fixture,
     g_assert_cmpint (fixture->doc->cursor->index, ==, 41);
 }
 
+// We have three runs in a single paragraph. Capitalisation indicates
+// a different run for these test cases:
+//
+//                                   index 28
+//                                 /
+//     `This is some text that is paRT OF TWO DIFFErent runs`
+//                                  ^
+//                         index 29 /
+//
+// When traversing leftwards from index 29, we cross into a new
+// run at index 28.
+
 static void
-test_left_overflow (MoveFixture   *fixture,
-                    gconstpointer  user_data)
+test_left_traversal_across_run (MoveFixture   *fixture,
+                                gconstpointer  user_data)
 {
     int amount;
     amount = (int)user_data;
 
-    // go to index zero, run two
-    text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, 42);
+    // go to index 29 (run two)
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 29);
+    // g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run2);
 
     // test moving left by amount
     text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, amount);
+    // g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
 
-    // TODO: THIS IS NOT TRUE (ONLY AT END OF PARAGRAPH?)
-    // There is a cursor position at the end of a run
-    //
-    //     `Once upon a time there was a little dog, `
-    //                                               ^
-    //                          cursor position here /
-    //
-    // Therefore the cursor index should be equal to the
-    // length of the run (i.e. 41). We can express this as
-    // '42 - amount', where amount = 1, 10, etc.
-    g_assert_cmpint (fixture->doc->cursor->index, ==, 42 - amount);
+    g_assert_cmpint (fixture->doc->cursor->index, ==, 29 - amount);
+}
+
+static void
+test_right_traversal_across_run (MoveFixture   *fixture,
+                                 gconstpointer  user_data)
+{
+    int amount;
+    amount = (int)user_data;
+
+    // go to index 28 (run one)
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 28);
+
+    // test moving right by amount
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, amount);
+
+    g_assert_cmpint (fixture->doc->cursor->index, ==, 28 + amount);
 }
 
 static void
@@ -246,11 +267,17 @@ main (int argc, char *argv[])
                 move_fixture_tear_down);
 
     // Run boundary tests
-    g_test_add ("/text-engine/editor/move/test-left-overflow-one", MoveFixture, (void*)1,
-                move_fixture_set_up_multi, test_left_overflow,
+    g_test_add ("/text-engine/editor/move/test-left-traversal-across-run-one", MoveFixture, (void*)1,
+                move_fixture_set_up_multi, test_left_traversal_across_run,
                 move_fixture_tear_down);
-    g_test_add ("/text-engine/editor/move/test-left-overflow-ten", MoveFixture, (void*)10,
-                move_fixture_set_up_multi, test_left_overflow,
+    g_test_add ("/text-engine/editor/move/test-left-traversal-across-run-ten", MoveFixture, (void*)10,
+                move_fixture_set_up_multi, test_left_traversal_across_run,
+                move_fixture_tear_down);
+    g_test_add ("/text-engine/editor/move/test-right-traversal-across-run-one", MoveFixture, (void*)1,
+                move_fixture_set_up_multi, test_right_traversal_across_run,
+                move_fixture_tear_down);
+    g_test_add ("/text-engine/editor/move/test-right-traversal-across-run-ten", MoveFixture, (void*)10,
+                move_fixture_set_up_multi, test_right_traversal_across_run,
                 move_fixture_tear_down);
 
     // Paragraph boundary tests
