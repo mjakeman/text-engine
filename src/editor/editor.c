@@ -264,13 +264,18 @@ text_editor_move_mark_left (TextEditor *self,
 
     amount_moved += mark->index;
     iter = walk_until_previous_run (TEXT_ITEM (iter));
+
+    // Could be NULL (e.g. start of document)
+    if (!TEXT_IS_ITEM (iter))
+        goto start;
+
     iter_length = text_run_get_length (iter);
 
     while (amount_moved < amount)
     {
         // Could be NULL (e.g. start of document)
         if (!TEXT_IS_ITEM (iter))
-            return;
+            goto start;
 
         iter_length = text_run_get_length (iter);
 
@@ -287,6 +292,11 @@ text_editor_move_mark_left (TextEditor *self,
 
     mark->index = iter_length - (amount - amount_moved);
     mark->parent = iter;
+
+    return;
+
+start:
+    text_editor_move_mark_first (self, mark);
 }
 
 void
@@ -321,13 +331,17 @@ text_editor_move_mark_right (TextEditor *self,
     amount_moved += (text_run_get_length (iter) - mark->index);
     iter = walk_until_next_run (TEXT_ITEM (iter));
 
+    // Could be NULL (e.g. end of document)
+    if (!TEXT_IS_ITEM (iter))
+        goto end;
+
     while (amount_moved < amount)
     {
         int iter_length;
 
         // Could be NULL (e.g. end of document)
         if (!TEXT_IS_ITEM (iter))
-            return;
+            goto end;
 
         iter_length = text_run_get_length (iter);
 
@@ -344,6 +358,11 @@ text_editor_move_mark_right (TextEditor *self,
 
     mark->index = amount - amount_moved;
     mark->parent = iter;
+
+    return;
+
+end:
+    text_editor_move_mark_last (self, mark);
 }
 
 void
