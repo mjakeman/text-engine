@@ -316,6 +316,18 @@ walk_until_next_paragraph (TextItem *item)
     return NULL;
 }
 
+TextRun *
+text_editor_get_run_at_mark (TextEditor *self,
+                             TextMark   *mark)
+{
+    g_return_val_if_fail (TEXT_IS_EDITOR (self), NULL);
+    g_return_val_if_fail (mark != NULL, NULL);
+
+    return text_paragraph_get_run_at_index (mark->paragraph,
+                                            mark->index,
+                                            NULL);
+}
+
 void
 text_editor_move_mark_left (TextEditor *self,
                             TextMark   *mark,
@@ -782,6 +794,13 @@ text_editor_replace (TextEditor         *self,
                      gchar              *text)
 {
     text_editor_replace_at_mark (self, _get_mark (self, start_type), _get_mark (self, end_type), text);
+}
+
+TextRun *
+text_editor_get_run (TextEditor         *self,
+                     TextEditorMarkType  type)
+{
+    return text_editor_get_run_at_mark (self, _get_mark (self, type));
 }
 
 static void

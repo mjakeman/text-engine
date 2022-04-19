@@ -126,7 +126,8 @@ text_paragraph_get_run_at_index (TextParagraph *self,
         TextNode *first;
         first = text_node_get_first_child (TEXT_NODE (self));
 
-        *starting_index = 0;
+        if (starting_index)
+            *starting_index = 0;
         return TEXT_RUN (first);
     }
 
@@ -148,14 +149,16 @@ text_paragraph_get_run_at_index (TextParagraph *self,
         //
         if (length < index && index <= length + delta_length)
         {
-            *starting_index = length;
+            if (starting_index)
+                *starting_index = length;
             return TEXT_RUN (child);
         }
 
         length += delta_length;
     }
 
-    *starting_index = -1;
+    if (starting_index)
+        *starting_index = -1;
     return NULL;
 }
 

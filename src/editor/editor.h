@@ -54,4 +54,7 @@ void        text_editor_insert          (TextEditor *self, TextEditorMarkType ty
 void        text_editor_delete          (TextEditor *self, TextEditorMarkType type, int length);
 void        text_editor_replace         (TextEditor *self, TextEditorMarkType start_type, TextEditorMarkType end_type, gchar *text);
 
+TextRun *   text_editor_get_run         (TextEditor *self, TextEditorMarkType type);
+TextRun *   text_editor_get_run_at_mark (TextEditor *self, TextMark *mark);
+
 G_END_DECLS
