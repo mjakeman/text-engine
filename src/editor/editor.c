@@ -333,12 +333,8 @@ text_editor_move_mark_left (TextEditor *self,
                             TextMark   *mark,
                             int         amount)
 {
-    // TODO: Why does this overstep by 1 index?
-
     TextParagraph *iter;
     int amount_moved;
-    int iter_length;
-    gboolean first;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
@@ -349,49 +345,49 @@ text_editor_move_mark_left (TextEditor *self,
 
     iter = mark->paragraph;
     amount_moved = 0;
-    first = TRUE;
 
-    // Handle first run
+    // Simple case: The movement is contained entirely
+    // within the current paragraph.
     if (mark->index - amount >= 0)
     {
         mark->index -= amount;
         return;
     }
 
+    // Crossing one or more paragraphs
     amount_moved += mark->index;
-    iter = walk_until_previous_paragraph (TEXT_ITEM (iter));
-
-    // Could be NULL (e.g. start of document)
-    if (!TEXT_IS_ITEM (iter))
-        goto start;
-
-    iter_length = text_paragraph_get_length (iter);
 
     while (amount_moved < amount)
     {
-        // Could be NULL (e.g. start of document)
-        if (!TEXT_IS_ITEM (iter))
-            goto start;
+        int num_indices;
 
-        iter_length = text_paragraph_get_length (iter);
+        // Go to previous paragraph
+        iter = walk_until_previous_paragraph (TEXT_ITEM (iter));
+
+        // Check if NULL (e.g. start of document)
+        if (!TEXT_IS_ITEM (iter))
+            break;
+
+        // Num of indices is the paragraph length
+        // plus the final index
+        num_indices = text_paragraph_get_length (iter) + 1;
 
         // Paragraph is entirely contained within amount to move
-        if (amount_moved + iter_length < amount)
+        if (amount_moved + num_indices < amount)
         {
-            iter = walk_until_previous_paragraph (TEXT_ITEM (iter));
-            amount_moved += iter_length;
+            // We are now at index 0 of the previous paragraph -> repeat
+            amount_moved += num_indices;
             continue;
         }
 
-        break;
+        // Move partially through the paragraph by
+        // the amount to move remaining
+        mark->index = num_indices - (amount - amount_moved);
+        mark->paragraph = iter;
+        return;
     }
 
-    mark->index = iter_length - (amount - amount_moved);
-    mark->paragraph = iter;
-
-    return;
-
-start:
+    // Reached start of document
     text_editor_move_mark_first (self, mark);
 }
 
@@ -400,11 +396,9 @@ text_editor_move_mark_right (TextEditor *self,
                              TextMark   *mark,
                              int         amount)
 {
-    // TODO: Why does this overstep by 1 index?
-
     TextParagraph *iter;
     int amount_moved;
-    gboolean first;
+    int last_index;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
@@ -415,49 +409,50 @@ text_editor_move_mark_right (TextEditor *self,
 
     iter = mark->paragraph;
     amount_moved = 0;
-    first = TRUE;
 
-    // Handle first run
-    if (mark->index + amount <= text_paragraph_get_length (iter))
+    // Simple case: The movement is contained entirely
+    // within the current paragraph.
+    last_index = text_paragraph_get_length (iter);
+    if (mark->index + amount <= last_index)
     {
         mark->index += amount;
         return;
     }
 
-    amount_moved += (text_paragraph_get_length (iter) - mark->index);
-    iter = walk_until_next_paragraph (TEXT_ITEM (iter));
-
-    // Could be NULL (e.g. end of document)
-    if (!TEXT_IS_ITEM (iter))
-        goto end;
+    // Crossing one or more paragraphs
+    amount_moved += (last_index - mark->index);
 
     while (amount_moved < amount)
     {
-        int iter_length;
+        int num_indices;
 
-        // Could be NULL (e.g. end of document)
+        // Go to next paragraph
+        iter = walk_until_next_paragraph (TEXT_ITEM (iter));
+
+        // Check if NULL (end of document)
         if (!TEXT_IS_ITEM (iter))
-            goto end;
+            break;
 
-        iter_length = text_paragraph_get_length (iter);
+        // Num of indices is the paragraph length
+        // plus the final index
+        num_indices = text_paragraph_get_length (iter) + 1;
 
-        // Run is entirely contained within amount to move
-        if (amount_moved + iter_length < amount)
+        // Paragraph is entirely contained within amount to move
+        if (amount_moved + num_indices < amount)
         {
-            iter = walk_until_next_paragraph (TEXT_ITEM (iter));
-            amount_moved += iter_length;
+            // We are now at the last index of the next paragraph -> repeat
+            amount_moved += num_indices;
             continue;
         }
 
-        break;
+        // Move partially through the paragraph by
+        // the amount to move remaining
+        mark->index = (amount - amount_moved) - 1;
+        mark->paragraph = iter;
+        return;
     }
 
-    mark->index = amount - amount_moved;
-    mark->paragraph = iter;
-
-    return;
-
-end:
+    // Reached end of document
     text_editor_move_mark_last (self, mark);
 }
 
