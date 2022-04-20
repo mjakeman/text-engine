@@ -286,6 +286,55 @@ test_right_traversal_across_paragraph (MoveFixture   *fixture,
     g_assert_cmpint (fixture->doc->cursor->index, ==, amount - 1);
 }
 
+static void
+test_left_traversal_across_several_paragraphs (MoveFixture   *fixture,
+                                               gconstpointer  user_data)
+{
+    // move to start of p3 (run4)
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 85);
+    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run4);
+
+    // move left by 62 characters (to run1)
+    text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, 62);
+    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
+
+    // check index is 23 in p1
+    g_assert_cmpint (fixture->doc->cursor->index, ==, 23);
+}
+
+static void
+test_right_traversal_across_several_paragraphs (MoveFixture   *fixture,
+                                                gconstpointer  user_data)
+{
+    // move to p3, index 2 (run4)
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 87);
+    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run4);
+
+    // check index is 2 in p3
+    g_assert_cmpint (fixture->doc->cursor->index, ==, 2);
+}
+
+static void
+test_balanced_traversal (MoveFixture   *fixture,
+                         gconstpointer  user_data)
+{
+    int amount;
+    int old_index;
+    TextParagraph *old_paragraph;
+
+    amount = (int)user_data;
+
+    old_index = fixture->doc->cursor->index;
+    old_paragraph = fixture->doc->cursor->paragraph;
+
+    // ensure that equal left and right movements return to the same position
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, amount);
+    text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, amount);
+
+    g_assert_true (old_index == fixture->doc->cursor->index);
+    g_assert_true (old_paragraph == fixture->doc->cursor->paragraph);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -328,6 +377,38 @@ main (int argc, char *argv[])
     g_test_add ("/text-engine/editor/move/test-right-traversal-across-paragraph-one", MoveFixture, (void*)1,
                 move_fixture_set_up_paragraphs, test_right_traversal_across_paragraph,
                 move_fixture_tear_down);
+    g_test_add ("/text-engine/editor/move/test-left-traversal-across-paragraph-five", MoveFixture, (void*)5,
+                move_fixture_set_up_paragraphs, test_left_traversal_across_paragraph,
+                move_fixture_tear_down);
+    g_test_add ("/text-engine/editor/move/test-right-traversal-across-paragraph-five", MoveFixture, (void*)5,
+                move_fixture_set_up_paragraphs, test_right_traversal_across_paragraph,
+                move_fixture_tear_down);
+
+    // Multi-paragraph boundary tests
+    g_test_add ("/text-engine/editor/move/test-left-traversal-across-several-paragraphs", MoveFixture, NULL,
+                move_fixture_set_up_paragraphs, test_left_traversal_across_several_paragraphs,
+                move_fixture_tear_down);
+    g_test_add ("/text-engine/editor/move/test-right-traversal-across-several-paragraphs", MoveFixture, NULL,
+                move_fixture_set_up_paragraphs, test_right_traversal_across_several_paragraphs,
+                move_fixture_tear_down);
+
+    // Balance tests
+    g_test_add ("/text-engine/editor/move/test-balanced-traversal-one", MoveFixture, (void*)1,
+                move_fixture_set_up_paragraphs, test_balanced_traversal,
+                move_fixture_tear_down);
+    g_test_add ("/text-engine/editor/move/test-balanced-traversal-five", MoveFixture, (void*)5,
+                move_fixture_set_up_paragraphs, test_balanced_traversal,
+                move_fixture_tear_down);
+    g_test_add ("/text-engine/editor/move/test-balanced-traversal-ten", MoveFixture, (void*)10,
+                move_fixture_set_up_paragraphs, test_balanced_traversal,
+                move_fixture_tear_down);
+    g_test_add ("/text-engine/editor/move/test-balanced-traversal-fifty", MoveFixture, (void*)50,
+                move_fixture_set_up_paragraphs, test_balanced_traversal,
+                move_fixture_tear_down);
+    g_test_add ("/text-engine/editor/move/test-balanced-traversal-hundred", MoveFixture, (void*)100,
+                move_fixture_set_up_paragraphs, test_balanced_traversal,
+                move_fixture_tear_down);
+
 
     return g_test_run ();
 }
