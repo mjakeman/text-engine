@@ -119,11 +119,7 @@ go_up (TextItem *item,
 
     g_return_val_if_fail (TEXT_IS_ITEM (item), NULL);
 
-    printf ("item: %s\n", g_type_name_from_instance ((GTypeInstance *) item));
-
     parent = text_node_get_parent (TEXT_NODE (item));
-
-    printf ("parent: %s\n", g_type_name_from_instance ((GTypeInstance *) parent));
 
     if (parent && TEXT_IS_ITEM (parent))
     {
@@ -131,18 +127,10 @@ go_up (TextItem *item,
             ? text_node_get_next (parent)
             : text_node_get_previous (parent);
 
-        printf ("sibling: %s\n", g_type_name_from_instance ((GTypeInstance *) sibling));
-
         if (sibling && TEXT_IS_ITEM (sibling))
-        {
-            printf("sibling\n");
             return TEXT_ITEM (sibling);
-        }
         else
-        {
-            printf("recurse\n");
             return go_up (TEXT_ITEM (parent), forwards);
-        }
     }
 
     return NULL;
@@ -505,6 +493,7 @@ _delete_run (TextEditor *self,
              TextRun    *run)
 {
     TextNode *parent;
+    TextNode *this;
 
     parent = text_node_get_parent (TEXT_NODE (run));
 
@@ -521,8 +510,8 @@ _delete_run (TextEditor *self,
     }
 
     // Delete run
-    parent = TEXT_NODE (run);
-    text_node_delete (&parent);
+    this = TEXT_NODE (run);
+    text_node_delete (&this);
 
     return;
 }
@@ -544,59 +533,194 @@ _erase_text (TextRun *run,
     g_string_free (modified, TRUE);
 }
 
+/**
+ * _delete_within_paragraph:
+ *
+ * @paragraph: Paragraph the deletion will be performed on
+ * @start_index: Starting index of the deletion. It is the caller's
+ * responsibility to ensure this is in-range.
+ * @deletion_length: The number of characters to be erased.
+ *
+ * Returns: `TRUE` if the paragraph was deleted
+ *
+ * Since: 0.2
+ */
+static gboolean
+_delete_within_paragraph (TextParagraph *paragraph,
+                          int            start_index,
+                          int            deletion_length)
+{
+    TextRun *start;
+    TextRun *end;
+    int paragraph_length;
+    int end_index;
+    int start_run_offset;
+    gboolean is_only;
+
+    if (deletion_length == 0)
+        return FALSE;
+
+    paragraph_length = text_paragraph_get_length (paragraph);
+    end_index = start_index + deletion_length;
+
+    is_only = text_node_get_num_children (TEXT_NODE (paragraph)) == 1;
+
+    // Check run immediately after the start_index
+    // (as start_index may be the final index of a run)
+    start = text_paragraph_get_run_at_index (paragraph, start_index + 1, &start_run_offset);
+    end = text_paragraph_get_run_at_index (paragraph, end_index, NULL);
+
+    g_assert (0 <= start_index && start_index <= paragraph_length);
+    g_assert (0 <= end_index && end_index <= paragraph_length);
+    g_assert (start_index <= end_index);
+
+    // Case 1: The whole paragraph is to be deleted
+    if (start_index == 0 && end_index == paragraph_length + 1)
+    {
+        TextNode *node;
+
+        node = TEXT_NODE (paragraph);
+        text_node_delete (&node);
+        return TRUE;
+    }
+
+    // Case 2: The paragraph only contains one run
+    if (is_only)
+    {
+        // The paragraph should not be deleted (handled
+        // by above condition) so erase contents
+        _erase_text (start, start_index, deletion_length);
+        return FALSE;
+    }
+
+    // Case 3: The paragraph contains multiple runs
+    {
+        int run_length;
+        TextRun *iter;
+        int cur_deleted;
+        int offset_within_run;
+
+        run_length = text_run_get_length (start);
+        offset_within_run = start_index - start_run_offset;
+        cur_deleted = 0;
+
+        iter = start;
+
+        // If only part of the first run should be erased, handle it here.
+        if (offset_within_run != 0 || deletion_length != run_length)
+        {
+            int to_delete;
+            to_delete = MIN (deletion_length, run_length - offset_within_run);
+
+            cur_deleted += to_delete;
+            iter = walk_until_next_run (TEXT_ITEM (start));
+
+            // Delete part of run
+            _erase_text (start, offset_within_run, to_delete);
+        }
+
+        // Iterate over the remaining runs
+        while (cur_deleted < deletion_length)
+        {
+            g_assert (iter != NULL);
+
+            run_length = text_run_get_length (iter);
+
+            // Check if the run is entirely contained within the deletion
+            if (cur_deleted + run_length <= deletion_length)
+            {
+                TextRun *next;
+                TextNode *current;
+
+                current = TEXT_NODE (iter);
+
+                next = walk_until_next_run (TEXT_ITEM (iter));
+                text_node_delete (&current);
+
+                cur_deleted += run_length;
+                iter = next;
+
+                continue;
+            }
+
+            // Handle last element
+            _erase_text (iter, 0, deletion_length - cur_deleted);
+            break;
+        }
+    }
+
+    return FALSE;
+}
+
 void
 text_editor_delete_at_mark (TextEditor *self,
                             TextMark   *start,
                             int         length)
 {
-    // TODO: Rework to use an Iter instead of a Mark
-    // TODO: Update all marks associated with a document
-
+    TextParagraph *paragraph;
     TextMark *cursor;
-    TextRun *run;
-    TextRun *iter;
-    int run_length;
-    int cur_deleted;
-    int run_start_index;
-    int run_offset;
+
+    int num_indices;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
     g_return_if_fail (TEXT_IS_PARAGRAPH (start->paragraph));
     g_return_if_fail (start != NULL);
 
+    paragraph = start->paragraph;
+    cursor = self->document->cursor;
+
     if (length < 0)
     {
+        // TODO: Handle case where cannot move the full
+        // '-length' because start of document is reached
         text_editor_move_mark_left (self, self->document->cursor, -length);
         text_editor_delete_at_mark (self, start, -length);
         return;
     }
 
-    run = text_paragraph_get_run_at_index (start->paragraph, start->index, &run_start_index);
-    run_offset = start->index - run_start_index;
+    // Account for final index at the end of a paragraph
+    num_indices = text_paragraph_get_length (start->paragraph) + 1;
 
-    run_length = text_run_get_length (run);
-    cursor = self->document->cursor;
-
-    // Case 1: Deleting a single run
-    if (run_offset == 0 &&
-        length == run_length)
+    // Case 1: Deletion affects a single paragraph
+    // Any portion of a paragraph up to the entire thing
+    if (start->index + length < num_indices)
     {
-        // TODO: Broken!
-        cursor->index = run_start_index;
-        _delete_run (self, run);
+        int new_index;
+        TextParagraph *new_para;
+        TextParagraph *prev;
+
+        prev = walk_until_previous_paragraph (TEXT_ITEM (start->paragraph));
+        new_para = start->paragraph;
+        new_index = start->index;
+
+        // True if paragraph was deleted
+        if (_delete_within_paragraph (start->paragraph, start->index, length))
+        {
+            if (prev)
+            {
+                new_para = prev;
+                new_index = text_paragraph_get_length (prev);
+            }
+            else
+            {
+                _ensure_paragraph (self);
+                new_para = walk_until_next_paragraph (TEXT_ITEM (self->document->frame));
+                new_index = 0;
+            }
+        }
+
+        // TODO: Adjust marks according to gravity
+        cursor->index = new_index;
+        cursor->paragraph = new_para;
         return;
     }
 
-    // Case 2: Deletion is contained within current run
-    if (start->index + length <= text_run_get_length (run))
-    {
-        _erase_text (run, start->index, length);
-        return;
-    }
+    g_critical ("Not yet implemented");
+    return;
 
-    // Case 3: Deletion spans multiple runs
-    cur_deleted = 0;
+    // Case 2: Deletion affects multiple paragraphs
+    /*cur_deleted = 0;
     iter = run;
     gboolean first = TRUE;
 
@@ -633,7 +757,7 @@ text_editor_delete_at_mark (TextEditor *self,
         _erase_text (iter, 0, length - cur_deleted);
 
         return;
-    }
+    }*/
 }
 
 int
