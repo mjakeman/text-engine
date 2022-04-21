@@ -262,6 +262,8 @@ text_display_class_init (TextDisplayClass *klass)
     widget_class->snapshot = text_display_snapshot;
     widget_class->get_request_mode = text_display_get_request_mode;
     widget_class->measure = text_display_measure;
+
+    gtk_widget_class_set_css_name (widget_class, "textdisplay");
 }
 
 void
