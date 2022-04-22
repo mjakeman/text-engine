@@ -388,6 +388,89 @@ test_nothing (DeleteFixture *fixture,
     g_assert_cmpstr (text, ==, RUN1);
 }
 
+static void
+test_inverse (DeleteFixture *fixture,
+              gconstpointer  user_data)
+{
+    gchar *text;
+    int length;
+
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 8);
+    text_editor_delete (fixture->editor, TEXT_EDITOR_CURSOR, -5);
+
+    // before:
+    //     abcdefghij1234567890!@#$%^&*()
+    // after:
+    //     abcij1234567890!@#$%^&*()
+
+    // check paragraphs have been merged
+    length = text_paragraph_get_length (fixture->para1);
+    g_assert_cmpint (length, ==, 25);
+
+    g_object_get (fixture->run1, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, "abcij");
+}
+
+static void
+test_inverse_bounds (DeleteFixture *fixture,
+                     gconstpointer  user_data)
+{
+    gchar *text;
+    int length;
+
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 3);
+    text_editor_delete (fixture->editor, TEXT_EDITOR_CURSOR, -5);
+
+    // before:
+    //     abcdefghij1234567890!@#$%^&*()
+    // after:
+    //     defghij1234567890!@#$%^&*()
+
+    // check paragraphs have been merged
+    length = text_paragraph_get_length (fixture->para1);
+    g_assert_cmpint (length, ==, 27);
+
+    g_object_get (fixture->run1, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, "defghij");
+}
+
+static void
+test_backspace (DeleteFixture *fixture,
+                gconstpointer  user_data)
+{
+    gchar *text;
+    int length;
+
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 31);
+    text_editor_delete (fixture->editor, TEXT_EDITOR_CURSOR, -1);
+
+    // before:
+    //     abcdefghij1234567890!@#$%^&*()
+    //     zxcvbnm,./
+    //     0987654321
+    // after:
+    //     abcdefghij1234567890!@#$%^&*()zxcvbnm,./
+    //     0987654321
+
+    // check paragraphs have been merged
+    length = text_paragraph_get_length (fixture->para1);
+    g_assert_cmpint (length, ==, 40);
+
+    // check text is unchanged
+    g_object_get (fixture->run1, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN1);
+
+    g_object_get (fixture->run2, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN2);
+
+    g_object_get (fixture->run3, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN3);
+
+    g_object_get (fixture->run4, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN4);
+
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -437,11 +520,20 @@ main (int argc, char *argv[])
                 delete_fixture_set_up, test_paragraph_boundary_to_next_boundary,
                 delete_fixture_tear_down);
 
-    // Test delete vs backspace
-    // Test inverse
     // Test nothing
     g_test_add ("/text-engine/editor/delete/test-nothing", DeleteFixture, NULL,
                 delete_fixture_set_up, test_nothing,
+                delete_fixture_tear_down);
+
+    // Test inverse
+    g_test_add ("/text-engine/editor/delete/test-inverse", DeleteFixture, NULL,
+                delete_fixture_set_up, test_inverse,
+                delete_fixture_tear_down);
+    g_test_add ("/text-engine/editor/delete/test-inverse-bounds", DeleteFixture, NULL,
+                delete_fixture_set_up, test_inverse_bounds,
+                delete_fixture_tear_down);
+    g_test_add ("/text-engine/editor/delete/test-backspace", DeleteFixture, NULL,
+                delete_fixture_set_up, test_backspace,
                 delete_fixture_tear_down);
 
     return g_test_run ();
