@@ -448,6 +448,55 @@ test_equal_marks_nothing (ReplaceFixture *fixture,
     g_assert_cmpint (length, ==, 30);
 }
 
+static void
+test_reverse (ReplaceFixture *fixture,
+              gconstpointer   user_data)
+{
+    // NOTE: Keep same as `test_across_paragraphs_single` but
+    // with marks reversed (i.e. SELECTION before CURSOR)
+
+    gchar *text;
+    int length;
+
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 28);
+
+    // TODO: Don't call this here
+    fixture->doc->selection = text_mark_copy (fixture->doc->cursor);
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_SELECTION, 5);
+    text_editor_replace (fixture->editor,
+                         TEXT_EDITOR_SELECTION,
+                         TEXT_EDITOR_CURSOR,
+                         "TEXT ENGINE");
+
+    // before:
+    //     abcdefghij1234567890!@#$%^&*()
+    //     zxcvbnm,./
+    //     0987654321
+    // after:
+    //     abcdefghij1234567890!@#$%^&*TEXT ENGINEcvbnm,./
+    //     0987654321
+
+    // check paragraph contents
+    text = text_paragraph_get_text (fixture->para1);
+    g_assert_cmpstr (text, ==, "abcdefghij1234567890!@#$%^&*TEXT ENGINEcvbnm,./");
+    g_free (text);
+
+    text = text_paragraph_get_text (fixture->para3);
+    g_assert_cmpstr (text, ==, "0987654321");
+    g_free (text);
+
+    // check increased length
+    length = text_paragraph_get_length (fixture->para1);
+    g_assert_cmpint (length, ==, 47);
+
+    length = text_paragraph_get_length (fixture->para3);
+    g_assert_cmpint (length, ==, 10);
+
+    // ensure insertion is part of run3
+    g_object_get (fixture->run3, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, "!@#$%^&*TEXT ENGINE");
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -482,6 +531,9 @@ main (int argc, char *argv[])
                 replace_fixture_tear_down);
     g_test_add ("/text-engine/editor/replace/test-equal-marks-nothing", ReplaceFixture, NULL,
                 replace_fixture_set_up, test_equal_marks_nothing,
+                replace_fixture_tear_down);
+    g_test_add ("/text-engine/editor/replace/test-reverse", ReplaceFixture, NULL,
+                replace_fixture_set_up, test_reverse,
                 replace_fixture_tear_down);
 
     // TODO: Reverse
