@@ -339,6 +339,7 @@ _try_move_mark_left (TextEditor *self,
     g_return_val_if_fail (TEXT_IS_EDITOR (self), -1);
     g_return_val_if_fail (TEXT_IS_DOCUMENT (self->document), -1);
     g_return_val_if_fail (amount >= 0, -1);
+    g_return_val_if_fail (mark != NULL, -1);
 
     if (amount == 0)
         return 0;
@@ -435,6 +436,7 @@ _try_move_mark_right (TextEditor *self,
     g_return_val_if_fail (TEXT_IS_EDITOR (self), -1);
     g_return_val_if_fail (TEXT_IS_DOCUMENT (self->document), -1);
     g_return_val_if_fail (amount >= 0, -1);
+    g_return_val_if_fail (mark != NULL, -1);
 
     if (amount == 0)
         return 0;
