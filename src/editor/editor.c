@@ -531,6 +531,36 @@ _erase_text (TextRun *run,
     g_string_free (modified, TRUE);
 }
 
+static void
+_join_paragraphs (TextParagraph *start,
+                  TextParagraph **end)
+{
+    TextNode *iter;
+
+    // Check start and end are siblings
+    // TODO: Support more complex joining?
+    g_return_if_fail (text_node_get_next (TEXT_NODE (start)) == TEXT_NODE (*end));
+
+    iter = text_node_get_first_child (TEXT_NODE (*end));
+
+    while (iter != NULL)
+    {
+        TextNode *swap;
+
+        swap = iter;
+        g_assert (TEXT_IS_RUN (swap));
+
+        iter = text_node_get_next (iter);
+
+        // Perform swap
+        text_node_unparent (TEXT_NODE (swap));
+        text_node_append_child (TEXT_NODE (start), swap);
+    }
+
+    text_node_delete (TEXT_NODE (*end));
+    *end = NULL;
+}
+
 /**
  * _delete_within_paragraph:
  *
@@ -708,48 +738,63 @@ text_editor_delete_at_mark (TextEditor *self,
         return;
     }
 
-    g_critical ("Not yet implemented");
-    return;
-
     // Case 2: Deletion affects multiple paragraphs
-    /*cur_deleted = 0;
-    iter = run;
-    gboolean first = TRUE;
-
-    while (cur_deleted < length)
     {
-        int delta_length;
+        GSList *dirty;
 
-        g_assert (iter != NULL);
+        TextParagraph *iter;
+        int cur_deleted;
+        int paragraph_length;
+        int to_delete;
 
-        delta_length = text_run_get_length (iter);
+        iter = paragraph;
+        cur_deleted = 0;
+        dirty = NULL;
 
-        // Handle first element
-        if (first)
+        paragraph_length = text_paragraph_get_length (iter);
+
+        // Handle first paragraph
+        // Erase part or all of the first paragraph but do not delete it
+        to_delete = paragraph_length - start->index;
+        _delete_within_paragraph (iter, start->index, to_delete);
+        cur_deleted += to_delete;
+
+        // As the deletion affects multiple paragraphs, we also
+        // account for the paragraph boundary.
+        cur_deleted += 1;
+        iter = walk_until_next_paragraph (TEXT_ITEM (iter));
+
+        // Loop over all paragraphs between start and end
+        while (cur_deleted < length)
         {
-            _erase_text (iter, start->index, delta_length - start->index);
-            iter = walk_until_next_run (TEXT_ITEM (iter));
-            first = FALSE;
-            continue;
+            num_indices = text_paragraph_get_length (iter) + 1;
+
+            // Entire paragraph is contained within deletion
+            if (cur_deleted + num_indices <= length)
+            {
+                // Mark paragraph for deletion
+                dirty = g_slist_append (dirty, iter);
+                iter = walk_until_next_paragraph (TEXT_ITEM (iter));
+                cur_deleted += num_indices;
+                continue;
+            }
+
+            // Delete a portion of the end paragraph
+            _delete_within_paragraph (iter, 0, length - cur_deleted);
+            break;
         }
 
-        // Check if the run is entirely contained within the deletion
-        if (cur_deleted + delta_length < length)
-        {
-            TextRun *next;
+        // TODO: Update marks according to gravity
 
-            next = walk_until_next_run (TEXT_ITEM (iter));
-            _delete_run (self, iter);
-            cur_deleted += delta_length;
-            iter = next;
-            continue;
-        }
+        // Perform lazy deletion
+        g_slist_free_full (dirty, (GDestroyNotify)text_node_delete);
 
-        // Handle last element
-        _erase_text (iter, 0, length - cur_deleted);
+        // Join start and end paragraphs
+        if (iter != NULL)
+            _join_paragraphs (start->paragraph, &iter);
+    }
 
-        return;
-    }*/
+    return;
 }
 
 int
