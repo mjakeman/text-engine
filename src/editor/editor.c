@@ -894,7 +894,7 @@ _length_between_marks (TextMark *start,
         return end->index - start->index;
 
     iter = start->paragraph;
-    length = text_paragraph_get_length (iter) - start->index;
+    length = text_paragraph_get_length (iter) + 1 - start->index;
 
     while ((iter = walk_until_next_paragraph (TEXT_ITEM (iter))) != NULL)
     {
@@ -904,7 +904,7 @@ _length_between_marks (TextMark *start,
             break;
         }
 
-        length += text_paragraph_get_length (iter);
+        length += text_paragraph_get_length (iter) + 1;
     }
 
     return length;
@@ -924,7 +924,6 @@ text_editor_replace_at_mark (TextEditor *self,
     g_return_if_fail (TEXT_IS_PARAGRAPH (end->paragraph));
 
     length = _length_between_marks (start, end);
-    g_print ("length %d\n", length);
     text_editor_delete_at_mark (self, start, length);
     text_editor_insert_at_mark (self, start, text);
 }
