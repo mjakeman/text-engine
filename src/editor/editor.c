@@ -493,7 +493,6 @@ _delete_run (TextEditor *self,
              TextRun    *run)
 {
     TextNode *parent;
-    TextNode *this;
 
     parent = text_node_get_parent (TEXT_NODE (run));
 
@@ -501,7 +500,7 @@ _delete_run (TextEditor *self,
         text_node_get_num_children (parent) == 1)
     {
         // Delete paragraph if we are the last run
-        text_node_delete (&parent);
+        text_node_clear (&parent);
 
         // Ensure there is a paragraph remaining
         _ensure_paragraph (self);
@@ -510,8 +509,7 @@ _delete_run (TextEditor *self,
     }
 
     // Delete run
-    this = TEXT_NODE (run);
-    text_node_delete (&this);
+    text_node_delete (TEXT_NODE (run));
 
     return;
 }
@@ -577,10 +575,7 @@ _delete_within_paragraph (TextParagraph *paragraph,
     // Case 1: The whole paragraph is to be deleted
     if (start_index == 0 && end_index == paragraph_length + 1)
     {
-        TextNode *node;
-
-        node = TEXT_NODE (paragraph);
-        text_node_delete (&node);
+        text_node_delete (TEXT_NODE (paragraph));
         return TRUE;
     }
 
@@ -630,12 +625,9 @@ _delete_within_paragraph (TextParagraph *paragraph,
             if (cur_deleted + run_length <= deletion_length)
             {
                 TextRun *next;
-                TextNode *current;
-
-                current = TEXT_NODE (iter);
 
                 next = walk_until_next_run (TEXT_ITEM (iter));
-                text_node_delete (&current);
+                text_node_delete (TEXT_NODE (iter));
 
                 cur_deleted += run_length;
                 iter = next;

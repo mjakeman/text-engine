@@ -104,7 +104,7 @@ text_display_set_property (GObject      *object,
     switch (prop_id)
     {
     case PROP_DOCUMENT:
-        text_node_delete (&self->layout_tree);
+        text_node_clear (&self->layout_tree);
         self->document = g_value_get_object (value);
 
         if (self->document)
@@ -181,7 +181,7 @@ text_display_snapshot (GtkWidget   *widget,
         return;
 
     // TODO: Don't recreate this each time - do in size allocate instead?
-    text_node_delete (&self->layout_tree);
+    text_node_clear (&self->layout_tree);
     self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                        gtk_widget_get_pango_context (GTK_WIDGET (self)),
                                                        self->document->cursor,
@@ -216,7 +216,7 @@ text_display_measure (GtkWidget      *widget,
         TextDisplay *self = TEXT_DISPLAY (widget);
         PangoContext *context = gtk_widget_get_pango_context (widget);
 
-        text_node_delete (&self->layout_tree);
+        text_node_clear (&self->layout_tree);
         self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                            context,
                                                            self->document->cursor,

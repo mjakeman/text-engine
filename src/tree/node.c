@@ -338,24 +338,24 @@ text_node_insert_child_after (TextNode *self,
     text_node_insert_child (self, child, index);
 }
 
-void
-text_node_delete_child (TextNode *self,
-                        TextNode **child)
+TextNode *
+text_node_unparent_child (TextNode *self,
+                          TextNode *child)
 {
     TextNode *iter;
     TextNodePrivate *iter_priv;
     TextNodePrivate *other_priv;
     TextNodePrivate *parent_priv;
 
-    g_return_if_fail (child != NULL);
-    g_return_if_fail (TEXT_IS_NODE (*child));
-    g_return_if_fail (TEXT_IS_NODE (self));
+    g_return_val_if_fail (child != NULL, NULL);
+    g_return_val_if_fail (TEXT_IS_NODE (child), NULL);
+    g_return_val_if_fail (TEXT_IS_NODE (self), NULL);
 
     for (iter = text_node_get_first_child (self);
          iter != NULL;
          iter = text_node_get_next (iter))
     {
-        if (iter != *child)
+        if (iter != child)
             continue;
 
         iter_priv = text_node_get_instance_private (iter);
@@ -379,27 +379,72 @@ text_node_delete_child (TextNode *self,
 
         parent_priv->n_children--;
 
-        g_object_unref (iter);
-        break;
+        return iter;
     }
 
+    return NULL;
+}
+
+TextNode *
+text_node_unparent (TextNode *self)
+{
+    TextNode *parent;
+
+    g_return_val_if_fail (self != NULL, NULL);
+    g_return_val_if_fail (TEXT_IS_NODE (self), NULL);
+
+    parent = text_node_get_parent (self);
+
+    if (parent == NULL)
+        return self;
+    else
+        return text_node_unparent_child (parent, self);
+}
+
+void
+text_node_delete_child (TextNode *self,
+                        TextNode *child)
+{
+    g_return_if_fail (self != NULL);
+    g_return_if_fail (child != NULL);
+    g_return_if_fail (TEXT_IS_NODE (self));
+    g_return_if_fail (TEXT_IS_NODE (child));
+
+    if (text_node_unparent_child (self, child))
+        g_object_unref (child);
+}
+
+void
+text_node_delete (TextNode *self)
+{
+    g_return_if_fail (self != NULL);
+    g_return_if_fail (TEXT_IS_NODE (self));
+
+    if (text_node_unparent (self))
+        g_object_unref (self);
+}
+
+void
+text_node_clear_child (TextNode  *self,
+                       TextNode **child)
+{
+    g_return_if_fail (self != NULL);
+    g_return_if_fail (child != NULL);
+    g_return_if_fail (TEXT_IS_NODE (self));
+    g_return_if_fail (TEXT_IS_NODE (*child));
+
+    text_node_delete_child (self, *child);
     *child = NULL;
 }
 
 void
-text_node_delete (TextNode **self)
+text_node_clear (TextNode **self)
 {
-    TextNode *parent;
-
     g_return_if_fail (self != NULL);
     g_return_if_fail (TEXT_IS_NODE (*self));
 
-    parent = text_node_get_parent (*self);
-
-    if (parent == NULL)
-        g_clear_object (self);
-    else
-        text_node_delete_child (parent, self);
+    text_node_delete (*self);
+    *self = NULL;
 }
 
 static void
