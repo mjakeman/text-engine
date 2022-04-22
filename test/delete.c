@@ -33,22 +33,25 @@ typedef struct {
     TextRun *run2;
     TextRun *run3;
     TextRun *run4;
+    TextRun *run5;
     TextParagraph *para1;
     TextParagraph *para2;
+    TextParagraph *para3;
 } DeleteFixture;
 
 #define RUN1 "abcdefghij"
 #define RUN2 "1234567890"
 #define RUN3 "!@#$%^&*()"
 #define RUN4 "zxcvbnm,./"
+#define RUN5 "0987654321"
 
 static void
 delete_fixture_set_up (DeleteFixture *fixture,
                        gconstpointer  user_data)
 {
     TextFrame *frame;
-    TextParagraph *para1, *para2;
-    TextRun *run1, *run2, *run3, *run4;
+    TextParagraph *para1, *para2, *para3;
+    TextRun *run1, *run2, *run3, *run4, *run5;
 
     frame = text_frame_new ();
 
@@ -66,6 +69,11 @@ delete_fixture_set_up (DeleteFixture *fixture,
     text_paragraph_append_run (para2, run4);
     text_frame_append_block (frame, TEXT_BLOCK (para2));
 
+    para3 = text_paragraph_new ();
+    run5 = text_run_new (RUN5);
+    text_paragraph_append_run (para3, run5);
+    text_frame_append_block (frame, TEXT_BLOCK (para3));
+
     fixture->doc = text_document_new ();
     fixture->doc->frame = frame;
 
@@ -77,8 +85,10 @@ delete_fixture_set_up (DeleteFixture *fixture,
     fixture->run2 = run2;
     fixture->run3 = run3;
     fixture->run4 = run4;
+    fixture->run5 = run5;
     fixture->para1 = para1;
     fixture->para2 = para2;
+    fixture->para3 = para3;
 }
 
 static void
@@ -218,6 +228,154 @@ test_run_boundary (DeleteFixture *fixture,
 }
 
 static void
+test_across_paragraphs_single (DeleteFixture *fixture,
+                               gconstpointer  user_data)
+{
+    gchar *text;
+    int length;
+
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 25);
+    text_editor_delete (fixture->editor, TEXT_EDITOR_CURSOR, 11);
+
+    // before:
+    //     abcdefghij1234567890!@#$%^&*()
+    //     zxcvbnm,./
+    //     0987654321
+    // after:
+    //     abcdefghij1234567890!@#$%nm,./
+    //     0987654321
+
+    // check paragraphs have been merged
+    length = text_paragraph_get_length (fixture->para1);
+    g_assert_cmpint (length, ==, 30);
+
+    // check text is unchanged
+    g_object_get (fixture->run1, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN1);
+
+    g_object_get (fixture->run2, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN2);
+
+    // check modified correctly
+    g_object_get (fixture->run3, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, "!@#$%");
+
+    g_object_get (fixture->run4, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, "nm,./");
+}
+
+static void
+test_across_paragraphs_multiple (DeleteFixture *fixture,
+                                 gconstpointer  user_data)
+{
+    gchar *text;
+    int length;
+
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 25);
+    text_editor_delete (fixture->editor, TEXT_EDITOR_CURSOR, 22);
+
+    // before:
+    //     abcdefghij1234567890!@#$%^&*()
+    //     zxcvbnm,./
+    //     0987654321
+    // after:
+    //     abcdefghij1234567890!@#$%54321
+
+    // check paragraphs have been merged
+    length = text_paragraph_get_length (fixture->para1);
+    g_assert_cmpint (length, ==, 30);
+
+    // check text is unchanged
+    g_object_get (fixture->run1, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN1);
+
+    g_object_get (fixture->run2, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN2);
+
+    // check modified correctly
+    g_object_get (fixture->run3, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, "!@#$%");
+
+    g_object_get (fixture->run5, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, "54321");
+}
+
+static void
+test_paragraph_boundary_to_next_index (DeleteFixture *fixture,
+                                       gconstpointer  user_data)
+{
+    gchar *text;
+    int length;
+
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 30);
+    text_editor_delete (fixture->editor, TEXT_EDITOR_CURSOR, 1);
+
+    // before:
+    //     abcdefghij1234567890!@#$%^&*()
+    //     zxcvbnm,./
+    //     0987654321
+    // after:
+    //     abcdefghij1234567890!@#$%^&*()zxcvbnm,./
+    //     0987654321
+
+    // check paragraphs have been merged
+    length = text_paragraph_get_length (fixture->para1);
+    g_assert_cmpint (length, ==, 40);
+
+    // check text is unchanged
+    g_object_get (fixture->run1, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN1);
+
+    g_object_get (fixture->run2, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN2);
+
+    g_object_get (fixture->run3, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN3);
+
+    g_object_get (fixture->run4, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN4);
+}
+
+static void
+test_paragraph_boundary_to_next_boundary (DeleteFixture *fixture,
+                                          gconstpointer  user_data)
+{
+    gchar *text;
+    int length;
+
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 30);
+    text_editor_delete (fixture->editor, TEXT_EDITOR_CURSOR, 11);
+
+    // before:
+    //     abcdefghij1234567890!@#$%^&*()
+    //     zxcvbnm,./
+    //     0987654321
+    // after:
+    //     abcdefghij1234567890!@#$%^&*()
+    //     0987654321
+
+    // check paragraphs remain the same
+    length = text_paragraph_get_length (fixture->para1);
+    g_assert_cmpint (length, ==, 30);
+
+    length = text_paragraph_get_length (fixture->para3);
+    g_assert_cmpint (length, ==, 10);
+
+    // check text is unchanged
+    g_object_get (fixture->run1, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN1);
+
+    g_object_get (fixture->run2, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN2);
+
+    g_object_get (fixture->run3, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN3);
+
+    g_object_get (fixture->run5, "text", &text, NULL);
+    g_assert_cmpstr (text, ==, RUN5);
+}
+
+static void
 test_nothing (DeleteFixture *fixture,
               gconstpointer  user_data)
 {
@@ -227,7 +385,7 @@ test_nothing (DeleteFixture *fixture,
     text_editor_delete (fixture->editor, TEXT_EDITOR_CURSOR, 0);
 
     g_object_get (fixture->run1, "text", &text, NULL);
-    g_assert_cmpstr (text, ==, "abcdefghij");
+    g_assert_cmpstr (text, ==, RUN1);
 }
 
 int
@@ -263,9 +421,22 @@ main (int argc, char *argv[])
                 delete_fixture_set_up, test_run_boundary,
                 delete_fixture_tear_down);
 
-
     // Test across paragraphs
+    g_test_add ("/text-engine/editor/delete/test-across-paragraphs-single", DeleteFixture, NULL,
+                delete_fixture_set_up, test_across_paragraphs_single,
+                delete_fixture_tear_down);
+    g_test_add ("/text-engine/editor/delete/test-across-paragraphs-multiple", DeleteFixture, NULL,
+                delete_fixture_set_up, test_across_paragraphs_multiple,
+                delete_fixture_tear_down);
+
     // Test paragraph boundary
+    g_test_add ("/text-engine/editor/delete/test-paragraph-boundary-to-next-index", DeleteFixture, NULL,
+                delete_fixture_set_up, test_paragraph_boundary_to_next_index,
+                delete_fixture_tear_down);
+    g_test_add ("/text-engine/editor/delete/test-paragraph-boundary-to-next-boundary", DeleteFixture, NULL,
+                delete_fixture_set_up, test_paragraph_boundary_to_next_boundary,
+                delete_fixture_tear_down);
+
     // Test delete vs backspace
     // Test inverse
     // Test nothing
