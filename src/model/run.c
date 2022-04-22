@@ -91,6 +91,14 @@ text_run_set_property (GObject      *object,
     }
 }
 
+int
+text_run_get_length (TextRun *self)
+{
+    g_return_val_if_fail (TEXT_IS_RUN (self), -1);
+
+    return strlen (self->text);
+}
+
 static void
 text_run_class_init (TextRunClass *klass)
 {

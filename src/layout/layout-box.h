@@ -46,8 +46,7 @@ text_layout_box_set_item (TextLayoutBox *self,
                           TextItem      *item);
 
 TextItem *
-text_layout_box_get_item (TextLayoutBox *self,
-                          TextItem      *item);
+text_layout_box_get_item (TextLayoutBox *self);
 
 void
 text_layout_box_layout (TextLayoutBox *self,
@@ -59,5 +58,13 @@ text_layout_box_get_bbox (TextLayoutBox *self);
 
 PangoLayout *
 text_layout_box_get_pango_layout (TextLayoutBox *self);
+
+void
+text_layout_box_set_cursor (TextLayoutBox *self,
+                            int index);
+
+gboolean
+text_layout_box_get_cursor (TextLayoutBox         *self,
+                            const TextDimensions **cursor);
 
 G_END_DECLS

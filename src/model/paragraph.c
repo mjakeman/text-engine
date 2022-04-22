@@ -88,6 +88,117 @@ text_paragraph_append_run (TextParagraph *self,
     text_node_append_child (TEXT_NODE (self), TEXT_NODE (run));
 }
 
+/**
+ * text_paragraph_get_text:
+ *
+ * Returns a duplicate string containing the contents of
+ * this paragraph. The contents is valid as of the instant
+ * the method is called and will not be updated. It is the
+ * caller's responsibility to free the returned string.
+ *
+ * @self: The `TextParagraph` instance.
+ *
+ * Returns: A pointer to the text content of this paragraph
+ */
+char *
+text_paragraph_get_text (TextParagraph *self)
+{
+    TextNode *child;
+    GString *str;
+
+    g_return_val_if_fail (TEXT_IS_PARAGRAPH (self), NULL);
+
+    str = g_string_new ("");
+
+    for (child = text_node_get_first_child (TEXT_NODE (self));
+         child != NULL;
+         child = text_node_get_next (child))
+    {
+        const gchar *run_text;
+
+        g_assert (TEXT_IS_RUN (child));
+
+        g_object_get (child, "text", &run_text, NULL);
+        g_string_append (str, run_text);
+    }
+
+    return g_string_free (str, FALSE);
+}
+
+int
+text_paragraph_get_length (TextParagraph *self)
+{
+    TextNode *child;
+    int length;
+
+    g_return_val_if_fail (TEXT_IS_PARAGRAPH (self), -1);
+
+    length = 0;
+
+    for (child = text_node_get_first_child (TEXT_NODE (self));
+         child != NULL;
+         child = text_node_get_next (child))
+    {
+        g_assert (TEXT_IS_RUN (child));
+        length += text_run_get_length (TEXT_RUN (child));
+    }
+
+    return length;
+}
+
+TextRun *
+text_paragraph_get_run_at_index (TextParagraph *self,
+                                 int            index,
+                                 int           *starting_index)
+{
+    TextNode *child;
+    int length;
+
+    length = 0;
+
+    g_return_val_if_fail (TEXT_IS_PARAGRAPH (self), NULL);
+
+    if (index == 0)
+    {
+        TextNode *first;
+        first = text_node_get_first_child (TEXT_NODE (self));
+
+        if (starting_index)
+            *starting_index = 0;
+        return TEXT_RUN (first);
+    }
+
+    for (child = text_node_get_first_child (TEXT_NODE (self));
+         child != NULL;
+         child = text_node_get_next (child))
+    {
+        int delta_length;
+        g_assert (TEXT_IS_RUN (child));
+        delta_length = text_run_get_length (TEXT_RUN (child));
+
+        // Index is considered part of a run if it is immediately
+        // after the last character in the run. For example:
+        // There is a cursor position at the end of a run
+        //
+        //     `Once upon a time there was a little dog, `
+        //                                               ^
+        //                 this index is part of the run /
+        //
+        if (length < index && index <= length + delta_length)
+        {
+            if (starting_index)
+                *starting_index = length;
+            return TEXT_RUN (child);
+        }
+
+        length += delta_length;
+    }
+
+    if (starting_index)
+        *starting_index = -1;
+    return NULL;
+}
+
 static void
 text_paragraph_class_init (TextParagraphClass *klass)
 {

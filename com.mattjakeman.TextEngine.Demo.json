@@ -1,7 +1,7 @@
 {
     "app-id" : "com.mattjakeman.TextEngine.Demo",
     "runtime" : "org.gnome.Platform",
-    "runtime-version" : "master",
+    "runtime-version" : "42",
     "sdk" : "org.gnome.Sdk",
     "command" : "text-engine-demo",
     "finish-args" : [
@@ -23,18 +23,6 @@
         "*.a"
     ],
     "modules" : [
-    	{
-            "name": "blueprint-compiler",
-            "builddir": true,
-            "buildsystem": "meson",
-            "sources": [
-                {
-                    "type": "git",
-                    "url": "https://gitlab.gnome.org/jwestman/blueprint-compiler.git",
-                    "branch": "main"
-                }
-            ]
-        },
         {
             "name" : "text-engine",
             "builddir" : true,

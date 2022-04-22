@@ -20,23 +20,31 @@
 
 #include "display.h"
 
+#include "../model/mark.h"
 #include "../model/paragraph.h"
 #include "../layout/layout.h"
+#include "../model/document.h"
+#include "../editor/editor.h"
 
 struct _TextDisplay
 {
     GtkWidget parent_instance;
 
-    TextFrame *frame;
+    TextDocument *document;
+    TextEditor *editor;
     TextLayout *layout;
     TextLayoutBox *layout_tree;
+
+    GtkIMContext *context;
+
+    TextMark *cursor;
 };
 
 G_DEFINE_FINAL_TYPE (TextDisplay, text_display, GTK_TYPE_WIDGET)
 
 enum {
     PROP_0,
-    PROP_FRAME,
+    PROP_DOCUMENT,
     N_PROPS
 };
 
@@ -44,18 +52,18 @@ static GParamSpec *properties [N_PROPS];
 
 /**
  * text_display_new:
- * @frame: The #TextFrame to display or %NULL
+ * @document: The #TextDocument to display or %NULL
  *
  * Creates a new #TextDisplay widget which displays the rich text
- * document stored inside @frame.
+ * document stored inside @document.
  *
  * Returns: A new #TextDisplay widget
  */
 TextDisplay *
-text_display_new (TextFrame *frame)
+text_display_new (TextDocument *document)
 {
     return g_object_new (TEXT_TYPE_DISPLAY,
-                         "frame", frame,
+                         "document", document,
                          NULL);
 }
 
@@ -77,8 +85,8 @@ text_display_get_property (GObject    *object,
 
     switch (prop_id)
     {
-    case PROP_FRAME:
-        g_value_set_object (value, self->frame);
+    case PROP_DOCUMENT:
+        g_value_set_object (value, self->document);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -95,9 +103,18 @@ text_display_set_property (GObject      *object,
 
     switch (prop_id)
     {
-    case PROP_FRAME:
-        g_clear_object (&self->layout_tree);
-        self->frame = g_value_get_object (value);
+    case PROP_DOCUMENT:
+        text_node_clear (&self->layout_tree);
+        self->document = g_value_get_object (value);
+
+        if (self->document)
+        {
+            if (self->editor)
+                g_object_unref (self->editor);
+
+            self->editor = text_editor_new (self->document);
+            text_editor_move_first (self->editor, TEXT_EDITOR_CURSOR);
+        }
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -120,7 +137,7 @@ layout_snapshot_recursive (GtkWidget     *widget,
         g_assert (TEXT_IS_LAYOUT_BOX (node));
 
         int delta_height;
-        layout_snapshot_recursive (widget, node, snapshot, fg_color, &delta_height);
+        layout_snapshot_recursive (widget, TEXT_LAYOUT_BOX (node), snapshot, fg_color, &delta_height);
         offset += delta_height;
     }
 
@@ -137,6 +154,13 @@ layout_snapshot_recursive (GtkWidget     *widget,
         offset = bbox->height;
     }
 
+    const TextDimensions *cursor;
+    if (gtk_widget_has_focus (widget) &&
+        text_layout_box_get_cursor (layout_box, &cursor))
+    {
+        gtk_snapshot_append_color (snapshot, fg_color, &GRAPHENE_RECT_INIT (cursor->x, cursor->y, 1, cursor->height));
+    }
+
     gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->height));
 
     *delta_height = bbox->height;
@@ -150,17 +174,18 @@ text_display_snapshot (GtkWidget   *widget,
 
     TextDisplay *self = TEXT_DISPLAY (widget);
 
-    if (!self->frame)
+    if (!self->document)
         return;
 
     if (!self->layout_tree)
         return;
 
     // TODO: Don't recreate this each time - do in size allocate instead?
-    g_clear_object (&self->layout_tree);
+    text_node_clear (&self->layout_tree);
     self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                        gtk_widget_get_pango_context (GTK_WIDGET (self)),
-                                                       self->frame,
+                                                       self->document->cursor,
+                                                       self->document->frame,
                                                        gtk_widget_get_width (GTK_WIDGET (self)));
 
     GdkRGBA fg_color;
@@ -172,7 +197,7 @@ text_display_snapshot (GtkWidget   *widget,
 }
 
 static GtkSizeRequestMode
-text_display_get_request_mode (GtkWidget* widget)
+text_display_get_request_mode (GtkWidget *widget)
 {
     return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
 }
@@ -191,10 +216,11 @@ text_display_measure (GtkWidget      *widget,
         TextDisplay *self = TEXT_DISPLAY (widget);
         PangoContext *context = gtk_widget_get_pango_context (widget);
 
-        g_clear_object (&self->layout_tree);
+        text_node_clear (&self->layout_tree);
         self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                            context,
-                                                           self->frame,
+                                                           self->document->cursor,
+                                                           self->document->frame,
                                                            for_size);
 
         *minimum = *natural = text_layout_box_get_bbox (self->layout_tree)->height;
@@ -222,11 +248,11 @@ text_display_class_init (TextDisplayClass *klass)
     object_class->get_property = text_display_get_property;
     object_class->set_property = text_display_set_property;
 
-    properties [PROP_FRAME]
-        = g_param_spec_object ("frame",
-                               "Frame",
-                               "Frame",
-                               TEXT_TYPE_FRAME,
+    properties [PROP_DOCUMENT]
+        = g_param_spec_object ("document",
+                               "Document",
+                               "Document",
+                               TEXT_TYPE_DOCUMENT,
                                G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
 
     g_object_class_install_properties (object_class, N_PROPS, properties);
@@ -236,10 +262,177 @@ text_display_class_init (TextDisplayClass *klass)
     widget_class->snapshot = text_display_snapshot;
     widget_class->get_request_mode = text_display_get_request_mode;
     widget_class->measure = text_display_measure;
+
+    gtk_widget_class_set_css_name (widget_class, "textdisplay");
+}
+
+void
+_unset_selection (TextDocument *doc)
+{
+    if (doc->selection)
+        g_clear_pointer (&doc->selection, text_mark_free);
+}
+
+void
+commit (GtkIMContext *context,
+        gchar        *str,
+        TextDisplay  *self)
+{
+    g_return_if_fail (TEXT_IS_DISPLAY (self));
+    g_return_if_fail (GTK_IS_IM_CONTEXT (context));
+
+    g_assert (context == self->context);
+
+    if (!TEXT_IS_DOCUMENT (self->document))
+        return;
+
+    self->document->selection != NULL
+        ? text_editor_replace (self->editor, TEXT_EDITOR_CURSOR, TEXT_EDITOR_SELECTION, str)
+        : text_editor_insert (self->editor, TEXT_EDITOR_CURSOR, str);
+
+    _unset_selection (self->document);
+
+    // Queue redraw for now
+    // Later on, we should invalidate the model which
+    // then bubbles up and invalidates the style
+    // which then bubbles up and invalidates the layout
+    // which then causes a partial redraw - simple right?
+    gtk_widget_queue_draw (GTK_WIDGET (self));
+
+    g_print ("commit: %s\n", str);
+}
+
+gboolean
+key_pressed (GtkEventControllerKey *controller,
+             guint                  keyval,
+             guint                  keycode,
+             GdkModifierType        state,
+             TextDisplay           *self)
+{
+    TextMark *cursor;
+    TextMark *selection;
+
+    gboolean ctrl_pressed;
+    gboolean shift_pressed;
+
+    cursor = self->document->cursor;
+    selection = self->document->selection;
+
+    ctrl_pressed = state & GDK_CONTROL_MASK;
+    shift_pressed = state & GDK_SHIFT_MASK;
+
+    // Setup selection
+    if (shift_pressed && !selection)
+    {
+        g_print ("No selection!\n");
+        selection = text_mark_copy (cursor);
+        self->document->selection = selection;
+    }
+    else if (!shift_pressed && selection)
+    {
+        _unset_selection (self->document);
+        selection = NULL;
+    }
+
+    // Handle Home/End
+    if (ctrl_pressed && keyval == GDK_KEY_Home)
+    {
+        text_editor_move_first (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+        goto handled;
+    }
+
+    if (ctrl_pressed && keyval == GDK_KEY_End)
+    {
+        text_editor_move_last (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+        goto handled;
+    }
+
+    // Handle directional movemenent
+    // TODO: Can we draw cursors/selections on another layer?
+    if (keyval == GDK_KEY_Left)
+    {
+        text_editor_move_left (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
+        goto handled;
+    }
+
+    if (keyval == GDK_KEY_Right)
+    {
+        text_editor_move_right (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
+        goto handled;
+    }
+
+    // Handle deletion
+    if (keyval == GDK_KEY_Delete)
+    {
+        if (selection)
+        {
+            text_editor_replace (self->editor, TEXT_EDITOR_CURSOR, TEXT_EDITOR_SELECTION, "");
+            _unset_selection (self->document);
+        }
+        else
+            text_editor_delete (self->editor, TEXT_EDITOR_CURSOR, 1);
+
+        goto handled;
+    }
+
+    if (keyval == GDK_KEY_BackSpace)
+    {
+        if (selection)
+        {
+            text_editor_replace (self->editor, TEXT_EDITOR_CURSOR, TEXT_EDITOR_SELECTION, "");
+            _unset_selection (self->document);
+        }
+        else
+            text_editor_delete (self->editor, TEXT_EDITOR_CURSOR, -1);
+
+        goto handled;
+    }
+
+    if (keyval == GDK_KEY_Return)
+    {
+        text_editor_split (self->editor, TEXT_EDITOR_CURSOR);
+        goto handled;
+    }
+
+    return FALSE;
+
+handled:
+    gtk_widget_queue_draw (GTK_WIDGET (self));
+    return TRUE;
+}
+
+void
+pointer_pressed (GtkGestureClick *gesture,
+                 gint             n_press,
+                 gdouble          x,
+                 gdouble          y,
+                 TextDisplay     *self)
+{
+    gtk_widget_grab_focus (GTK_WIDGET (self));
+    gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
 static void
 text_display_init (TextDisplay *self)
 {
+    GtkEventController *controller;
+    GtkGesture *gesture;
+
     self->layout = text_layout_new ();
+
+    self->context = gtk_im_context_simple_new ();
+    gtk_im_context_set_client_widget (self->context, GTK_WIDGET (self));
+
+    g_signal_connect (self->context, "commit", G_CALLBACK (commit), self);
+
+    controller = gtk_event_controller_key_new ();
+    gtk_event_controller_key_set_im_context (GTK_EVENT_CONTROLLER_KEY (controller), self->context);
+    g_signal_connect (controller, "key-pressed", G_CALLBACK (key_pressed), self);
+    gtk_widget_add_controller (GTK_WIDGET (self), controller);
+
+    gesture = gtk_gesture_click_new ();
+    g_signal_connect (gesture, "pressed", G_CALLBACK (pointer_pressed), self);
+    gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (gesture));
+
+    gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
 }

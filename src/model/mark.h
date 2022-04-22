@@ -1,4 +1,4 @@
-/* display.h
+/* mark.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -20,17 +20,33 @@
 
 #pragma once
 
-#include <gtk/gtk.h>
-
-#include "../model/frame.h"
-#include "../model/document.h"
+#include <glib-object.h>
+#include "paragraph.h"
 
 G_BEGIN_DECLS
 
-#define TEXT_TYPE_DISPLAY (text_display_get_type())
+#define TEXT_TYPE_MARK (text_mark_get_type ())
 
-G_DECLARE_FINAL_TYPE (TextDisplay, text_display, TEXT, DISPLAY, GtkWidget)
+typedef enum
+{
+    TEXT_GRAVITY_LEFT,
+    TEXT_GRAVITY_RIGHT,
+} TextGravity;
 
-TextDisplay *text_display_new (TextDocument *document);
+typedef struct _TextMark TextMark;
+
+struct _TextMark
+{
+    TextParagraph *paragraph;
+    int index;
+    TextGravity gravity;
+};
+
+GType         text_mark_get_type (void) G_GNUC_CONST;
+TextMark     *text_mark_new      (TextParagraph *paragraph, int index, TextGravity gravity);
+TextMark     *text_mark_copy     (TextMark *self);
+void          text_mark_free     (TextMark *self);
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (TextMark, text_mark_free)
 
 G_END_DECLS

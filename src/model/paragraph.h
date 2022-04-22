@@ -32,7 +32,10 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (TextParagraph, text_paragraph, TEXT, PARAGRAPH, TextBlock)
 
-TextParagraph *text_paragraph_new        (void);
-void           text_paragraph_append_run (TextParagraph *para, TextRun *run);
+TextParagraph *text_paragraph_new              (void);
+void           text_paragraph_append_run       (TextParagraph *para, TextRun *run);
+TextRun       *text_paragraph_get_run_at_index (TextParagraph *self, int index, int *starting_index);
+int            text_paragraph_get_length       (TextParagraph *self);
+char          *text_paragraph_get_text         (TextParagraph *self);
 
 G_END_DECLS

@@ -27,7 +27,10 @@ typedef struct
 {
     TextItem *item;
     PangoLayout *layout;
+    gboolean has_cursor;
+    int cursor_index;
 
+    TextDimensions cursor;
     TextDimensions bbox;
 } TextLayoutBoxPrivate;
 
@@ -118,18 +121,8 @@ text_layout_box_layout (TextLayoutBox *self,
 
     if (priv->item && TEXT_IS_PARAGRAPH (priv->item))
     {
-        GString *str = g_string_new ("");
-        for (TextNode *run = text_node_get_first_child (TEXT_NODE (priv->item));
-             run != NULL;
-             run = text_node_get_next (run))
-        {
-            const gchar *run_text;
-            g_object_get (run, "text", &run_text, NULL);
-            g_string_append (str, run_text);
-            g_debug (" - Counting run\n");
-        }
-
-        gchar *text = g_string_free (str, FALSE);
+        gchar *text;
+        text = text_paragraph_get_text (TEXT_PARAGRAPH (priv->item));
         g_debug (" - String %s\n", text);
 
         if (!priv->layout)
@@ -140,6 +133,23 @@ text_layout_box_layout (TextLayoutBox *self,
         pango_layout_set_width (priv->layout, PANGO_SCALE * width);
         pango_layout_get_pixel_size (priv->layout, NULL, &height);
         g_debug (" - Height %d\n", height);
+
+        // TODO: THIS WILL NOT WORK FOR PARAGRAPHS WITH MORE THAN
+        // ONE RUN -> FIX BY CONSIDERING RUNS INDIVIDUALLY
+        // (might need support for inline layouts?)
+        if (priv->has_cursor)
+        {
+            PangoRectangle cursor_rect;
+            pango_layout_index_to_pos (priv->layout,
+                                       priv->cursor_index,
+                                       &cursor_rect);
+
+            // Hardcode width to 1
+            priv->cursor.x = cursor_rect.x / PANGO_SCALE;
+            priv->cursor.y = cursor_rect.y / PANGO_SCALE;
+            priv->cursor.height = cursor_rect.height / PANGO_SCALE;
+            priv->cursor.width = 1;
+        }
 
         g_free (text);
     }
@@ -179,17 +189,45 @@ text_layout_box_set_item (TextLayoutBox *self,
 }
 
 TextItem *
-text_layout_box_get_item (TextLayoutBox *self,
-                          TextItem      *item)
+text_layout_box_get_item (TextLayoutBox *self)
 {
     TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
     return priv->item;
+}
+
+void
+text_layout_box_set_cursor (TextLayoutBox *self,
+                            int index)
+{
+    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
+
+    if (index < 0) {
+        priv->has_cursor = FALSE;
+        priv->cursor_index = -1;
+        return;
+    }
+
+    priv->has_cursor = TRUE;
+    priv->cursor_index = index;
+}
+
+gboolean
+text_layout_box_get_cursor (TextLayoutBox         *self,
+                            const TextDimensions **cursor)
+
+{
+    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
+
+    *cursor = &priv->cursor;
+
+    return priv->has_cursor;
 }
 
 const TextDimensions *
 text_layout_box_get_bbox (TextLayoutBox *self)
 {
     TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
+
     return &priv->bbox;
 }
 
@@ -213,4 +251,8 @@ text_layout_box_class_init (TextLayoutBoxClass *klass)
 static void
 text_layout_box_init (TextLayoutBox *self)
 {
+    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
+
+    priv->has_cursor = FALSE;
+    priv->cursor_index = -1;
 }

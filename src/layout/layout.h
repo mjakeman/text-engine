@@ -28,6 +28,7 @@
 
 #include "../model/frame.h"
 #include "../model/paragraph.h"
+#include "../model/mark.h"
 
 G_BEGIN_DECLS
 
@@ -40,6 +41,7 @@ TextLayout *text_layout_new (void);
 TextLayoutBox *
 text_layout_build_layout_tree (TextLayout   *self,
                                PangoContext *context,
+                               TextMark     *cursor,
                                TextFrame    *frame,
                                int           width);
 

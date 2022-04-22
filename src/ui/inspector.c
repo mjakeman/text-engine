@@ -21,6 +21,7 @@
 #include "inspector.h"
 
 #include "display.h"
+#include "../model/document.h"
 #include "../model/run.h"
 
 struct _TextInspector
@@ -103,12 +104,12 @@ text_inspector_set_property (GObject      *object,
 
         if (TEXT_IS_DISPLAY (self->object))
         {
-            TextFrame *frame;
+            TextDocument *document;
 
-            g_object_get (self->object, "frame", &frame, NULL);
+            g_object_get (self->object, "document", &document, NULL);
 
-            if (TEXT_IS_FRAME (frame))
-                bind_frame (self, frame);
+            if (TEXT_IS_FRAME (document->frame))
+                bind_frame (self, document->frame);
         }
         break;
     default:

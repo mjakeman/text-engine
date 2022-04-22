@@ -1,4 +1,4 @@
-/* run.h
+/* document.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -22,15 +22,33 @@
 
 #include <glib-object.h>
 
-#include "item.h"
+#include "frame.h"
+#include "mark.h"
+
+struct _TextDocument
+{
+    GObject parent_instance;
+
+    TextFrame *frame;
+    TextMark *cursor;
+    TextMark *selection;
+    GSList *marks;
+};
 
 G_BEGIN_DECLS
 
-#define TEXT_TYPE_RUN (text_run_get_type())
+#define TEXT_TYPE_DOCUMENT (text_document_get_type())
 
-G_DECLARE_FINAL_TYPE (TextRun, text_run, TEXT, RUN, TextItem)
+G_DECLARE_FINAL_TYPE (TextDocument, text_document, TEXT, DOCUMENT, GObject)
 
-TextRun *text_run_new        (const gchar *text);
-int      text_run_get_length (TextRun *self);
+TextDocument *text_document_new         (void);
+
+TextMark     *text_document_create_mark     (TextDocument *doc, TextParagraph *paragraph, int index, TextGravity gravity);
+TextMark     *text_document_copy_mark       (TextDocument *doc, TextMark *mark);
+void          text_document_delete_mark     (TextDocument *doc, TextMark *mark);
+void          text_document_clear_mark      (TextDocument *doc, TextMark **mark);
+
+// TODO: Make private
+GSList       *text_document_get_all_marks   (TextDocument *doc);
 
 G_END_DECLS

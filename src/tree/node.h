@@ -39,11 +39,19 @@ TextNode *text_node_get_next            (TextNode *self);
 TextNode *text_node_get_previous        (TextNode *self);
 TextNode *text_node_get_first_child     (TextNode *self);
 TextNode *text_node_get_last_child      (TextNode *self);
+int       text_node_get_num_children    (TextNode *self);
 
 void      text_node_insert_child        (TextNode *self, TextNode *child, int index);
 void      text_node_prepend_child       (TextNode *self, TextNode *child);
 void      text_node_append_child        (TextNode *self, TextNode *child);
 void      text_node_insert_child_before (TextNode *self, TextNode *child, TextNode *compare);
 void      text_node_insert_child_after  (TextNode *self, TextNode *child, TextNode *compare);
+
+TextNode *text_node_unparent            (TextNode *self);
+TextNode *text_node_unparent_child      (TextNode *self, TextNode *child);
+void      text_node_delete              (TextNode *self);
+void      text_node_delete_child        (TextNode *self, TextNode *child);
+void      text_node_clear               (TextNode **self);
+void      text_node_clear_child         (TextNode *self, TextNode **child);
 
 G_END_DECLS
