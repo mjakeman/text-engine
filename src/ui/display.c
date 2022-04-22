@@ -388,6 +388,12 @@ key_pressed (GtkEventControllerKey *controller,
         goto handled;
     }
 
+    if (keyval == GDK_KEY_Return)
+    {
+        text_editor_split (self->editor, TEXT_EDITOR_CURSOR);
+        goto handled;
+    }
+
     return FALSE;
 
 handled:

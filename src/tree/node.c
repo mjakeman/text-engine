@@ -156,19 +156,22 @@ text_node_get_num_children (TextNode *self)
 }
 
 static void
-_insert_between (TextNode *node,
+_insert_between (TextNode *parent,
+                 TextNode *node,
                  TextNode *before,
                  TextNode *after)
 {
-    TextNodePrivate *node_priv, *before_priv, *after_priv;
+    TextNodePrivate *node_priv, *before_priv, *after_priv, *parent_priv;
 
     g_assert (node != NULL);
     g_assert (before != NULL);
     g_assert (after != NULL);
+    g_assert (parent != NULL);
 
     node_priv = text_node_get_instance_private (node);
     before_priv = text_node_get_instance_private (before);
     after_priv = text_node_get_instance_private (after);
+    parent_priv = text_node_get_instance_private (parent);
 
     node_priv->prev = before;
     before_priv->next = node;
@@ -176,7 +179,8 @@ _insert_between (TextNode *node,
     node_priv->next = after;
     after_priv->prev = node;
 
-    node_priv->n_children++;
+    parent_priv->n_children++;
+    node_priv->parent = parent;
 }
 
 static int
@@ -190,7 +194,7 @@ _get_index_of (TextNode *self,
 
     for (iter = text_node_get_first_child (self);
          iter != NULL;
-         iter = text_node_get_next (self))
+         iter = text_node_get_next (iter))
     {
         if (iter == child)
             return index;
@@ -238,6 +242,7 @@ text_node_insert_child (TextNode *self,
 
         after_priv->prev = child;
         child_priv->next = after;
+        child_priv->prev = NULL;
 
         priv->first_child = child;
         priv->n_children++;
@@ -256,6 +261,7 @@ text_node_insert_child (TextNode *self,
 
         before_priv->next = child;
         child_priv->prev = before;
+        child_priv->next = NULL;
 
         priv->last_child = child;
         priv->n_children++;
@@ -265,19 +271,17 @@ text_node_insert_child (TextNode *self,
         return;
     }
 
-    // Insert (After)
+    // Insert (At Index)
     cmp_index = 0;
     iter = text_node_get_first_child (self);
 
-    while (cmp_index++ < index) {
+    while (++cmp_index < index) {
         iter = text_node_get_next (iter);
         g_assert (iter != NULL);
     }
 
-    // TODO: Weak reference?
-    child_priv->parent = self;
-
-    _insert_between (child, iter, text_node_get_next (iter));
+    // Insert between index-1 and index
+    _insert_between (self, child, iter, text_node_get_next (iter));
 }
 
 void
@@ -317,7 +321,7 @@ text_node_insert_child_before (TextNode *self,
         return;
     }
 
-    text_node_insert_child (self, child, index-1);
+    text_node_insert_child (self, child, index);
 }
 
 void
@@ -335,7 +339,7 @@ text_node_insert_child_after (TextNode *self,
         return;
     }
 
-    text_node_insert_child (self, child, index);
+    text_node_insert_child (self, child, index+1);
 }
 
 TextNode *

@@ -45,6 +45,7 @@ void        text_editor_move_mark_left  (TextEditor *self, TextMark *mark, int a
 void        text_editor_insert_at_mark  (TextEditor *self, TextMark *start, gchar *str);
 void        text_editor_delete_at_mark  (TextEditor *self, TextMark *start, int length);
 void        text_editor_replace_at_mark (TextEditor *self, TextMark *start, TextMark *end, gchar *text);
+void        text_editor_split_at_mark   (TextEditor *self, TextMark *mark);
 
 void        text_editor_move_first      (TextEditor *self, TextEditorMarkType type);
 void        text_editor_move_last       (TextEditor *self, TextEditorMarkType type);
@@ -53,6 +54,7 @@ void        text_editor_move_left       (TextEditor *self, TextEditorMarkType ty
 void        text_editor_insert          (TextEditor *self, TextEditorMarkType type, gchar *str);
 void        text_editor_delete          (TextEditor *self, TextEditorMarkType type, int length);
 void        text_editor_replace         (TextEditor *self, TextEditorMarkType start_type, TextEditorMarkType end_type, gchar *text);
+void        text_editor_split           (TextEditor *self, TextEditorMarkType type);
 
 TextRun *   text_editor_get_run         (TextEditor *self, TextEditorMarkType type);
 TextRun *   text_editor_get_run_at_mark (TextEditor *self, TextMark *mark);

@@ -1010,6 +1010,99 @@ _ensure_ordered (TextMark **start,
 }
 
 void
+text_editor_split_at_mark (TextEditor *self,
+                           TextMark   *mark)
+
+{
+    TextParagraph *current;
+    TextParagraph *new;
+    TextNode *parent;
+    TextMark *cursor;
+
+    g_return_if_fail (TEXT_IS_EDITOR (self));
+    g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+    g_return_if_fail (TEXT_IS_PARAGRAPH (mark->paragraph));
+
+    current = mark->paragraph;
+    cursor = self->document->cursor;
+
+    // Case 1: Split is happening on the last index
+    if (mark->index == text_paragraph_get_length (current))
+    {
+        // Append a new paragraph with empty run
+        new = text_paragraph_new ();
+        text_paragraph_append_run (new, text_run_new (""));
+
+        parent = text_node_get_parent (TEXT_NODE (current));
+        text_node_insert_child_after (parent, TEXT_NODE (new), TEXT_NODE (current));
+
+        // TODO: Adjust marks according to gravity
+        // i.e. cursor has right-gravity
+        cursor->index = 0;
+        cursor->paragraph = new;
+        return;
+    }
+
+    // Case 2: Split happens mid-paragraph
+    else
+    {
+        TextRun *start;
+        TextNode *iter;
+        int run_offset;
+
+        new = text_paragraph_new ();
+        start = text_paragraph_get_run_at_index (current, mark->index, &run_offset);
+
+        iter = TEXT_NODE (start);
+
+        // Split first run if run offset is not at beginning
+        if (mark->index != run_offset)
+        {
+            char *first_text;
+            char *second_text;
+            int split_index_within_run;
+
+            g_object_get (start, "text", &first_text, NULL);
+
+            split_index_within_run = mark->index - run_offset;
+            second_text = g_utf8_substring (first_text, split_index_within_run, -1);
+            first_text = g_utf8_substring (first_text, 0, split_index_within_run);
+
+            g_object_set (start, "text", first_text, NULL);
+            text_paragraph_append_run (new, text_run_new (second_text));
+
+            // Move to next run
+            iter = text_node_get_next (iter);
+        }
+
+        // Iterate over remaining runs and move them to the new paragraph
+        while (iter != NULL)
+        {
+            TextNode *next;
+
+            g_assert (TEXT_IS_RUN (iter));
+
+            next = text_node_get_next (iter);
+
+            text_node_unparent (iter);
+            text_paragraph_append_run (new, TEXT_RUN (iter));
+
+            iter = next;
+        }
+
+        // Append paragraph to document tree
+        parent = text_node_get_parent (TEXT_NODE (current));
+        text_node_insert_child_after (parent, TEXT_NODE (new), TEXT_NODE (current));
+
+        // TODO: Adjust marks according to gravity
+        // i.e. cursor has right-gravity
+        cursor->index = 0;
+        cursor->paragraph = new;
+        return;
+    }
+}
+
+void
 text_editor_replace_at_mark (TextEditor *self,
                              TextMark   *start,
                              TextMark   *end,
@@ -1132,6 +1225,13 @@ text_editor_replace (TextEditor         *self,
                      gchar              *text)
 {
     text_editor_replace_at_mark (self, _get_mark (self, start_type), _get_mark (self, end_type), text);
+}
+
+void
+text_editor_split (TextEditor         *self,
+                   TextEditorMarkType  type)
+{
+    text_editor_split_at_mark (self, _get_mark (self, type));
 }
 
 TextRun *
