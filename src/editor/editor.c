@@ -974,7 +974,14 @@ text_editor_delete_at_mark (TextEditor *self,
                 mark->paragraph == iter &&
                 remaining < mark->index)
             {
-                _offset_mark (mark, -remaining);
+                int offset;
+
+                // Will now index into the starting paragraph
+                // as we join them (see below)
+                mark->paragraph = start->paragraph;
+
+                offset = text_paragraph_get_length (start->paragraph);
+                _offset_mark (mark, offset - remaining);
             }
         }
 
