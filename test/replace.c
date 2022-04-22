@@ -536,8 +536,6 @@ main (int argc, char *argv[])
                 replace_fixture_set_up, test_reverse,
                 replace_fixture_tear_down);
 
-    // TODO: Reverse
-
     return g_test_run ();
 }
 

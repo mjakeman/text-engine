@@ -8,6 +8,7 @@ tests = [
   ['insert', ['insert.c']],
   ['delete', ['delete.c']],
   ['replace', ['replace.c']],
+  ['split', ['split.c']],
 ]
 
 foreach t: tests
