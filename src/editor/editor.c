@@ -316,20 +316,32 @@ text_editor_get_run_at_mark (TextEditor *self,
                                             NULL);
 }
 
-void
-text_editor_move_mark_left (TextEditor *self,
-                            TextMark   *mark,
-                            int         amount)
+/**
+ * _try_move_mark_left:
+ *
+ * Attempt to move the mark left by the given amount. If the mark
+ * cannot be moved the full amount, return the remaining distance.
+ *
+ * @self: `TextEditor` instance
+ * @mark: the `TextMark` to move
+ * @amount: Amount to move by
+ *
+ * Returns: The distance remaining or -1 if an error occurred.
+ */
+int
+_try_move_mark_left (TextEditor *self,
+                     TextMark   *mark,
+                     int         amount)
 {
     TextParagraph *iter;
     int amount_moved;
 
-    g_return_if_fail (TEXT_IS_EDITOR (self));
-    g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
-    g_return_if_fail (amount >= 0);
+    g_return_val_if_fail (TEXT_IS_EDITOR (self), -1);
+    g_return_val_if_fail (TEXT_IS_DOCUMENT (self->document), -1);
+    g_return_val_if_fail (amount >= 0, -1);
 
     if (amount == 0)
-        return;
+        return 0;
 
     iter = mark->paragraph;
     amount_moved = 0;
@@ -339,7 +351,7 @@ text_editor_move_mark_left (TextEditor *self,
     if (mark->index - amount >= 0)
     {
         mark->index -= amount;
-        return;
+        return 0;
     }
 
     // Crossing one or more paragraphs
@@ -372,28 +384,60 @@ text_editor_move_mark_left (TextEditor *self,
         // the amount to move remaining
         mark->index = num_indices - (amount - amount_moved);
         mark->paragraph = iter;
-        return;
+        return 0;
     }
 
     // Reached start of document
     text_editor_move_mark_first (self, mark);
+    return amount - amount_moved;
 }
 
+/**
+ * text_editor_move_mark_left:
+ *
+ * Move the mark left by the given amount. If the mark
+ * cannot be moved the full amount, it will stop at the
+ * left-most valid index.
+ *
+ * @self: `TextEditor` instance
+ * @mark: the `TextMark` to move
+ * @amount: Amount to move by
+ */
 void
-text_editor_move_mark_right (TextEditor *self,
-                             TextMark   *mark,
-                             int         amount)
+text_editor_move_mark_left (TextEditor *self,
+                            TextMark   *mark,
+                            int         amount)
+{
+    _try_move_mark_left (self, mark, amount);
+}
+
+/**
+ * _try_move_mark_right:
+ *
+ * Attempt to move the mark right by the given amount. If the mark
+ * cannot be moved the full amount, return the remaining distance.
+ *
+ * @self: `TextEditor` instance
+ * @mark: the `TextMark` to move
+ * @amount: Amount to move by
+ *
+ * Returns: The distance remaining or -1 if an error occurred.
+ */
+int
+_try_move_mark_right (TextEditor *self,
+                      TextMark   *mark,
+                      int         amount)
 {
     TextParagraph *iter;
     int amount_moved;
     int last_index;
 
-    g_return_if_fail (TEXT_IS_EDITOR (self));
-    g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
-    g_return_if_fail (amount >= 0);
+    g_return_val_if_fail (TEXT_IS_EDITOR (self), -1);
+    g_return_val_if_fail (TEXT_IS_DOCUMENT (self->document), -1);
+    g_return_val_if_fail (amount >= 0, -1);
 
     if (amount == 0)
-        return;
+        return 0;
 
     iter = mark->paragraph;
     amount_moved = 0;
@@ -404,7 +448,7 @@ text_editor_move_mark_right (TextEditor *self,
     if (mark->index + amount <= last_index)
     {
         mark->index += amount;
-        return;
+        return 0;
     }
 
     // Crossing one or more paragraphs
@@ -437,13 +481,41 @@ text_editor_move_mark_right (TextEditor *self,
         // the amount to move remaining
         mark->index = (amount - amount_moved) - 1;
         mark->paragraph = iter;
-        return;
+        return 0;
     }
 
     // Reached end of document
     text_editor_move_mark_last (self, mark);
+    return amount - amount_moved;
 }
 
+/**
+ * text_editor_move_mark_right:
+ *
+ * Move the mark right by the given amount. If the mark
+ * cannot be moved the full amount, it will stop at the
+ * right-most valid index.
+ *
+ * @self: `TextEditor` instance
+ * @mark: the `TextMark` to move
+ * @amount: Amount to move by
+ */
+void
+text_editor_move_mark_right (TextEditor *self,
+                             TextMark   *mark,
+                             int         amount)
+{
+    _try_move_mark_right (self, mark, amount);
+}
+
+/**
+ * text_editor_move_mark_first:
+ *
+ * Move the mark to the beginning of the document.
+ *
+ * @self: `TextEditor` instance
+ * @mark: The `TextMark` to move
+ */
 void
 text_editor_move_mark_first (TextEditor *self,
                              TextMark   *mark)
@@ -455,6 +527,14 @@ text_editor_move_mark_first (TextEditor *self,
     mark->index = 0;
 }
 
+/**
+ * text_editor_move_mark_last:
+ *
+ * Move the mark to the end of the document.
+ *
+ * @self: `TextEditor` instance
+ * @mark: The `TextMark` to move
+ */
 void
 text_editor_move_mark_last (TextEditor *self,
                             TextMark   *mark)
@@ -694,10 +774,12 @@ text_editor_delete_at_mark (TextEditor *self,
 
     if (length < 0)
     {
-        // TODO: Handle case where cannot move the full
-        // '-length' because start of document is reached
-        text_editor_move_mark_left (self, self->document->cursor, -length);
-        text_editor_delete_at_mark (self, start, -length);
+        int remaining;
+
+        // Handles case where the cursor cannot be moved by the
+        // full '-length' because the start of document is reached
+        remaining = _try_move_mark_left  (self, self->document->cursor, -length);
+        text_editor_delete_at_mark (self, start, (-length - remaining));
         return;
     }
 
