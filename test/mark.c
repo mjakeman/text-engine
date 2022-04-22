@@ -302,6 +302,143 @@ test_delete_multi_after (MarkFixture   *fixture,
     g_assert_true (cursor->paragraph == fixture->para1);
 }
 
+static void
+test_insert_on (MarkFixture   *fixture,
+                gconstpointer  user_data)
+{
+    TextMark *mark;
+    TextMark *cursor;
+
+    cursor = fixture->doc->cursor;
+
+    // Create mark
+    mark = text_document_create_mark (fixture->doc, fixture->para1, 9, TEXT_GRAVITY_LEFT);
+
+    // Perform insertion
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 9);
+    text_editor_insert (fixture->editor, TEXT_EDITOR_CURSOR, "Hello");
+
+    // before:
+    //      cursor >< mark
+    //     abcdefghij1234567890!@#$%^&*()
+    // after:
+    //      cursor >< mark
+    //     abcdefghiHelloj1234567890!@#$%^&*()
+
+    // mark - left gravity
+    g_assert_cmpint (mark->index, ==, 9);
+    g_assert_true (mark->paragraph == fixture->para1);
+
+    // cursor - right gravity
+    g_assert_cmpint (cursor->index, ==, 14);
+    g_assert_true (cursor->paragraph == fixture->para1);
+}
+
+static void
+test_insert_after (MarkFixture   *fixture,
+                   gconstpointer  user_data)
+{
+    TextMark *mark;
+    TextMark *cursor;
+    TextGravity gravity;
+
+    gravity = (TextGravity)user_data;
+    cursor = fixture->doc->cursor;
+
+    // Create mark
+    mark = text_document_create_mark (fixture->doc, fixture->para1, 17, gravity);
+
+    // Perform insertion
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 9);
+    text_editor_insert (fixture->editor, TEXT_EDITOR_CURSOR, "Hello");
+
+    // before:
+    //      cursor ><      >< mark
+    //     abcdefghij1234567890!@#$%^&*()
+    // after:
+    //      cursor ><           >< mark
+    //     abcdefghiHelloj1234567890!@#$%^&*()
+
+    g_assert_cmpint (mark->index, ==, 22);
+    g_assert_true (mark->paragraph == fixture->para1);
+
+    g_assert_cmpint (cursor->index, ==, 14);
+    g_assert_true (cursor->paragraph == fixture->para1);
+}
+
+static void
+test_split_on (MarkFixture   *fixture,
+               gconstpointer  user_data)
+{
+    TextMark *mark;
+    TextMark *cursor;
+    TextParagraph *new;
+
+    cursor = fixture->doc->cursor;
+
+    // Create mark
+    mark = text_document_create_mark (fixture->doc, fixture->para1, 9, TEXT_GRAVITY_LEFT);
+
+    // Perform split
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 9);
+    text_editor_split (fixture->editor, TEXT_EDITOR_CURSOR);
+
+    // before:
+    //      cursor >< mark
+    //     abcdefghij1234567890!@#$%^&*()
+    // after:
+    //             >< mark
+    //     abcdefghi
+    //    >< cursor
+    //     j1234567890!@#$%^&*()
+
+    new = TEXT_PARAGRAPH (text_node_get_next (TEXT_NODE (fixture->para1)));
+
+    // mark - left gravity
+    g_assert_cmpint (mark->index, ==, 9);
+    g_assert_true (mark->paragraph == fixture->para1);
+
+    // cursor - right gravity
+    g_assert_cmpint (cursor->index, ==, 0);
+    g_assert_true (cursor->paragraph == new);
+}
+
+static void
+test_split_after (MarkFixture   *fixture,
+                  gconstpointer  user_data)
+{
+    TextMark *mark;
+    TextMark *cursor;
+    TextParagraph *new;
+
+    cursor = fixture->doc->cursor;
+
+    // Create mark
+    mark = text_document_create_mark (fixture->doc, fixture->para1, 24, TEXT_GRAVITY_LEFT);
+
+    // Perform split
+    text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 9);
+    text_editor_split (fixture->editor, TEXT_EDITOR_CURSOR);
+
+    // before:
+    //      cursor ><             >< mark
+    //     abcdefghij1234567890!@#$%^&*()
+    // after:
+    //     abcdefghi
+    //    >< cursor      >< mark
+    //     j1234567890!@#$%^&*()
+
+    new = TEXT_PARAGRAPH (text_node_get_next (TEXT_NODE (fixture->para1)));
+
+    // mark - left gravity
+    g_assert_cmpint (mark->index, ==, 15);
+    g_assert_true (mark->paragraph == new);
+
+    // cursor - right gravity
+    g_assert_cmpint (cursor->index, ==, 0);
+    g_assert_true (cursor->paragraph == new);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -349,6 +486,27 @@ main (int argc, char *argv[])
                 mark_fixture_tear_down);
 
     // Insert tests
+    g_test_add ("/text-engine/editor/mark/test-insert-on", MarkFixture, NULL,
+                mark_fixture_set_up, test_insert_on,
+                mark_fixture_tear_down);
+    g_test_add ("/text-engine/editor/mark/test-insert-after-gravity-left", MarkFixture, (gconstpointer) TEXT_GRAVITY_LEFT,
+                mark_fixture_set_up, test_insert_after,
+                mark_fixture_tear_down);
+    g_test_add ("/text-engine/editor/mark/test-insert-after-gravity-right", MarkFixture, (gconstpointer) TEXT_GRAVITY_RIGHT,
+                mark_fixture_set_up, test_insert_after,
+                mark_fixture_tear_down);
+
+    // Replace tests
+    // A replacement is simply a deletion followed
+    // by an insertion, so covered by the above tests
+
+    // Split tests
+    g_test_add ("/text-engine/editor/mark/test-split-on", MarkFixture, NULL,
+                mark_fixture_set_up, test_split_on,
+                mark_fixture_tear_down);
+    g_test_add ("/text-engine/editor/mark/test-split-after", MarkFixture, NULL,
+                mark_fixture_set_up, test_split_after,
+                mark_fixture_tear_down);
 
     return g_test_run ();
 }
