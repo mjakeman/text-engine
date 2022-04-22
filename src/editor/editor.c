@@ -754,6 +754,43 @@ _delete_within_paragraph (TextParagraph *paragraph,
     return FALSE;
 }
 
+/**
+ * _distribute_mark:
+ *
+ * Distributes a mark to either a starting or ending
+ * text position depending on the mark's gravity.
+ *
+ * @mark: The mark to recalculate
+ * @start_para: The #TextParagraph to use if %TEXT_GRAVITY_LEFT
+ * @start_index: The index to use if %TEXT_GRAVITY_LEFT
+ * @end_para: The #TextParagraph to use if %TEXT_GRAVITY_RIGHT
+ * @end_index: The index to use if %TEXT_GRAVITY_RIGHT
+ */
+static void
+_distribute_mark (TextMark      *mark,
+                  TextParagraph *start_para,
+                  int            start_index,
+                  TextParagraph *end_para,
+                  int            end_index)
+{
+    if (mark->gravity == TEXT_GRAVITY_LEFT)
+    {
+        mark->paragraph = start_para;
+        mark->index = start_index;
+        return;
+    }
+
+    mark->paragraph = end_para;
+    mark->index = end_index;
+}
+
+static void
+_offset_mark (TextMark *mark,
+              int       offset)
+{
+    mark->index += offset;
+}
+
 void
 text_editor_delete_at_mark (TextEditor *self,
                             TextMark   *start,
@@ -814,9 +851,36 @@ text_editor_delete_at_mark (TextEditor *self,
             }
         }
 
-        // TODO: Adjust marks according to gravity
-        cursor->index = new_index;
-        cursor->paragraph = new_para;
+        // Adjust marks - we can ignore gravity as
+        // marks will converge on the same point
+        GSList *marks;
+        marks = text_document_get_all_marks (self->document);
+
+        for (GSList *mark_iter = marks;
+             mark_iter != NULL;
+             mark_iter = mark_iter->next)
+        {
+            TextMark *mark;
+
+            mark = (TextMark *)mark_iter->data;
+
+            // Marks within affected area
+            if (mark->paragraph == start->paragraph &&
+                start->index <= mark->index &&
+                mark->index <= start->index + length)
+            {
+                _distribute_mark (mark, new_para, new_index,
+                                  new_para, new_index);
+            }
+
+            // Marks after affected area
+            else if (mark->paragraph == start->paragraph &&
+                start->index + length < mark->index)
+            {
+                _offset_mark (mark, -length);
+            }
+        }
+
         return;
     }
 
@@ -828,6 +892,7 @@ text_editor_delete_at_mark (TextEditor *self,
         int cur_deleted;
         int paragraph_length;
         int to_delete;
+        int remaining;
 
         iter = paragraph;
         cur_deleted = 0;
@@ -862,11 +927,56 @@ text_editor_delete_at_mark (TextEditor *self,
             }
 
             // Delete a portion of the end paragraph
-            _delete_within_paragraph (iter, 0, length - cur_deleted);
+            remaining = length - cur_deleted;
+            _delete_within_paragraph (iter, 0, remaining);
             break;
         }
 
-        // TODO: Update marks according to gravity
+        // Adjust marks - we can ignore gravity as
+        // marks will converge on the same point
+        GSList *marks;
+        marks = text_document_get_all_marks (self->document);
+
+        for (GSList *mark_iter = marks;
+             mark_iter != NULL;
+             mark_iter = mark_iter->next)
+        {
+            TextMark *mark;
+            gboolean affected;
+
+            mark = (TextMark *)mark_iter->data;
+            affected = FALSE;
+
+            // In starting paragraph
+            if (mark->paragraph == paragraph &&
+                start->index <= mark->index)
+                affected = TRUE;
+
+            // In dirty paragraphs
+            else if (g_slist_find (dirty, mark->paragraph))
+                affected = TRUE;
+
+            // In ending paragraph, if exists
+            else if (iter &&
+                mark->paragraph == iter &&
+                mark->index <= remaining)
+                affected = TRUE;
+
+            // Mark within affected area
+            if (affected)
+            {
+                _distribute_mark (mark, paragraph, start->index,
+                                  paragraph, start->index);
+            }
+
+            // Mark after affected area
+            else if (iter &&
+                mark->paragraph == iter &&
+                remaining < mark->index)
+            {
+                _offset_mark (mark, -remaining);
+            }
+        }
 
         // Perform lazy deletion
         g_slist_free_full (dirty, (GDestroyNotify)text_node_delete);
@@ -1011,23 +1121,21 @@ _ensure_ordered (TextMark **start,
 
 void
 text_editor_split_at_mark (TextEditor *self,
-                           TextMark   *mark)
+                           TextMark   *split)
 
 {
-    TextParagraph *current;
     TextParagraph *new;
+    TextParagraph *current;
     TextNode *parent;
-    TextMark *cursor;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
-    g_return_if_fail (TEXT_IS_PARAGRAPH (mark->paragraph));
+    g_return_if_fail (TEXT_IS_PARAGRAPH (split->paragraph));
 
-    current = mark->paragraph;
-    cursor = self->document->cursor;
+    current = split->paragraph;
 
     // Case 1: Split is happening on the last index
-    if (mark->index == text_paragraph_get_length (current))
+    if (split->index == text_paragraph_get_length (current))
     {
         // Append a new paragraph with empty run
         new = text_paragraph_new ();
@@ -1035,12 +1143,6 @@ text_editor_split_at_mark (TextEditor *self,
 
         parent = text_node_get_parent (TEXT_NODE (current));
         text_node_insert_child_after (parent, TEXT_NODE (new), TEXT_NODE (current));
-
-        // TODO: Adjust marks according to gravity
-        // i.e. cursor has right-gravity
-        cursor->index = 0;
-        cursor->paragraph = new;
-        return;
     }
 
     // Case 2: Split happens mid-paragraph
@@ -1051,12 +1153,12 @@ text_editor_split_at_mark (TextEditor *self,
         int run_offset;
 
         new = text_paragraph_new ();
-        start = text_paragraph_get_run_at_index (current, mark->index, &run_offset);
+        start = text_paragraph_get_run_at_index (current, split->index, &run_offset);
 
         iter = TEXT_NODE (start);
 
         // Split first run if run offset is not at beginning
-        if (mark->index != run_offset)
+        if (split->index != run_offset)
         {
             char *first_text;
             char *second_text;
@@ -1064,7 +1166,7 @@ text_editor_split_at_mark (TextEditor *self,
 
             g_object_get (start, "text", &first_text, NULL);
 
-            split_index_within_run = mark->index - run_offset;
+            split_index_within_run = split->index - run_offset;
             second_text = g_utf8_substring (first_text, split_index_within_run, -1);
             first_text = g_utf8_substring (first_text, 0, split_index_within_run);
 
@@ -1093,12 +1195,35 @@ text_editor_split_at_mark (TextEditor *self,
         // Append paragraph to document tree
         parent = text_node_get_parent (TEXT_NODE (current));
         text_node_insert_child_after (parent, TEXT_NODE (new), TEXT_NODE (current));
+    }
 
-        // TODO: Adjust marks according to gravity
-        // i.e. cursor has right-gravity
-        cursor->index = 0;
-        cursor->paragraph = new;
-        return;
+    // Adjust marks according to gravity
+    GSList *marks;
+    marks = text_document_get_all_marks (self->document);
+
+    for (GSList *mark_iter = marks;
+         mark_iter != NULL;
+         mark_iter = mark_iter->next)
+    {
+        TextMark *mark;
+
+        mark = (TextMark *)mark_iter->data;
+
+        // Mark is on split point
+        if (mark->paragraph == current &&
+              mark->index == split->index)
+        {
+            _distribute_mark (mark, current, split->index, new, 0);
+            continue;
+        }
+
+        // Mark is after split point
+        if (mark->paragraph == current &&
+            mark->index > split->index)
+        {
+            mark->paragraph = new;
+            _offset_mark (mark, -split->index);
+        }
     }
 }
 
@@ -1129,11 +1254,13 @@ text_editor_insert_at_mark (TextEditor *self,
     // This should accept user input in the form of Operational
     // Transformation commands. This will aid with undo/redo.
 
+    GSList *marks;
     char *text;
     GString *modified;
     TextRun *run;
     int run_start_index;
     int run_offset;
+    int length;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
@@ -1151,13 +1278,36 @@ text_editor_insert_at_mark (TextEditor *self,
     g_object_set (run, "text", modified->str, NULL);
     g_string_free (modified, TRUE);
 
-    // TODO: Update all marks
+    length = strlen (str);
 
-    // Move cursor left/right by amount changed
-    // This should be handled by an auxiliary anchor object which
-    // remains fixed at a given point in the text no matter how
-    // the text changes (i.e. a cursor).
-    text_editor_move_mark_right (self, start, strlen (str));
+    // Adjust marks according to gravity
+    marks = text_document_get_all_marks (self->document);
+
+    for (GSList *mark_iter = marks;
+         mark_iter != NULL;
+         mark_iter = mark_iter->next)
+    {
+        TextMark *mark;
+
+        mark = (TextMark *)mark_iter->data;
+
+        // Mark is on insertion point
+        if (mark->paragraph == start->paragraph &&
+            mark->index == start->index)
+        {
+            _distribute_mark (mark,
+                              start->paragraph, start->index,
+                              start->paragraph, start->index + length);
+            continue;
+        }
+
+        // Mark is after insertion point
+        if (mark->paragraph == start->paragraph &&
+            mark->index > start->index)
+        {
+            _offset_mark (mark, length);
+        }
+    }
 }
 
 TextMark *

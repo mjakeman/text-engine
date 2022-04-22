@@ -109,7 +109,7 @@ test_within_run (ReplaceFixture *fixture,
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 15);
 
     // TODO: Don't call this here
-    fixture->doc->selection = text_mark_copy (fixture->doc->cursor);
+    fixture->doc->selection = text_document_copy_mark (fixture->doc, fixture->doc->cursor);
     text_editor_move_right (fixture->editor, TEXT_EDITOR_SELECTION, 5);
     text_editor_replace (fixture->editor,
                          TEXT_EDITOR_CURSOR,
@@ -151,7 +151,7 @@ test_across_runs_single (ReplaceFixture *fixture,
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 8);
 
     // TODO: Don't call this here
-    fixture->doc->selection = text_mark_copy (fixture->doc->cursor);
+    fixture->doc->selection = text_document_copy_mark (fixture->doc, fixture->doc->cursor);
     text_editor_move_right (fixture->editor, TEXT_EDITOR_SELECTION, 5);
     text_editor_replace (fixture->editor,
                          TEXT_EDITOR_CURSOR,
@@ -195,7 +195,7 @@ test_across_runs_multiple (ReplaceFixture *fixture,
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 8);
 
     // TODO: Don't call this here
-    fixture->doc->selection = text_mark_copy (fixture->doc->cursor);
+    fixture->doc->selection = text_document_copy_mark (fixture->doc, fixture->doc->cursor);
     text_editor_move_right (fixture->editor, TEXT_EDITOR_SELECTION, 15);
     text_editor_replace (fixture->editor,
                          TEXT_EDITOR_CURSOR,
@@ -235,7 +235,7 @@ test_across_paragraphs_single (ReplaceFixture *fixture,
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 28);
 
     // TODO: Don't call this here
-    fixture->doc->selection = text_mark_copy (fixture->doc->cursor);
+    fixture->doc->selection = text_document_copy_mark (fixture->doc, fixture->doc->cursor);
     text_editor_move_right (fixture->editor, TEXT_EDITOR_SELECTION, 5);
     text_editor_replace (fixture->editor,
                          TEXT_EDITOR_CURSOR,
@@ -281,7 +281,7 @@ test_across_paragraphs_multiple (ReplaceFixture *fixture,
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 28);
 
     // TODO: Don't call this here
-    fixture->doc->selection = text_mark_copy (fixture->doc->cursor);
+    fixture->doc->selection = text_document_copy_mark (fixture->doc, fixture->doc->cursor);
     text_editor_move_right (fixture->editor, TEXT_EDITOR_SELECTION, 15);
     text_editor_replace (fixture->editor,
                          TEXT_EDITOR_CURSOR,
@@ -321,7 +321,7 @@ test_document_replace (ReplaceFixture *fixture,
     int length;
 
     // TODO: Don't call this here
-    fixture->doc->selection = text_mark_copy (fixture->doc->cursor);
+    fixture->doc->selection = text_document_copy_mark (fixture->doc, fixture->doc->cursor);
     text_editor_move_last (fixture->editor, TEXT_EDITOR_SELECTION);
     text_editor_replace (fixture->editor,
                          TEXT_EDITOR_CURSOR,
@@ -357,7 +357,7 @@ test_document_clear (ReplaceFixture *fixture,
     int length;
 
     // TODO: Don't call this here
-    fixture->doc->selection = text_mark_copy (fixture->doc->cursor);
+    fixture->doc->selection = text_document_copy_mark (fixture->doc, fixture->doc->cursor);
     text_editor_move_last (fixture->editor, TEXT_EDITOR_SELECTION);
     text_editor_replace (fixture->editor,
                          TEXT_EDITOR_CURSOR,
@@ -394,7 +394,7 @@ test_equal_marks_insert (ReplaceFixture *fixture,
 
     // TODO: Don't call this here
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 5);
-    fixture->doc->selection = text_mark_copy (fixture->doc->cursor);
+    fixture->doc->selection = text_document_copy_mark (fixture->doc, fixture->doc->cursor);
     text_editor_replace (fixture->editor,
                          TEXT_EDITOR_CURSOR,
                          TEXT_EDITOR_SELECTION,
@@ -461,7 +461,7 @@ test_reverse (ReplaceFixture *fixture,
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 28);
 
     // TODO: Don't call this here
-    fixture->doc->selection = text_mark_copy (fixture->doc->cursor);
+    fixture->doc->selection = text_document_copy_mark (fixture->doc, fixture->doc->cursor);
     text_editor_move_right (fixture->editor, TEXT_EDITOR_SELECTION, 5);
     text_editor_replace (fixture->editor,
                          TEXT_EDITOR_SELECTION,

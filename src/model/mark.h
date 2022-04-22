@@ -27,16 +27,23 @@ G_BEGIN_DECLS
 
 #define TEXT_TYPE_MARK (text_mark_get_type ())
 
+typedef enum
+{
+    TEXT_GRAVITY_LEFT,
+    TEXT_GRAVITY_RIGHT,
+} TextGravity;
+
 typedef struct _TextMark TextMark;
 
 struct _TextMark
 {
     TextParagraph *paragraph;
     int index;
+    TextGravity gravity;
 };
 
 GType         text_mark_get_type (void) G_GNUC_CONST;
-TextMark     *text_mark_new      (TextParagraph *paragraph, int index);
+TextMark     *text_mark_new      (TextParagraph *paragraph, int index, TextGravity gravity);
 TextMark     *text_mark_copy     (TextMark *self);
 void          text_mark_free     (TextMark *self);
 

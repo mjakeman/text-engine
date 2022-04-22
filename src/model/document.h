@@ -32,6 +32,7 @@ struct _TextDocument
     TextFrame *frame;
     TextMark *cursor;
     TextMark *selection;
+    GSList *marks;
 };
 
 G_BEGIN_DECLS
@@ -40,6 +41,14 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (TextDocument, text_document, TEXT, DOCUMENT, GObject)
 
-TextDocument *text_document_new (void);
+TextDocument *text_document_new         (void);
+
+TextMark     *text_document_create_mark     (TextDocument *doc, TextParagraph *paragraph, int index, TextGravity gravity);
+TextMark     *text_document_copy_mark       (TextDocument *doc, TextMark *mark);
+void          text_document_delete_mark     (TextDocument *doc, TextMark *mark);
+void          text_document_clear_mark      (TextDocument *doc, TextMark **mark);
+
+// TODO: Make private
+GSList       *text_document_get_all_marks   (TextDocument *doc);
 
 G_END_DECLS

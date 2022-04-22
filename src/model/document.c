@@ -83,8 +83,75 @@ text_document_class_init (TextDocumentClass *klass)
     object_class->set_property = text_document_set_property;
 }
 
+GSList *
+text_document_get_all_marks (TextDocument *doc)
+{
+    GSList *marks;
+
+    marks = g_slist_copy (doc->marks);
+    marks = g_slist_append (doc->marks, doc->cursor);
+
+    if (doc->selection)
+        marks = g_slist_append (doc->marks, doc->selection);
+
+    return marks;
+}
+
+TextMark *
+text_document_create_mark (TextDocument  *doc,
+                           TextParagraph *paragraph,
+                           int            index,
+                           TextGravity    gravity)
+{
+    TextMark *new;
+
+    g_return_val_if_fail (TEXT_IS_DOCUMENT (doc), NULL);
+    g_return_val_if_fail (TEXT_IS_PARAGRAPH (paragraph), NULL);
+
+    new = text_mark_new (paragraph, index, gravity);
+    doc->marks = g_slist_append (doc->marks, new);
+
+    return new;
+}
+
+TextMark *
+text_document_copy_mark (TextDocument *doc,
+                         TextMark     *mark)
+{
+    TextMark *new;
+
+    g_return_val_if_fail (TEXT_IS_DOCUMENT (doc), NULL);
+    g_return_val_if_fail (mark != NULL, NULL);
+
+    new = text_mark_copy (mark);
+    doc->marks = g_slist_append (doc->marks, new);
+
+    return new;
+}
+
+void
+text_document_delete_mark (TextDocument *doc,
+                           TextMark     *mark)
+{
+    g_return_if_fail (TEXT_IS_DOCUMENT (doc));
+    g_return_if_fail (mark != NULL);
+
+    doc->marks = g_slist_remove (doc->marks, mark);
+}
+
+void
+text_document_clear_mark (TextDocument *doc,
+                          TextMark     **mark)
+{
+    g_return_if_fail (TEXT_IS_DOCUMENT (doc));
+    g_return_if_fail (mark != NULL);
+
+    doc->marks = g_slist_remove (doc->marks, *mark);
+    *mark = NULL;
+}
+
 static void
 text_document_init (TextDocument *self)
 {
-    self->cursor = text_mark_new (NULL, 0);
+    self->cursor = text_mark_new (NULL, 0, TEXT_GRAVITY_RIGHT);
 }
