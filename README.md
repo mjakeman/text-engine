@@ -10,4 +10,7 @@ Join [#bluetype](https://matrix.to/#/#bluetype:matrix.org) to chat
 about the project or if you would like to get involved. Come say hello!
 
 ## Licence
-Text Engine is licensed under `LGPL-3.0-or-later`.
+Text Engine is dual-licensed under the Mozilla Public License 2.0 and
+the GNU Lesser General Public License 2.1 (or any later version), at your
+option. You may choose to use the library under either of the aforementioned
+licenses, or both. See `COPYING` for more information.
