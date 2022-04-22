@@ -1,13 +1,7 @@
 Immediate TODO list for text-engine:
  - Add basic input/editing capabilities
-   - Insertion
-   - Cursor
-   - Selection
    - Keyboard shortcuts (Ctrl)
-   - Text manipulation
    - Unicode
-   - Deletion
-   - Creating new items
  - Add style module
    - Line spacing
    - Bold, italic, underline
