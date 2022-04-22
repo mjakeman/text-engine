@@ -401,10 +401,22 @@ handled:
     return TRUE;
 }
 
+void
+pointer_pressed (GtkGestureClick *gesture,
+                 gint             n_press,
+                 gdouble          x,
+                 gdouble          y,
+                 TextDisplay     *self)
+{
+    gtk_widget_grab_focus (GTK_WIDGET (self));
+    gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
 static void
 text_display_init (TextDisplay *self)
 {
     GtkEventController *controller;
+    GtkGesture *gesture;
 
     self->layout = text_layout_new ();
 
@@ -416,7 +428,11 @@ text_display_init (TextDisplay *self)
     controller = gtk_event_controller_key_new ();
     gtk_event_controller_key_set_im_context (GTK_EVENT_CONTROLLER_KEY (controller), self->context);
     g_signal_connect (controller, "key-pressed", G_CALLBACK (key_pressed), self);
+    gtk_widget_add_controller (GTK_WIDGET (self), controller);
+
+    gesture = gtk_gesture_click_new ();
+    g_signal_connect (gesture, "pressed", G_CALLBACK (pointer_pressed), self);
+    gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (gesture));
 
     gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
-    gtk_widget_add_controller (GTK_WIDGET (self), controller);
 }
