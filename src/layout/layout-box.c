@@ -121,18 +121,8 @@ text_layout_box_layout (TextLayoutBox *self,
 
     if (priv->item && TEXT_IS_PARAGRAPH (priv->item))
     {
-        GString *str = g_string_new ("");
-        for (TextNode *run = text_node_get_first_child (TEXT_NODE (priv->item));
-             run != NULL;
-             run = text_node_get_next (run))
-        {
-            const gchar *run_text;
-            g_object_get (run, "text", &run_text, NULL);
-            g_string_append (str, run_text);
-            g_debug (" - Counting run\n");
-        }
-
-        gchar *text = g_string_free (str, FALSE);
+        gchar *text;
+        text = text_paragraph_get_text (TEXT_PARAGRAPH (priv->item));
         g_debug (" - String %s\n", text);
 
         if (!priv->layout)

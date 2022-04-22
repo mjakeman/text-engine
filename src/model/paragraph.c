@@ -88,6 +88,43 @@ text_paragraph_append_run (TextParagraph *self,
     text_node_append_child (TEXT_NODE (self), TEXT_NODE (run));
 }
 
+/**
+ * text_paragraph_get_text:
+ *
+ * Returns a duplicate string containing the contents of
+ * this paragraph. The contents is valid as of the instant
+ * the method is called and will not be updated. It is the
+ * caller's responsibility to free the returned string.
+ *
+ * @self: The `TextParagraph` instance.
+ *
+ * Returns: A pointer to the text content of this paragraph
+ */
+char *
+text_paragraph_get_text (TextParagraph *self)
+{
+    TextNode *child;
+    GString *str;
+
+    g_return_val_if_fail (TEXT_IS_PARAGRAPH (self), NULL);
+
+    str = g_string_new ("");
+
+    for (child = text_node_get_first_child (TEXT_NODE (self));
+         child != NULL;
+         child = text_node_get_next (child))
+    {
+        const gchar *run_text;
+
+        g_assert (TEXT_IS_RUN (child));
+
+        g_object_get (child, "text", &run_text, NULL);
+        g_string_append (str, run_text);
+    }
+
+    return g_string_free (str, FALSE);
+}
+
 int
 text_paragraph_get_length (TextParagraph *self)
 {
