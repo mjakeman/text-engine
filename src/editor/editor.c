@@ -652,8 +652,6 @@ _join_paragraphs (TextParagraph *start,
  * @deletion_length: The number of characters to be erased.
  *
  * Returns: `TRUE` if the paragraph was deleted
- *
- * Since: 0.2
  */
 static gboolean
 _delete_within_paragraph (TextParagraph *paragraph,
@@ -881,6 +879,81 @@ text_editor_delete_at_mark (TextEditor *self,
     return;
 }
 
+/**
+ * _relate_nodes:
+ *
+ * Relate two nodes to each other to find the lowest common
+ * ancestor. Additionally indicates which node comes first
+ * in the tree when using a depth-first traversal.
+ *
+ * The ordering check may be omitted by passing %NULL to the
+ * @in_order parameter, which may improve performance somewhat.
+ *
+ * @start: Starting node
+ * @end: Ending node
+ *
+ * Returns: The lowest common ancestor of the two nodes
+ *
+ */
+TextNode *
+_relate_nodes (TextNode *start,
+               TextNode *end,
+               gboolean *in_order)
+{
+    GSList *ancestors;
+    TextNode *iter;
+
+    g_return_val_if_fail (start, NULL);
+    g_return_val_if_fail (end, NULL);
+
+    ancestors = NULL;
+    iter = start;
+
+    while ((iter = text_node_get_parent (iter)) != NULL)
+        ancestors = g_slist_append (ancestors, iter);
+
+    iter = end;
+
+    while (iter != NULL)
+    {
+        TextNode *parent;
+
+        parent = text_node_get_parent (iter);
+
+        if (g_slist_find (ancestors, parent))
+        {
+            TextNode *child;
+
+            // Return the lowest common ancestor
+            if (in_order == NULL)
+                return parent;
+
+            // Otherwise find which node comes first
+            for (child = text_node_get_first_child (parent);
+                 child != NULL;
+                 child = text_node_get_next (child))
+            {
+                if (child == start) {
+                    *in_order = TRUE;
+                    return parent;
+                }
+
+                if (child == end) {
+                    *in_order = FALSE;
+                    return parent;
+                }
+            }
+
+            // Should not be reached
+            g_assert ("Tree structure is malformed");
+        }
+
+        iter = parent;
+    }
+
+    return NULL;
+}
+
 int
 _length_between_marks (TextMark *start,
                        TextMark *end)
@@ -888,7 +961,8 @@ _length_between_marks (TextMark *start,
     TextParagraph *iter;
     int length;
 
-    // TODO: Find a way to determine whether start is before end?
+    g_return_val_if_fail (start != NULL, 0);
+    g_return_val_if_fail (end != NULL, 0);
 
     if (start->paragraph == end->paragraph)
         return end->index - start->index;
@@ -911,17 +985,42 @@ _length_between_marks (TextMark *start,
 }
 
 void
+_ensure_ordered (TextMark **start,
+                 TextMark **end)
+{
+    gboolean in_order;
+
+    g_return_if_fail (start != NULL);
+    g_return_if_fail (end != NULL);
+    g_return_if_fail (*start != NULL);
+    g_return_if_fail (*end != NULL);
+
+    _relate_nodes (TEXT_NODE ((*start)->paragraph),
+                   TEXT_NODE ((*end)->paragraph),
+                   &in_order);
+
+    // Swap if in wrong order
+    if (!in_order)
+    {
+        TextMark *temp;
+        temp = *end;
+        *end = *start;
+        *start = temp;
+    }
+}
+
+void
 text_editor_replace_at_mark (TextEditor *self,
                              TextMark   *start,
                              TextMark   *end,
                              gchar      *text)
 {
-    // TODO: Find a way to determine whether start is before end?
-
     int length;
 
     g_return_if_fail (TEXT_IS_PARAGRAPH (start->paragraph));
     g_return_if_fail (TEXT_IS_PARAGRAPH (end->paragraph));
+
+    _ensure_ordered (&start, &end);
 
     length = _length_between_marks (start, end);
     text_editor_delete_at_mark (self, start, length);
