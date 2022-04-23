@@ -48,6 +48,7 @@ text_engine_deps = [
 text_engine_lib = shared_library('text-engine-' + api_version,
   text_engine_sources,
   dependencies: text_engine_deps,
+  soversion: 0,
   install: true,
 )
 
