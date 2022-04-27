@@ -325,6 +325,24 @@ key_pressed (GtkEventControllerKey *controller,
         selection = NULL;
     }
 
+    // Handle Save
+    if (ctrl_pressed && keyval == GDK_KEY_s)
+    {
+        gchar *text;
+        GdkDisplay *display;
+        GdkClipboard *clipboard;
+
+        display = gdk_display_get_default ();
+        clipboard = gdk_display_get_clipboard (display);
+
+        text = text_editor_dump_plain_text (self->editor);
+        g_print ("Saving to clipboard:\nSTART\n%s\nEND\n", text);
+
+        // "Save" to clipboard for now
+        gdk_clipboard_set_text (clipboard, text);
+        g_free (text);
+    }
+
     // Handle Home/End
     if (ctrl_pressed && keyval == GDK_KEY_Home)
     {
