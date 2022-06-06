@@ -1389,6 +1389,33 @@ text_editor_get_run (TextEditor         *self,
     return text_editor_get_run_at_mark (self, _get_mark (self, type));
 }
 
+gchar *
+text_editor_dump_plain_text (TextEditor *self)
+{
+    TextItem *iter;
+    GString *string_builder;
+
+    g_return_val_if_fail (TEXT_IS_EDITOR (self), NULL);
+    g_return_val_if_fail (TEXT_IS_DOCUMENT (self->document), NULL);
+    g_return_val_if_fail (TEXT_IS_FRAME (self->document->frame), NULL);
+
+    string_builder = g_string_new (NULL);
+    iter = TEXT_ITEM (self->document->frame);
+
+    while ((iter = TEXT_ITEM (walk_until_next_paragraph (iter))) != NULL)
+    {
+        char *text;
+
+        g_assert (TEXT_IS_ITEM (iter));
+        text = text_paragraph_get_text (TEXT_PARAGRAPH (iter));
+        g_string_append (string_builder, text);
+        g_string_append (string_builder, "\n");
+        g_free (text);
+    }
+
+    return g_string_free (string_builder, FALSE);
+}
+
 static void
 text_editor_init (TextEditor *self)
 {

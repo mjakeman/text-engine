@@ -29,14 +29,37 @@ struct _TextDisplay
     GtkIMContext *context;
 
     TextMark *cursor;
+
+    // Margins
+    int margin_start;
+    int margin_end;
+    int margin_top;
+    int margin_bottom;
+
+    // Scrollable
+    GtkAdjustment *hadjustment;
+    GtkAdjustment *vadjustment;
+    GtkScrollablePolicy hscroll_policy;
+    GtkScrollablePolicy vscroll_policy;
 };
 
-G_DEFINE_FINAL_TYPE (TextDisplay, text_display, GTK_TYPE_WIDGET)
+G_DEFINE_FINAL_TYPE_WITH_CODE (TextDisplay, text_display, GTK_TYPE_WIDGET,
+                               G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, NULL))
 
 enum {
     PROP_0,
     PROP_DOCUMENT,
-    N_PROPS
+    PROP_MARGIN_START,
+    PROP_MARGIN_END,
+    PROP_MARGIN_TOP,
+    PROP_MARGIN_BOTTOM,
+    N_PROPS,
+
+    // Overridden Properties
+    PROP_HADJUSTMENT,
+    PROP_VADJUSTMENT,
+    PROP_HSCROLL_POLICY,
+    PROP_VSCROLL_POLICY
 };
 
 static GParamSpec *properties [N_PROPS];
@@ -79,6 +102,39 @@ text_display_get_property (GObject    *object,
     case PROP_DOCUMENT:
         g_value_set_object (value, self->document);
         break;
+
+    case PROP_MARGIN_START:
+        g_value_set_int (value, self->margin_start);
+        break;
+
+    case PROP_MARGIN_END:
+        g_value_set_int (value, self->margin_end);
+        break;
+
+    case PROP_MARGIN_TOP:
+        g_value_set_int (value, self->margin_top);
+        break;
+
+    case PROP_MARGIN_BOTTOM:
+        g_value_set_int (value, self->margin_bottom);
+        break;
+
+    case PROP_HADJUSTMENT:
+        g_value_set_object (value, self->hadjustment);
+        break;
+
+    case PROP_VADJUSTMENT:
+        g_value_set_object (value, self->vadjustment);
+        break;
+
+    case PROP_HSCROLL_POLICY:
+        g_value_set_enum (value, self->hscroll_policy);
+        break;
+
+    case PROP_VSCROLL_POLICY:
+        g_value_set_enum (value, self->vscroll_policy);
+        break;
+
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -91,6 +147,8 @@ text_display_set_property (GObject      *object,
                            GParamSpec   *pspec)
 {
     TextDisplay *self = TEXT_DISPLAY (object);
+
+    GtkAdjustment *adj;
 
     switch (prop_id)
     {
@@ -106,6 +164,56 @@ text_display_set_property (GObject      *object,
             self->editor = text_editor_new (self->document);
             text_editor_move_first (self->editor, TEXT_EDITOR_CURSOR);
         }
+        break;
+
+    case PROP_MARGIN_START:
+        self->margin_start = g_value_get_int (value);
+        gtk_widget_queue_allocate (GTK_WIDGET (self));
+        break;
+
+    case PROP_MARGIN_END:
+        self->margin_end = g_value_get_int (value);
+        gtk_widget_queue_allocate (GTK_WIDGET (self));
+        break;
+
+    case PROP_MARGIN_TOP:
+        self->margin_top = g_value_get_int (value);
+        gtk_widget_queue_allocate (GTK_WIDGET (self));
+        break;
+
+    case PROP_MARGIN_BOTTOM:
+        self->margin_bottom = g_value_get_int (value);
+        gtk_widget_queue_allocate (GTK_WIDGET (self));
+        break;
+
+    case PROP_HADJUSTMENT:
+        adj = g_value_get_object (value);
+        if (adj)
+        {
+            self->hadjustment = g_object_ref_sink (adj);
+            g_signal_connect_swapped (self->vadjustment, "value-changed", G_CALLBACK (gtk_widget_queue_draw), self);
+        }
+        gtk_widget_queue_allocate (GTK_WIDGET (self));
+        break;
+
+    case PROP_VADJUSTMENT:
+        adj = g_value_get_object (value);
+        if (adj)
+        {
+            self->vadjustment = g_object_ref_sink (adj);
+            g_signal_connect_swapped (self->vadjustment, "value-changed", G_CALLBACK (gtk_widget_queue_draw), self);
+        }
+        gtk_widget_queue_allocate (GTK_WIDGET (self));
+        break;
+
+    case PROP_HSCROLL_POLICY:
+        self->hscroll_policy = g_value_get_enum (value);
+        gtk_widget_queue_allocate (GTK_WIDGET (self));
+        break;
+
+    case PROP_VSCROLL_POLICY:
+        self->vscroll_policy = g_value_get_enum (value);
+        gtk_widget_queue_allocate (GTK_WIDGET (self));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -161,6 +269,9 @@ static void
 text_display_snapshot (GtkWidget   *widget,
                        GtkSnapshot *snapshot)
 {
+    int displacement;
+    int width;
+
     g_return_if_fail (TEXT_IS_DISPLAY (widget));
 
     TextDisplay *self = TEXT_DISPLAY (widget);
@@ -171,13 +282,23 @@ text_display_snapshot (GtkWidget   *widget,
     if (!self->layout_tree)
         return;
 
+    width = gtk_widget_get_width (GTK_WIDGET (self));
+    width -= self->margin_start + self->margin_end;
+
+    // set vertical displacement (horizontal not supported)
+    displacement = self->vadjustment
+        ? -gtk_adjustment_get_value (self->vadjustment)
+        : 0;
+
     // TODO: Don't recreate this each time - do in size allocate instead?
     text_node_clear (&self->layout_tree);
     self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                        gtk_widget_get_pango_context (GTK_WIDGET (self)),
                                                        self->document->cursor,
                                                        self->document->frame,
-                                                       gtk_widget_get_width (GTK_WIDGET (self)));
+                                                       width);
+
+    gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (self->margin_start, self->margin_top + displacement));
 
     GdkRGBA fg_color;
     gtk_style_context_get_color (gtk_widget_get_style_context (widget), &fg_color);
@@ -207,6 +328,9 @@ text_display_measure (GtkWidget      *widget,
         TextDisplay *self = TEXT_DISPLAY (widget);
         PangoContext *context = gtk_widget_get_pango_context (widget);
 
+        // Account for start/end margins
+        for_size -= self->margin_start + self->margin_end;
+
         text_node_clear (&self->layout_tree);
         self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                            context,
@@ -230,6 +354,63 @@ text_display_measure (GtkWidget      *widget,
     }
 }
 
+void
+text_display_size_allocate (GtkWidget *widget,
+                            int        widget_width,
+                            int        widget_height,
+                            int        baseline)
+{
+    TextDisplay *self;
+    const TextDimensions *bbox;
+    int cur_value;
+    int content_height;
+    int content_width;
+
+    self = TEXT_DISPLAY (widget);
+
+    g_return_if_fail (TEXT_IS_LAYOUT_BOX (self->layout_tree));
+
+    bbox = text_layout_box_get_bbox (self->layout_tree);
+
+    content_height = bbox->height + self->margin_top + self->margin_bottom;
+    content_height = MAX (content_height, widget_height);
+
+    content_width = bbox->width + self->margin_start + self->margin_end;
+    content_width = MAX (content_width, widget_width);
+
+    if (self->vadjustment)
+    {
+        cur_value = gtk_adjustment_get_value (self->vadjustment);
+
+        // only emit notify once for the whole block
+        g_object_freeze_notify (G_OBJECT (self->vadjustment));
+
+        gtk_adjustment_set_value (self->vadjustment, cur_value);
+        gtk_adjustment_set_upper (self->vadjustment, content_height);
+        gtk_adjustment_set_step_increment (self->vadjustment, widget_height * 0.1);
+        gtk_adjustment_set_page_increment (self->vadjustment, widget_height * 0.9);
+        gtk_adjustment_set_page_size (self->vadjustment, widget_height);
+
+        g_object_thaw_notify (G_OBJECT (self->vadjustment));
+    }
+
+    if (self->hadjustment)
+    {
+        cur_value = gtk_adjustment_get_value (self->hadjustment);
+
+        // only emit notify once for the whole block
+        g_object_freeze_notify (G_OBJECT (self->hadjustment));
+
+        gtk_adjustment_set_value (self->hadjustment, cur_value);
+        gtk_adjustment_set_upper (self->hadjustment, content_width);
+        gtk_adjustment_set_step_increment (self->hadjustment, widget_width * 0.1);
+        gtk_adjustment_set_page_increment (self->hadjustment, widget_width * 0.9);
+        gtk_adjustment_set_page_size (self->hadjustment, widget_width);
+
+        g_object_thaw_notify (G_OBJECT (self->hadjustment));
+    }
+}
+
 static void
 text_display_class_init (TextDisplayClass *klass)
 {
@@ -239,12 +420,45 @@ text_display_class_init (TextDisplayClass *klass)
     object_class->get_property = text_display_get_property;
     object_class->set_property = text_display_set_property;
 
+    g_object_class_override_property (object_class, PROP_HADJUSTMENT, "hadjustment");
+    g_object_class_override_property (object_class, PROP_VADJUSTMENT, "vadjustment");
+    g_object_class_override_property (object_class, PROP_HSCROLL_POLICY, "hscroll-policy");
+    g_object_class_override_property (object_class, PROP_VSCROLL_POLICY, "vscroll-policy");
+
     properties [PROP_DOCUMENT]
         = g_param_spec_object ("document",
                                "Document",
                                "Document",
                                TEXT_TYPE_DOCUMENT,
                                G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
+
+    properties [PROP_MARGIN_START]
+        = g_param_spec_int ("margin-start",
+                            "Margin Start",
+                            "Margin Start",
+                            0, G_MAXINT, 0,
+                            G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
+
+    properties [PROP_MARGIN_END]
+        = g_param_spec_int ("margin-end",
+                            "Margin End",
+                            "Margin End",
+                            0, G_MAXINT, 0,
+                            G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
+
+    properties [PROP_MARGIN_TOP]
+        = g_param_spec_int ("margin-top",
+                            "Margin Top",
+                            "Margin Top",
+                            0, G_MAXINT, 0,
+                            G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
+
+    properties [PROP_MARGIN_BOTTOM]
+        = g_param_spec_int ("margin-bottom",
+                            "Margin Bottom",
+                            "Margin Bottom",
+                            0, G_MAXINT, 0,
+                            G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
 
     g_object_class_install_properties (object_class, N_PROPS, properties);
 
@@ -253,6 +467,7 @@ text_display_class_init (TextDisplayClass *klass)
     widget_class->snapshot = text_display_snapshot;
     widget_class->get_request_mode = text_display_get_request_mode;
     widget_class->measure = text_display_measure;
+    widget_class->size_allocate = text_display_size_allocate;
 
     gtk_widget_class_set_css_name (widget_class, "textdisplay");
 }
@@ -325,6 +540,24 @@ key_pressed (GtkEventControllerKey *controller,
         selection = NULL;
     }
 
+    // Handle Save
+    if (ctrl_pressed && keyval == GDK_KEY_s)
+    {
+        gchar *text;
+        GdkDisplay *display;
+        GdkClipboard *clipboard;
+
+        display = gdk_display_get_default ();
+        clipboard = gdk_display_get_clipboard (display);
+
+        text = text_editor_dump_plain_text (self->editor);
+        g_print ("Saving to clipboard:\nSTART\n%s\nEND\n", text);
+
+        // "Save" to clipboard for now
+        gdk_clipboard_set_text (clipboard, text);
+        g_free (text);
+    }
+
     // Handle Home/End
     if (ctrl_pressed && keyval == GDK_KEY_Home)
     {
@@ -388,6 +621,7 @@ key_pressed (GtkEventControllerKey *controller,
     return FALSE;
 
 handled:
+    gtk_widget_queue_allocate (GTK_WIDGET (self));
     gtk_widget_queue_draw (GTK_WIDGET (self));
     return TRUE;
 }
@@ -426,4 +660,5 @@ text_display_init (TextDisplay *self)
     gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (gesture));
 
     gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
+    gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
 }
