@@ -559,15 +559,89 @@ key_pressed (GtkEventControllerKey *controller,
     }
 
     // Handle Home/End
-    if (ctrl_pressed && keyval == GDK_KEY_Home)
+    if (keyval == GDK_KEY_Home)
     {
-        text_editor_move_first (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+        if (ctrl_pressed)
+            text_editor_move_first (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+        else {
+            TextParagraph *para;
+            TextLayoutBox *layout;
+            int index;
+
+            index = self->document->cursor->index;
+            para = self->document->cursor->paragraph;
+            layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+
+            g_print ("Index: %d\n", index);
+
+            if (layout) {
+                PangoLayout *pango;
+                GSList *iter;
+                pango = text_layout_box_get_pango_layout (layout);
+                iter = pango_layout_get_lines (pango);
+                int length = 0;
+
+                for (iter = pango_layout_get_lines (pango);
+                     iter != NULL;
+                     iter = iter->next)
+                {
+                    PangoLayoutLine *line;
+                    line = iter->data;
+
+                    g_print ("Length: %d\n", length);
+
+                    if (length + pango_layout_line_get_length (line) >= index) {
+                        self->document->cursor->index = length;
+                        goto handled;
+                    }
+
+                    length += pango_layout_line_get_length (line);
+                }
+            }
+        }
         goto handled;
     }
 
-    if (ctrl_pressed && keyval == GDK_KEY_End)
+    if (keyval == GDK_KEY_End)
     {
-        text_editor_move_last (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+        if (ctrl_pressed)
+            text_editor_move_last (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+        else {
+            TextParagraph *para;
+            TextLayoutBox *layout;
+            int index;
+
+            index = self->document->cursor->index;
+            para = self->document->cursor->paragraph;
+            layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+
+            g_print ("Index: %d\n", index);
+
+            if (layout) {
+                PangoLayout *pango;
+                GSList *iter;
+                pango = text_layout_box_get_pango_layout (layout);
+                iter = pango_layout_get_lines (pango);
+                int length = 0;
+
+                for (iter = pango_layout_get_lines (pango);
+                     iter != NULL;
+                     iter = iter->next)
+                {
+                    PangoLayoutLine *line;
+                    line = iter->data;
+
+                    g_print ("Length: %d\n", length + pango_layout_line_get_length (line));
+
+                    if (index >= length && index < length + pango_layout_line_get_length (line)) {
+                        self->document->cursor->index = length + pango_layout_line_get_length (line);
+                        goto handled;
+                    }
+
+                    length += pango_layout_line_get_length (line);
+                }
+            }
+        }
         goto handled;
     }
 
@@ -582,6 +656,34 @@ key_pressed (GtkEventControllerKey *controller,
     if (keyval == GDK_KEY_Right)
     {
         text_editor_move_right (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
+        goto handled;
+    }
+
+    if (keyval == GDK_KEY_Up)
+    {
+        TextParagraph *para;
+        TextLayoutBox *layout;
+        int index;
+
+        index = self->document->cursor->index;
+        para = self->document->cursor->paragraph;
+        layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+
+        g_print ("Up!\n");
+        goto handled;
+    }
+
+    if (keyval == GDK_KEY_Down)
+    {
+        TextParagraph *para;
+        TextLayoutBox *layout;
+        int index;
+
+        index = self->document->cursor->index;
+        para = self->document->cursor->paragraph;
+        layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+
+        g_print ("Down!\n");
         goto handled;
     }
 
