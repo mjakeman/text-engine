@@ -97,6 +97,8 @@ do_layout_recursive (TextLayout    *self,
         {
             TextLayoutBox *box = text_layout_box_new ();
             text_layout_box_set_item (box, TEXT_ITEM (node));
+            text_item_detach (TEXT_ITEM (node)); // TODO: Don't do this
+            text_item_attach (TEXT_ITEM (node), TEXT_NODE (box));
 
             // TODO: We should handle runs inline here, rather than
             // paragraphs. As we do not consider individual runs, we

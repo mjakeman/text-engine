@@ -27,4 +27,13 @@ struct _TextItemClass
 
 TextItem *text_item_new (void);
 
+void
+text_item_attach (TextItem *self,
+                  TextNode *attachment);
+TextNode *
+text_item_get_attachment (TextItem *self);
+
+void
+text_item_detach (TextItem *self);
+
 G_END_DECLS
