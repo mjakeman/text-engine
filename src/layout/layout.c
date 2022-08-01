@@ -129,8 +129,8 @@ text_layout_build_layout_tree (TextLayout   *self,
                                TextFrame    *frame,
                                int           width)
 {
-    g_return_if_fail (TEXT_IS_LAYOUT (self));
-    g_return_if_fail (TEXT_IS_FRAME (frame));
+    g_return_val_if_fail (TEXT_IS_LAYOUT (self), NULL);
+    g_return_val_if_fail (TEXT_IS_FRAME (frame), NULL);
 
     TextLayoutBox *root = text_layout_box_new ();
     do_layout_recursive (self, root, context, cursor, TEXT_ITEM (frame), width);
