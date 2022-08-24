@@ -634,7 +634,18 @@ key_pressed (GtkEventControllerKey *controller,
                     g_print ("Length: %d\n", length + pango_layout_line_get_length (line));
 
                     if (index >= length && index < length + pango_layout_line_get_length (line)) {
-                        self->document->cursor->index = length + pango_layout_line_get_length (line);
+
+                        gboolean is_last_line;
+
+                        is_last_line = (iter->next == NULL);
+                        
+                        // Use the index position immediately before the final character in the line
+                        // when jumping to the end. For the final line, we pretend there is an imaginary
+                        // 'paragraph break' character, so the final index will be one greater.
+                        self->document->cursor->index = is_last_line
+                            ? length + pango_layout_line_get_length (line)
+                            : length + pango_layout_line_get_length (line) - 1;
+                        
                         goto handled;
                     }
 
