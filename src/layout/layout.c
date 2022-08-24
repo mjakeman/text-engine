@@ -139,6 +139,46 @@ text_layout_build_layout_tree (TextLayout   *self,
     return root;
 }
 
+TextLayoutBox *
+text_layout_pick (TextLayoutBox *root,
+                  int            x,
+                  int            y)
+{
+    // Note: 'x' and 'y' are relative to the document origin
+    TextNode *child;
+    TextNode *found;
+
+    g_return_val_if_fail (TEXT_IS_LAYOUT_BOX (root), NULL);
+
+    for (child = text_node_get_first_child (TEXT_NODE (root));
+         child != NULL;
+         child = text_node_get_next (child))
+    {
+        TextLayoutBox *layout_item;
+        TextDimensions *bbox;
+
+        layout_item = TEXT_LAYOUT_BOX (child);
+        bbox = text_layout_box_get_bbox (layout_item);
+
+        if (x >= bbox->x &&
+            y >= bbox->y &&
+            x <= bbox->x + bbox->width &&
+            y <= bbox->y + bbox->height)
+        {
+            // Recursively check child layouts first
+            found = text_layout_pick (layout_item, x, y);
+
+            if (found) {
+                return found;
+            }
+
+            return layout_item;
+        }
+    }
+
+    return NULL;
+}
+
 static void
 text_layout_class_init (TextLayoutClass *klass)
 {

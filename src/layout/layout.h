@@ -36,4 +36,9 @@ text_layout_build_layout_tree (TextLayout   *self,
                                TextFrame    *frame,
                                int           width);
 
+TextLayoutBox *
+text_layout_pick (TextLayoutBox *root,
+                  int            x,
+                  int            y);
+
 G_END_DECLS
