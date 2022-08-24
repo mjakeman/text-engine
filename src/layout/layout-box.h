@@ -42,7 +42,9 @@ text_layout_box_get_item (TextLayoutBox *self);
 void
 text_layout_box_layout (TextLayoutBox *self,
                         PangoContext  *context,
-                        int            width);
+                        int            width,
+                        int            offset_x,
+                        int            offset_y);
 
 const TextDimensions *
 text_layout_box_get_bbox (TextLayoutBox *self);

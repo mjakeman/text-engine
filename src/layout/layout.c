@@ -77,6 +77,12 @@ do_layout_recursive (TextLayout    *self,
                      TextItem      *item,
                      int            width)
 {
+    int child_offset_x;
+    int child_offset_y;
+
+    child_offset_x = 0;
+    child_offset_y = 0;
+
     g_return_if_fail (TEXT_IS_LAYOUT (self));
     g_return_if_fail (TEXT_IS_LAYOUT_BOX (parent));
     g_return_if_fail (TEXT_IS_ITEM (item));
@@ -116,11 +122,13 @@ do_layout_recursive (TextLayout    *self,
             // TODO: This function should be properly recursive in the future,
             // so avoid calling it here. Below should be the only time it is
             // called (i.e. post-order traversal).
-            text_layout_box_layout (box, context, width);
+            text_layout_box_layout (box, context, width, child_offset_x, child_offset_y);
+            child_offset_y += text_layout_box_get_bbox (box)->height;
         }
     }
 
-    text_layout_box_layout (parent, context, width);
+    // When we make this recursive, should pass in offsets
+    text_layout_box_layout (parent, context, width, 0, 0);
     g_debug ("Layout for %s\n", g_type_name_from_instance (parent));
 }
 
@@ -147,8 +155,11 @@ text_layout_pick (TextLayoutBox *root,
     // Note: 'x' and 'y' are relative to the document origin
     TextNode *child;
     TextNode *found;
+    TextDimensions *parent_bbox;
 
     g_return_val_if_fail (TEXT_IS_LAYOUT_BOX (root), NULL);
+
+    parent_bbox = text_layout_box_get_bbox (root);
 
     for (child = text_node_get_first_child (TEXT_NODE (root));
          child != NULL;
@@ -166,7 +177,7 @@ text_layout_pick (TextLayoutBox *root,
             y <= bbox->y + bbox->height)
         {
             // Recursively check child layouts first
-            found = text_layout_pick (layout_item, x, y);
+            found = text_layout_pick (layout_item, x - bbox->x, y - bbox->y);
 
             if (found) {
                 return found;

@@ -758,14 +758,16 @@ pointer_pressed (GtkGestureClick *gesture,
 
     if (self->layout_tree) {
         TextLayoutBox *box;
-        TextItem *item;
 
         // TODO: Account for scrolling
         box = text_layout_pick (self->layout_tree, x - self->margin_start, y - self->margin_top);
 
         if (box) {
-            g_print ("Found!\n");
+            TextItem *item;
+            TextDimensions *bbox;
+
             item = text_layout_box_get_item (box);
+            bbox = text_layout_box_get_bbox (box);
 
             // TODO: Properly find the nearest leaf node
             // when we have more complex renderers
@@ -773,8 +775,8 @@ pointer_pressed (GtkGestureClick *gesture,
 
             int index, trailing;
             if (pango_layout_xy_to_index (text_layout_box_get_pango_layout (box),
-                                          (x - self->margin_start) * PANGO_SCALE,
-                                          (y - self->margin_top) * PANGO_SCALE,
+                                          (x - bbox->x - self->margin_start) * PANGO_SCALE,
+                                          (y - bbox->y - self->margin_top) * PANGO_SCALE,
                                           &index, &trailing))
             {
                 self->document->cursor->paragraph = TEXT_PARAGRAPH (item);
