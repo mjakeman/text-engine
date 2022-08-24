@@ -593,17 +593,17 @@ key_pressed (GtkEventControllerKey *controller,
 
                     g_print ("Base Index: %d\n", base_index);
 
-                    // Check if the index is contained within the line length, then
-                    // go to the starting index.
-                    if (base_index + pango_layout_line_get_length (line) > index) {
-                        self->document->cursor->index = base_index;
-                        goto handled;
-                    }
-
                     // For the last line in the paragraph, there is an imaginary 'paragraph break'
                     // character to account for the traversal between paragraphs. Therefore we check
                     // whether index is contained within the 'length + 1' of the last line.
                     if (is_last_line && base_index + pango_layout_line_get_length (line) + 1 > index) {
+                        self->document->cursor->index = base_index;
+                        goto handled;
+                    }
+
+                    // Otherwise check if the index is contained within the line length, then
+                    // go to the starting index.
+                    if (base_index + pango_layout_line_get_length (line) > index) {
                         self->document->cursor->index = base_index;
                         goto handled;
                     }
@@ -636,34 +636,36 @@ key_pressed (GtkEventControllerKey *controller,
                 GSList *iter;
                 pango = text_layout_box_get_pango_layout (layout);
                 iter = pango_layout_get_lines (pango);
-                int length = 0;
+                int base_index = 0;
 
                 for (iter = pango_layout_get_lines (pango);
                      iter != NULL;
                      iter = iter->next)
                 {
                     PangoLayoutLine *line;
+                    gboolean is_last_line;
+                    
                     line = iter->data;
+                    is_last_line = (iter->next == NULL);
 
-                    g_print ("Length: %d\n", length + pango_layout_line_get_length (line));
+                    g_print ("Base Index: %d\n", base_index + pango_layout_line_get_length (line));
 
-                    if (index >= length && index < length + pango_layout_line_get_length (line)) {
-
-                        gboolean is_last_line;
-
-                        is_last_line = (iter->next == NULL);
-                        
-                        // Use the index position immediately before the final character in the line
-                        // when jumping to the end. For the final line, we pretend there is an imaginary
-                        // 'paragraph break' character, so the final index will be one greater.
-                        self->document->cursor->index = is_last_line
-                            ? length + pango_layout_line_get_length (line)
-                            : length + pango_layout_line_get_length (line) - 1;
-                        
+                    // For the last line in the paragraph, there is an imaginary 'paragraph break'
+                    // character to account for the traversal between paragraphs. Therefore we check
+                    // whether index is contained within the 'length + 1' of the last line.
+                    if (is_last_line && base_index + pango_layout_line_get_length (line) + 1 > index) {
+                        self->document->cursor->index = base_index + pango_layout_line_get_length (line);
                         goto handled;
                     }
 
-                    length += pango_layout_line_get_length (line);
+                    // Otherwise check if the index is contained within the line length, then
+                    // go to the index before the final character on the line.
+                    if (base_index + pango_layout_line_get_length (line) > index) {
+                        self->document->cursor->index = base_index + pango_layout_line_get_length (line) - 1;
+                        goto handled;
+                    }
+
+                    base_index += pango_layout_line_get_length (line);
                 }
             }
         }
