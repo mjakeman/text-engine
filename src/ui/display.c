@@ -572,8 +572,6 @@ key_pressed (GtkEventControllerKey *controller,
             para = self->document->cursor->paragraph;
             layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
 
-            g_print ("Index: %d\n", index);
-
             if (layout) {
                 PangoLayout *pango;
                 GSList *iter;
@@ -590,8 +588,6 @@ key_pressed (GtkEventControllerKey *controller,
 
                     is_last_line = (iter->next == NULL);
                     line = iter->data;
-
-                    g_print ("Base Index: %d\n", base_index);
 
                     // For the last line in the paragraph, there is an imaginary 'paragraph break'
                     // character to account for the traversal between paragraphs. Therefore we check
@@ -629,8 +625,6 @@ key_pressed (GtkEventControllerKey *controller,
             para = self->document->cursor->paragraph;
             layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
 
-            g_print ("Index: %d\n", index);
-
             if (layout) {
                 PangoLayout *pango;
                 GSList *iter;
@@ -647,8 +641,6 @@ key_pressed (GtkEventControllerKey *controller,
                     
                     line = iter->data;
                     is_last_line = (iter->next == NULL);
-
-                    g_print ("Base Index: %d\n", base_index + pango_layout_line_get_length (line));
 
                     // For the last line in the paragraph, there is an imaginary 'paragraph break'
                     // character to account for the traversal between paragraphs. Therefore we check
