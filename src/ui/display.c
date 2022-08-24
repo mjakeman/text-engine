@@ -579,23 +579,37 @@ key_pressed (GtkEventControllerKey *controller,
                 GSList *iter;
                 pango = text_layout_box_get_pango_layout (layout);
                 iter = pango_layout_get_lines (pango);
-                int length = 0;
+                int base_index = 0;
 
                 for (iter = pango_layout_get_lines (pango);
                      iter != NULL;
                      iter = iter->next)
                 {
                     PangoLayoutLine *line;
+                    gboolean is_last_line;
+
+                    is_last_line = (iter->next == NULL);
                     line = iter->data;
 
-                    g_print ("Length: %d\n", length);
+                    g_print ("Base Index: %d\n", base_index);
 
-                    if (length + pango_layout_line_get_length (line) >= index) {
-                        self->document->cursor->index = length;
+                    // Check if the index is contained within the line length, then
+                    // go to the starting index.
+                    if (base_index + pango_layout_line_get_length (line) > index) {
+                        self->document->cursor->index = base_index;
                         goto handled;
                     }
 
-                    length += pango_layout_line_get_length (line);
+                    // For the last line in the paragraph, there is an imaginary 'paragraph break'
+                    // character to account for the traversal between paragraphs. Therefore we check
+                    // whether index is contained within the 'length + 1' of the last line.
+                    if (is_last_line && base_index + pango_layout_line_get_length (line) + 1 > index) {
+                        self->document->cursor->index = base_index;
+                        goto handled;
+                    }
+
+                    // Fine the base index of the next line
+                    base_index += pango_layout_line_get_length (line);
                 }
             }
         }
