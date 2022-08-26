@@ -551,6 +551,106 @@ commit (GtkIMContext *context,
 }
 
 static gboolean
+_move_cursor_home (TextMark *cursor)
+{
+    TextParagraph *para;
+    TextLayoutBox *layout;
+    int index;
+
+    index = cursor->index;
+    para = cursor->paragraph;
+    layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+
+    if (layout) {
+        PangoLayout *pango;
+        GSList *iter;
+        pango = text_layout_box_get_pango_layout (layout);
+        int base_index = 0;
+
+        for (iter = pango_layout_get_lines (pango);
+             iter != NULL;
+             iter = iter->next)
+        {
+            PangoLayoutLine *line;
+            gboolean is_last_line;
+
+            is_last_line = (iter->next == NULL);
+            line = iter->data;
+
+            // For the last line in the paragraph, there is an imaginary 'paragraph break'
+            // character to account for the traversal between paragraphs. Therefore we check
+            // whether index is contained within the 'length + 1' of the last line.
+            if (is_last_line && base_index + pango_layout_line_get_length (line) + 1 > index) {
+                cursor->index = base_index;
+                return TRUE;
+            }
+
+            // Otherwise check if the index is contained within the line length, then
+            // go to the starting index.
+            if (base_index + pango_layout_line_get_length (line) > index) {
+                cursor->index = base_index;
+                return TRUE;
+            }
+
+            // Fine the base index of the next line
+            base_index += pango_layout_line_get_length (line);
+        }
+    }
+
+    return FALSE;
+}
+
+static gboolean
+_move_cursor_end (TextMark *cursor)
+{
+    TextParagraph *para;
+    TextLayoutBox *layout;
+    int index;
+
+    index = cursor->index;
+    para = cursor->paragraph;
+    layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+
+    if (layout) {
+        PangoLayout *pango;
+        GSList *iter;
+        pango = text_layout_box_get_pango_layout (layout);
+        iter = pango_layout_get_lines (pango);
+        int base_index = 0;
+
+        for (iter = pango_layout_get_lines (pango);
+             iter != NULL;
+             iter = iter->next)
+        {
+            PangoLayoutLine *line;
+            gboolean is_last_line;
+
+            line = iter->data;
+            is_last_line = (iter->next == NULL);
+
+            // For the last line in the paragraph, there is an imaginary 'paragraph break'
+            // character to account for the traversal between paragraphs. Therefore we check
+            // whether index is contained within the 'length + 1' of the last line.
+            if (is_last_line && base_index + pango_layout_line_get_length (line) + 1 > index) {
+                cursor->index = base_index + pango_layout_line_get_length (line);
+                return TRUE;
+            }
+
+            // Otherwise check if the index is contained within the line length, then
+            // go to the index before the final character on the line.
+            if (base_index + pango_layout_line_get_length (line) > index) {
+                cursor->index = base_index + pango_layout_line_get_length (line) - 1;
+                return TRUE;
+            }
+
+            base_index += pango_layout_line_get_length (line);
+        }
+    }
+
+    return FALSE;
+}
+
+static gboolean
 _move_cursor_vertically (TextMark *cursor,
                          gboolean  up)
 {
@@ -637,106 +737,27 @@ key_pressed (GtkEventControllerKey *controller,
     // Handle Home/End
     if (keyval == GDK_KEY_Home)
     {
-        if (ctrl_pressed)
+        if (ctrl_pressed) {
             text_editor_move_first (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
-        else {
-            TextParagraph *para;
-            TextLayoutBox *layout;
-            int index;
-
-            index = self->document->cursor->index;
-            para = self->document->cursor->paragraph;
-            layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
-
-            if (layout) {
-                PangoLayout *pango;
-                GSList *iter;
-                pango = text_layout_box_get_pango_layout (layout);
-                int base_index = 0;
-
-                for (iter = pango_layout_get_lines (pango);
-                     iter != NULL;
-                     iter = iter->next)
-                {
-                    PangoLayoutLine *line;
-                    gboolean is_last_line;
-
-                    is_last_line = (iter->next == NULL);
-                    line = iter->data;
-
-                    // For the last line in the paragraph, there is an imaginary 'paragraph break'
-                    // character to account for the traversal between paragraphs. Therefore we check
-                    // whether index is contained within the 'length + 1' of the last line.
-                    if (is_last_line && base_index + pango_layout_line_get_length (line) + 1 > index) {
-                        self->document->cursor->index = base_index;
-                        goto redraw;
-                    }
-
-                    // Otherwise check if the index is contained within the line length, then
-                    // go to the starting index.
-                    if (base_index + pango_layout_line_get_length (line) > index) {
-                        self->document->cursor->index = base_index;
-                        goto redraw;
-                    }
-
-                    // Fine the base index of the next line
-                    base_index += pango_layout_line_get_length (line);
-                }
-            }
+            goto redraw;
         }
-        goto redraw;
+        else if (_move_cursor_home (self->document->cursor)) {
+            goto redraw;
+        }
+
+        return TRUE;
     }
 
     if (keyval == GDK_KEY_End)
     {
-        if (ctrl_pressed)
+        if (ctrl_pressed) {
             text_editor_move_last (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
-        else {
-            TextParagraph *para;
-            TextLayoutBox *layout;
-            int index;
-
-            index = self->document->cursor->index;
-            para = self->document->cursor->paragraph;
-            layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
-
-            if (layout) {
-                PangoLayout *pango;
-                GSList *iter;
-                pango = text_layout_box_get_pango_layout (layout);
-                iter = pango_layout_get_lines (pango);
-                int base_index = 0;
-
-                for (iter = pango_layout_get_lines (pango);
-                     iter != NULL;
-                     iter = iter->next)
-                {
-                    PangoLayoutLine *line;
-                    gboolean is_last_line;
-                    
-                    line = iter->data;
-                    is_last_line = (iter->next == NULL);
-
-                    // For the last line in the paragraph, there is an imaginary 'paragraph break'
-                    // character to account for the traversal between paragraphs. Therefore we check
-                    // whether index is contained within the 'length + 1' of the last line.
-                    if (is_last_line && base_index + pango_layout_line_get_length (line) + 1 > index) {
-                        self->document->cursor->index = base_index + pango_layout_line_get_length (line);
-                        goto redraw;
-                    }
-
-                    // Otherwise check if the index is contained within the line length, then
-                    // go to the index before the final character on the line.
-                    if (base_index + pango_layout_line_get_length (line) > index) {
-                        self->document->cursor->index = base_index + pango_layout_line_get_length (line) - 1;
-                        goto redraw;
-                    }
-
-                    base_index += pango_layout_line_get_length (line);
-                }
-            }
         }
-        goto redraw;
+        else if (_move_cursor_end (self->document->cursor)) {
+            goto redraw;
+        }
+
+        return TRUE;
     }
 
     // Handle directional movemenent
