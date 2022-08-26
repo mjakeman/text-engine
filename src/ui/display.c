@@ -544,6 +544,7 @@ commit (GtkIMContext *context,
     // then bubbles up and invalidates the style
     // which then bubbles up and invalidates the layout
     // which then causes a partial redraw - simple right?
+    gtk_widget_queue_allocate (GTK_WIDGET (self));
     gtk_widget_queue_draw (GTK_WIDGET (self));
 
     g_print ("commit: %s\n", str);
