@@ -136,46 +136,86 @@ text_layout_build_layout_tree (TextLayout   *self,
 }
 
 TextLayoutBox *
-text_layout_pick (TextLayoutBox *root,
-                  int            x,
-                  int            y)
+text_layout_pick_internal (TextLayoutBox *root,
+                           int            x,
+                           int            y,
+                           double        *min_y_distance,
+                           TextNode     **min_y_layout)
 {
     // Note: 'x' and 'y' are relative to the document origin
     TextNode *child;
     TextNode *found;
-    TextDimensions *parent_bbox;
 
     g_return_val_if_fail (TEXT_IS_LAYOUT_BOX (root), NULL);
-
-    parent_bbox = text_layout_box_get_bbox (root);
 
     for (child = text_node_get_first_child (TEXT_NODE (root));
          child != NULL;
          child = text_node_get_next (child))
     {
         TextLayoutBox *layout_item;
-        TextDimensions *bbox;
+        const TextDimensions *bbox;
+        double dist_to_y;
 
         layout_item = TEXT_LAYOUT_BOX (child);
         bbox = text_layout_box_get_bbox (layout_item);
 
+        // Recursively check child layouts first
+        found = TEXT_NODE (text_layout_pick (layout_item, x - bbox->x, y - bbox->y));
+
+        if (found) {
+            return found;
+        }
+
+        // Check if the cursor is fully within the bounding box
         if (x >= bbox->x &&
             y >= bbox->y &&
             x <= bbox->x + bbox->width &&
             y <= bbox->y + bbox->height)
         {
-            // Recursively check child layouts first
-            found = text_layout_pick (layout_item, x - bbox->x, y - bbox->y);
-
-            if (found) {
-                return found;
-            }
-
             return layout_item;
+        }
+
+        // Check if the cursor is vertically within the bounding box
+        if (y >= bbox->y &&
+            y <= bbox->y + bbox->height)
+        {
+            *min_y_distance = 0;
+            *min_y_layout = TEXT_NODE (layout_item);
+            continue;
+        }
+
+        // Finally check the vertical offset from the cursor to the
+        // closest edge of the bounding box
+        dist_to_y = (y < bbox->y)
+                ? bbox->y - y
+                : y - bbox->y;
+
+        if (dist_to_y < *min_y_distance) {
+            *min_y_distance = dist_to_y;
+            *min_y_layout = TEXT_NODE (layout_item);
         }
     }
 
     return NULL;
+}
+
+TextLayoutBox *
+text_layout_pick (TextLayoutBox *root,
+                  int            x,
+                  int            y)
+{
+    double min_y_distance = G_MAXDOUBLE;
+    TextNode *min_y_layout = NULL;
+    TextNode *result;
+
+    result = text_layout_pick_internal(root, x, y, &min_y_distance, &min_y_layout);
+
+    if (result) {
+        return result;
+    }
+
+    // Otherwise return nearest layout
+    return min_y_layout;
 }
 
 static void

@@ -799,7 +799,7 @@ pointer_pressed (GtkGestureClick *gesture,
                  gdouble          y,
                  TextDisplay     *self)
 {
-    g_print ("X: %lf Y: %lf\n", x, y);
+    // g_print ("X: %lf Y: %lf\n", x, y);
 
     if (self->layout_tree) {
         TextLayoutBox *box;
@@ -809,7 +809,7 @@ pointer_pressed (GtkGestureClick *gesture,
 
         if (box) {
             TextItem *item;
-            TextDimensions *bbox;
+            const TextDimensions *bbox;
 
             item = text_layout_box_get_item (box);
             bbox = text_layout_box_get_bbox (box);
@@ -819,14 +819,15 @@ pointer_pressed (GtkGestureClick *gesture,
             g_return_if_fail (TEXT_IS_PARAGRAPH (item));
 
             int index, trailing;
-            if (pango_layout_xy_to_index (text_layout_box_get_pango_layout (box),
-                                          (x - bbox->x - self->margin_start) * PANGO_SCALE,
-                                          (y - bbox->y - self->margin_top) * PANGO_SCALE,
-                                          &index, &trailing))
-            {
-                self->document->cursor->paragraph = TEXT_PARAGRAPH (item);
-                self->document->cursor->index = index;
-            }
+
+            // Pango automatically clamps the coordinates to the layout for us
+            pango_layout_xy_to_index (text_layout_box_get_pango_layout (box),
+                                          (x - bbox->x) * PANGO_SCALE,
+                                          (y - bbox->y) * PANGO_SCALE,
+                                          &index, &trailing);
+
+            self->document->cursor->paragraph = TEXT_PARAGRAPH (item);
+            self->document->cursor->index = index;
         }
     }
 
