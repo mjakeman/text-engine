@@ -73,7 +73,6 @@ static void
 do_layout_recursive (TextLayout    *self,
                      TextLayoutBox *parent,
                      PangoContext  *context,
-                     TextMark      *cursor,
                      TextItem      *item,
                      int            width)
 {
@@ -106,16 +105,6 @@ do_layout_recursive (TextLayout    *self,
             text_item_detach (TEXT_ITEM (node)); // TODO: Don't do this
             text_item_attach (TEXT_ITEM (node), TEXT_NODE (box));
 
-            // TODO: We should handle runs inline here, rather than
-            // paragraphs. As we do not consider individual runs, we
-            // must check whether the paragraph contains a cursor and
-            // then handle layout for the cursor object.
-            if (TEXT_PARAGRAPH (node) == cursor->paragraph)
-            {
-                // Paragraph contains cursor
-                text_layout_box_set_cursor (box, cursor->index);
-            }
-
             text_node_append_child (TEXT_NODE (parent), TEXT_NODE (box));
             g_debug ("Added child %s\n", g_type_name_from_instance (node));
 
@@ -135,7 +124,6 @@ do_layout_recursive (TextLayout    *self,
 TextLayoutBox *
 text_layout_build_layout_tree (TextLayout   *self,
                                PangoContext *context,
-                               TextMark     *cursor,
                                TextFrame    *frame,
                                int           width)
 {
@@ -143,7 +131,7 @@ text_layout_build_layout_tree (TextLayout   *self,
     g_return_val_if_fail (TEXT_IS_FRAME (frame), NULL);
 
     TextLayoutBox *root = text_layout_box_new ();
-    do_layout_recursive (self, root, context, cursor, TEXT_ITEM (frame), width);
+    do_layout_recursive (self, root, context, TEXT_ITEM (frame), width);
     return root;
 }
 
