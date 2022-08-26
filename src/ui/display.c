@@ -550,6 +550,39 @@ commit (GtkIMContext *context,
     g_print ("commit: %s\n", str);
 }
 
+static gboolean
+_move_cursor_vertically (TextMark *cursor,
+                         gboolean  up)
+{
+    TextParagraph *para;
+    TextLayoutBox *layout;
+    PangoRectangle position;
+    PangoLayoutLine *line;
+    int index;
+
+    index = cursor->index;
+    para = cursor->paragraph;
+    layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+    pango_layout_index_to_pos(text_layout_box_get_pango_layout(layout), index, &position);
+
+    layout = up
+        ? text_layout_find_above (layout)
+        : text_layout_find_below (layout);
+
+    if (!layout)
+        return FALSE;
+
+    line = g_slist_last (pango_layout_get_lines (text_layout_box_get_pango_layout(layout)))->data;
+    pango_layout_line_x_to_index (line, position.x, &index, NULL);
+
+    para = TEXT_PARAGRAPH (text_layout_box_get_item (layout));
+
+    cursor->index = index;
+    cursor->paragraph = para;
+
+    return TRUE;
+}
+
 gboolean
 key_pressed (GtkEventControllerKey *controller,
              guint                  keyval,
@@ -619,7 +652,6 @@ key_pressed (GtkEventControllerKey *controller,
                 PangoLayout *pango;
                 GSList *iter;
                 pango = text_layout_box_get_pango_layout (layout);
-                iter = pango_layout_get_lines (pango);
                 int base_index = 0;
 
                 for (iter = pango_layout_get_lines (pango);
@@ -723,30 +755,16 @@ key_pressed (GtkEventControllerKey *controller,
 
     if (keyval == GDK_KEY_Up)
     {
-        TextParagraph *para;
-        TextLayoutBox *layout;
-        int index;
-
-        index = self->document->cursor->index;
-        para = self->document->cursor->paragraph;
-        layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
-
-        g_print ("Up!\n");
-        goto redraw;
+        if (_move_cursor_vertically (self->document->cursor, TRUE))
+            goto redraw;
+        return TRUE;
     }
 
     if (keyval == GDK_KEY_Down)
     {
-        TextParagraph *para;
-        TextLayoutBox *layout;
-        int index;
-
-        index = self->document->cursor->index;
-        para = self->document->cursor->paragraph;
-        layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
-
-        g_print ("Down!\n");
-        goto redraw;
+        if (_move_cursor_vertically (self->document->cursor, FALSE))
+            goto redraw;
+        return TRUE;
     }
 
     // Handle deletion

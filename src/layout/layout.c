@@ -136,6 +136,18 @@ text_layout_build_layout_tree (TextLayout   *self,
 }
 
 TextLayoutBox *
+text_layout_find_above (TextLayoutBox *item)
+{
+    return TEXT_LAYOUT_BOX (text_node_get_previous (TEXT_LAYOUT_BOX (item)));
+}
+
+TextLayoutBox *
+text_layout_find_below (TextLayoutBox *item)
+{
+    return TEXT_LAYOUT_BOX (text_node_get_next (TEXT_LAYOUT_BOX (item)));
+}
+
+TextLayoutBox *
 text_layout_pick_internal (TextLayoutBox *root,
                            int            x,
                            int            y,
