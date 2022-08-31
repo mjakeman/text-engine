@@ -29,7 +29,6 @@
 
 #include <ui/display.h>
 #include <format/import.h>
-#include <model/document.h>
 
 #define DEMO_TYPE_WINDOW demo_window_get_type ()
 G_DECLARE_FINAL_TYPE (DemoWindow, demo_window, DEMO, WINDOW, AdwApplicationWindow)
@@ -107,6 +106,7 @@ demo_window_init (DemoWindow *self)
     GtkWidget *header_bar;
     GtkWidget *vbox;
     GtkWidget *inspector_btn;
+    GtkWidget *scroll_area;
 
     vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     adw_application_window_set_content (ADW_APPLICATION_WINDOW (self), vbox);
@@ -118,10 +118,14 @@ demo_window_init (DemoWindow *self)
     document->frame = frame;
 
     header_bar = adw_header_bar_new ();
+    scroll_area = gtk_scrolled_window_new();
     display = text_display_new (document);
 
+    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll_area), display);
+    gtk_widget_set_vexpand (scroll_area, TRUE);
+
     gtk_box_append (GTK_BOX (vbox), header_bar);
-    gtk_box_append (GTK_BOX (vbox), GTK_WIDGET (display));
+    gtk_box_append (GTK_BOX (vbox), GTK_WIDGET (scroll_area));
 
     inspector_btn = gtk_button_new_with_label ("Inspector");
     g_signal_connect_swapped (inspector_btn,
