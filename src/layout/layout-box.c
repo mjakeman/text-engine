@@ -97,7 +97,9 @@ text_layout_box_set_property (GObject      *object,
 void
 text_layout_box_layout (TextLayoutBox *self,
                         PangoContext  *context,
-                        int            width)
+                        int            width,
+                        int            offset_x,
+                        int            offset_y)
 {
     g_return_if_fail (TEXT_IS_LAYOUT_BOX (self));
 
@@ -164,8 +166,8 @@ text_layout_box_layout (TextLayoutBox *self,
         g_debug (" - Child height %d\n", height);
     }
 
-    priv->bbox.x = 0;
-    priv->bbox.y = 0;
+    priv->bbox.x = offset_x;
+    priv->bbox.y = offset_y;
     priv->bbox.width = width;
     priv->bbox.height = height;
 }

@@ -73,10 +73,15 @@ static void
 do_layout_recursive (TextLayout    *self,
                      TextLayoutBox *parent,
                      PangoContext  *context,
-                     TextMark      *cursor,
                      TextItem      *item,
                      int            width)
 {
+    int child_offset_x;
+    int child_offset_y;
+
+    child_offset_x = 0;
+    child_offset_y = 0;
+
     g_return_if_fail (TEXT_IS_LAYOUT (self));
     g_return_if_fail (TEXT_IS_LAYOUT_BOX (parent));
     g_return_if_fail (TEXT_IS_ITEM (item));
@@ -97,16 +102,8 @@ do_layout_recursive (TextLayout    *self,
         {
             TextLayoutBox *box = text_layout_box_new ();
             text_layout_box_set_item (box, TEXT_ITEM (node));
-
-            // TODO: We should handle runs inline here, rather than
-            // paragraphs. As we do not consider individual runs, we
-            // must check whether the paragraph contains a cursor and
-            // then handle layout for the cursor object.
-            if (TEXT_PARAGRAPH (node) == cursor->paragraph)
-            {
-                // Paragraph contains cursor
-                text_layout_box_set_cursor (box, cursor->index);
-            }
+            text_item_detach (TEXT_ITEM (node)); // TODO: Don't do this
+            text_item_attach (TEXT_ITEM (node), TEXT_NODE (box));
 
             text_node_append_child (TEXT_NODE (parent), TEXT_NODE (box));
             g_debug ("Added child %s\n", g_type_name_from_instance (node));
@@ -114,18 +111,19 @@ do_layout_recursive (TextLayout    *self,
             // TODO: This function should be properly recursive in the future,
             // so avoid calling it here. Below should be the only time it is
             // called (i.e. post-order traversal).
-            text_layout_box_layout (box, context, width);
+            text_layout_box_layout (box, context, width, child_offset_x, child_offset_y);
+            child_offset_y += text_layout_box_get_bbox (box)->height;
         }
     }
 
-    text_layout_box_layout (parent, context, width);
+    // When we make this recursive, should pass in offsets
+    text_layout_box_layout (parent, context, width, 0, 0);
     g_debug ("Layout for %s\n", g_type_name_from_instance (parent));
 }
 
 TextLayoutBox *
 text_layout_build_layout_tree (TextLayout   *self,
                                PangoContext *context,
-                               TextMark     *cursor,
                                TextFrame    *frame,
                                int           width)
 {
@@ -133,8 +131,103 @@ text_layout_build_layout_tree (TextLayout   *self,
     g_return_val_if_fail (TEXT_IS_FRAME (frame), NULL);
 
     TextLayoutBox *root = text_layout_box_new ();
-    do_layout_recursive (self, root, context, cursor, TEXT_ITEM (frame), width);
+    do_layout_recursive (self, root, context, TEXT_ITEM (frame), width);
     return root;
+}
+
+TextLayoutBox *
+text_layout_find_above (TextLayoutBox *item)
+{
+    return TEXT_LAYOUT_BOX (text_node_get_previous (TEXT_LAYOUT_BOX (item)));
+}
+
+TextLayoutBox *
+text_layout_find_below (TextLayoutBox *item)
+{
+    return TEXT_LAYOUT_BOX (text_node_get_next (TEXT_LAYOUT_BOX (item)));
+}
+
+TextLayoutBox *
+text_layout_pick_internal (TextLayoutBox *root,
+                           int            x,
+                           int            y,
+                           double        *min_y_distance,
+                           TextNode     **min_y_layout)
+{
+    // Note: 'x' and 'y' are relative to the document origin
+    TextNode *child;
+    TextNode *found;
+
+    g_return_val_if_fail (TEXT_IS_LAYOUT_BOX (root), NULL);
+
+    for (child = text_node_get_first_child (TEXT_NODE (root));
+         child != NULL;
+         child = text_node_get_next (child))
+    {
+        TextLayoutBox *layout_item;
+        const TextDimensions *bbox;
+        double dist_to_y;
+
+        layout_item = TEXT_LAYOUT_BOX (child);
+        bbox = text_layout_box_get_bbox (layout_item);
+
+        // Recursively check child layouts first
+        found = TEXT_NODE (text_layout_pick (layout_item, x - bbox->x, y - bbox->y));
+
+        if (found) {
+            return found;
+        }
+
+        // Check if the cursor is fully within the bounding box
+        if (x >= bbox->x &&
+            y >= bbox->y &&
+            x <= bbox->x + bbox->width &&
+            y <= bbox->y + bbox->height)
+        {
+            return layout_item;
+        }
+
+        // Check if the cursor is vertically within the bounding box
+        if (y >= bbox->y &&
+            y <= bbox->y + bbox->height)
+        {
+            *min_y_distance = 0;
+            *min_y_layout = TEXT_NODE (layout_item);
+            continue;
+        }
+
+        // Finally check the vertical offset from the cursor to the
+        // closest edge of the bounding box
+        dist_to_y = (y < bbox->y)
+                ? bbox->y - y
+                : y - bbox->y;
+
+        if (dist_to_y < *min_y_distance) {
+            *min_y_distance = dist_to_y;
+            *min_y_layout = TEXT_NODE (layout_item);
+        }
+    }
+
+    return NULL;
+}
+
+TextLayoutBox *
+text_layout_pick (TextLayoutBox *root,
+                  int            x,
+                  int            y)
+{
+    double min_y_distance = G_MAXDOUBLE;
+    TextNode *min_y_layout = NULL;
+    TextNode *result;
+
+    result = text_layout_pick_internal(root, x, y, &min_y_distance, &min_y_layout);
+
+    if (result) {
+        return result;
+    }
+
+    // Otherwise return nearest layout
+    return min_y_layout;
 }
 
 static void

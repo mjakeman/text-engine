@@ -221,6 +221,18 @@ text_display_set_property (GObject      *object,
 }
 
 static void
+_rebuild_layout_tree (TextDisplay *self, int width)
+{
+    g_print ("Rebuilding layout tree\n");
+
+    text_node_clear (&self->layout_tree);
+    self->layout_tree = text_layout_build_layout_tree (self->layout,
+                                                       gtk_widget_get_pango_context (GTK_WIDGET (self)),
+                                                       self->document->frame,
+                                                       width);
+}
+
+static void
 layout_snapshot_recursive (GtkWidget     *widget,
                            TextLayoutBox *layout_box,
                            GtkSnapshot   *snapshot,
@@ -253,28 +265,61 @@ layout_snapshot_recursive (GtkWidget     *widget,
         offset = bbox->height;
     }
 
-    const TextDimensions *cursor;
-    if (gtk_widget_has_focus (widget) &&
-        text_layout_box_get_cursor (layout_box, &cursor))
-    {
-        gtk_snapshot_append_color (snapshot, fg_color, &GRAPHENE_RECT_INIT (cursor->x, cursor->y, 1, cursor->height));
-    }
-
     gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->height));
 
     *delta_height = bbox->height;
 }
 
 static void
+draw_cursor_snapshot (GtkSnapshot *snapshot,
+                      TextMark *cursor,
+                      GdkRGBA *color)
+{
+    TextLayoutBox *box;
+    TextParagraph *item;
+    int index;
+
+    item = cursor->paragraph;
+    index = cursor->index;
+
+    box = text_item_get_attachment(item);
+
+    if (TEXT_IS_LAYOUT_BOX (box)) {
+        int x, y, height, width;
+        const TextDimensions *bbox;
+        PangoLayout *layout;
+
+        bbox = text_layout_box_get_bbox(box);
+        layout = text_layout_box_get_pango_layout(box);
+
+        PangoRectangle cursor_rect;
+        pango_layout_index_to_pos (layout,
+                                   index,
+                                   &cursor_rect);
+
+        // Hardcode width to 1
+        x = cursor_rect.x / PANGO_SCALE;
+        y = cursor_rect.y / PANGO_SCALE;
+        height = cursor_rect.height / PANGO_SCALE;
+        width = 1;
+
+        gtk_snapshot_append_color (snapshot, color, &GRAPHENE_RECT_INIT (bbox->x + x, bbox->y + y, width, height));
+    }
+}
+
+static void
 text_display_snapshot (GtkWidget   *widget,
                        GtkSnapshot *snapshot)
 {
-    int displacement;
     int width;
+    int displacement;
+    int delta_height;
+    TextDisplay *self;
+    GdkRGBA fg_color;
 
     g_return_if_fail (TEXT_IS_DISPLAY (widget));
 
-    TextDisplay *self = TEXT_DISPLAY (widget);
+    self = TEXT_DISPLAY (widget);
 
     if (!self->document)
         return;
@@ -282,30 +327,27 @@ text_display_snapshot (GtkWidget   *widget,
     if (!self->layout_tree)
         return;
 
-    width = gtk_widget_get_width (GTK_WIDGET (self));
-    width -= self->margin_start + self->margin_end;
+    // Get default colours
+    gtk_style_context_get_color (gtk_widget_get_style_context (widget), &fg_color);
 
-    // set vertical displacement (horizontal not supported)
+    // Set vertical displacement (horizontal not supported)
     displacement = self->vadjustment
-        ? -gtk_adjustment_get_value (self->vadjustment)
-        : 0;
-
-    // TODO: Don't recreate this each time - do in size allocate instead?
-    text_node_clear (&self->layout_tree);
-    self->layout_tree = text_layout_build_layout_tree (self->layout,
-                                                       gtk_widget_get_pango_context (GTK_WIDGET (self)),
-                                                       self->document->cursor,
-                                                       self->document->frame,
-                                                       width);
+                   ? -gtk_adjustment_get_value (self->vadjustment)
+                   : 0;
 
     gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (self->margin_start, self->margin_top + displacement));
 
-    GdkRGBA fg_color;
-    gtk_style_context_get_color (gtk_widget_get_style_context (widget), &fg_color);
-
-    // Display the layout tree
-    int delta_height;
+    // Draw layout tree
+    gtk_snapshot_save (snapshot);
     layout_snapshot_recursive (widget, self->layout_tree, snapshot, &fg_color, &delta_height);
+    gtk_snapshot_restore (snapshot);
+
+    // Draw cursors
+    if (gtk_widget_has_focus (widget)) {
+        gtk_snapshot_save (snapshot);
+        draw_cursor_snapshot (snapshot, self->document->cursor, &fg_color);
+        gtk_snapshot_restore (snapshot);
+    }
 }
 
 static GtkSizeRequestMode
@@ -334,7 +376,6 @@ text_display_measure (GtkWidget      *widget,
         text_node_clear (&self->layout_tree);
         self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                            context,
-                                                           self->document->cursor,
                                                            self->document->frame,
                                                            for_size);
 
@@ -368,7 +409,7 @@ text_display_size_allocate (GtkWidget *widget,
 
     self = TEXT_DISPLAY (widget);
 
-    g_return_if_fail (TEXT_IS_LAYOUT_BOX (self->layout_tree));
+    _rebuild_layout_tree (self, widget_width - self->margin_start - self->margin_end);
 
     bbox = text_layout_box_get_bbox (self->layout_tree);
 
@@ -503,9 +544,162 @@ commit (GtkIMContext *context,
     // then bubbles up and invalidates the style
     // which then bubbles up and invalidates the layout
     // which then causes a partial redraw - simple right?
+    gtk_widget_queue_allocate (GTK_WIDGET (self));
     gtk_widget_queue_draw (GTK_WIDGET (self));
 
     g_print ("commit: %s\n", str);
+}
+
+static gboolean
+_move_cursor_home (TextMark *cursor)
+{
+    TextParagraph *para;
+    TextLayoutBox *layout;
+    int index;
+
+    index = cursor->index;
+    para = cursor->paragraph;
+    layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+
+    if (layout) {
+        PangoLayout *pango;
+        GSList *iter;
+        pango = text_layout_box_get_pango_layout (layout);
+        int base_index = 0;
+
+        for (iter = pango_layout_get_lines (pango);
+             iter != NULL;
+             iter = iter->next)
+        {
+            PangoLayoutLine *line;
+            gboolean is_last_line;
+
+            is_last_line = (iter->next == NULL);
+            line = iter->data;
+
+            // For the last line in the paragraph, there is an imaginary 'paragraph break'
+            // character to account for the traversal between paragraphs. Therefore we check
+            // whether index is contained within the 'length + 1' of the last line.
+            if (is_last_line && base_index + pango_layout_line_get_length (line) + 1 > index) {
+                cursor->index = base_index;
+                return TRUE;
+            }
+
+            // Otherwise check if the index is contained within the line length, then
+            // go to the starting index.
+            if (base_index + pango_layout_line_get_length (line) > index) {
+                cursor->index = base_index;
+                return TRUE;
+            }
+
+            // Fine the base index of the next line
+            base_index += pango_layout_line_get_length (line);
+        }
+    }
+
+    return FALSE;
+}
+
+static gboolean
+_move_cursor_end (TextMark *cursor)
+{
+    TextParagraph *para;
+    TextLayoutBox *layout;
+    int index;
+
+    index = cursor->index;
+    para = cursor->paragraph;
+    layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+
+    if (layout) {
+        PangoLayout *pango;
+        GSList *iter;
+        pango = text_layout_box_get_pango_layout (layout);
+        iter = pango_layout_get_lines (pango);
+        int base_index = 0;
+
+        for (iter = pango_layout_get_lines (pango);
+             iter != NULL;
+             iter = iter->next)
+        {
+            PangoLayoutLine *line;
+            gboolean is_last_line;
+
+            line = iter->data;
+            is_last_line = (iter->next == NULL);
+
+            // For the last line in the paragraph, there is an imaginary 'paragraph break'
+            // character to account for the traversal between paragraphs. Therefore we check
+            // whether index is contained within the 'length + 1' of the last line.
+            if (is_last_line && base_index + pango_layout_line_get_length (line) + 1 > index) {
+                cursor->index = base_index + pango_layout_line_get_length (line);
+                return TRUE;
+            }
+
+            // Otherwise check if the index is contained within the line length, then
+            // go to the index before the final character on the line.
+            if (base_index + pango_layout_line_get_length (line) > index) {
+                cursor->index = base_index + pango_layout_line_get_length (line) - 1;
+                return TRUE;
+            }
+
+            base_index += pango_layout_line_get_length (line);
+        }
+    }
+
+    return FALSE;
+}
+
+static gboolean
+_move_cursor_vertically (TextMark *cursor,
+                         gboolean  up)
+{
+    TextParagraph *para;
+    TextLayoutBox *box_layout;
+    PangoLayout *pango_layout;
+    PangoLayoutLine *line;
+    PangoRectangle position;
+    int cur_line_index;
+    int index;
+    int x_pos;
+
+    index = cursor->index;
+    para = cursor->paragraph;
+    box_layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+    pango_layout = text_layout_box_get_pango_layout(box_layout);
+
+    // First try move within the paragraph
+    pango_layout_index_to_line_x (pango_layout, index, FALSE, &cur_line_index, &x_pos);
+
+    // Try get line +/- 1
+    line = pango_layout_get_line (pango_layout, up ? cur_line_index - 1 : cur_line_index + 1);
+
+    if (line) {
+        pango_layout_line_x_to_index(line, x_pos, &index, FALSE);
+        cursor->index = index;
+        return TRUE;
+    }
+
+    // If there are no more lines left, move to above or below box_layout
+    pango_layout_index_to_pos(pango_layout, index, &position);
+
+    box_layout = up
+        ? text_layout_find_above (box_layout)
+        : text_layout_find_below (box_layout);
+
+    if (!box_layout)
+        return FALSE;
+
+    pango_layout = text_layout_box_get_pango_layout(box_layout);
+    line = pango_layout_get_line(pango_layout, up ? pango_layout_get_line_count (pango_layout) - 1 : 0);
+    pango_layout_line_x_to_index (line, position.x, &index, NULL);
+
+    para = TEXT_PARAGRAPH (text_layout_box_get_item (box_layout));
+
+    cursor->index = index;
+    cursor->paragraph = para;
+
+    return TRUE;
 }
 
 gboolean
@@ -556,19 +750,33 @@ key_pressed (GtkEventControllerKey *controller,
         // "Save" to clipboard for now
         gdk_clipboard_set_text (clipboard, text);
         g_free (text);
+        return TRUE;
     }
 
     // Handle Home/End
-    if (ctrl_pressed && keyval == GDK_KEY_Home)
+    if (keyval == GDK_KEY_Home)
     {
-        text_editor_move_first (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
-        goto handled;
+        if (ctrl_pressed) {
+            text_editor_move_first (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+            goto redraw;
+        }
+        else if (_move_cursor_home (self->document->cursor)) {
+            goto redraw;
+        }
+
+        return TRUE;
     }
 
-    if (ctrl_pressed && keyval == GDK_KEY_End)
+    if (keyval == GDK_KEY_End)
     {
-        text_editor_move_last (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
-        goto handled;
+        if (ctrl_pressed) {
+            text_editor_move_last (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+        }
+        else if (_move_cursor_end (self->document->cursor)) {
+            goto redraw;
+        }
+
+        return TRUE;
     }
 
     // Handle directional movemenent
@@ -576,13 +784,27 @@ key_pressed (GtkEventControllerKey *controller,
     if (keyval == GDK_KEY_Left)
     {
         text_editor_move_left (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
-        goto handled;
+        goto redraw;
     }
 
     if (keyval == GDK_KEY_Right)
     {
         text_editor_move_right (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
-        goto handled;
+        goto redraw;
+    }
+
+    if (keyval == GDK_KEY_Up)
+    {
+        if (_move_cursor_vertically (self->document->cursor, TRUE))
+            goto redraw;
+        return TRUE;
+    }
+
+    if (keyval == GDK_KEY_Down)
+    {
+        if (_move_cursor_vertically (self->document->cursor, FALSE))
+            goto redraw;
+        return TRUE;
     }
 
     // Handle deletion
@@ -596,7 +818,7 @@ key_pressed (GtkEventControllerKey *controller,
         else
             text_editor_delete (self->editor, TEXT_EDITOR_CURSOR, 1);
 
-        goto handled;
+        goto reallocate;
     }
 
     if (keyval == GDK_KEY_BackSpace)
@@ -609,19 +831,21 @@ key_pressed (GtkEventControllerKey *controller,
         else
             text_editor_delete (self->editor, TEXT_EDITOR_CURSOR, -1);
 
-        goto handled;
+        goto reallocate;
     }
 
     if (keyval == GDK_KEY_Return)
     {
         text_editor_split (self->editor, TEXT_EDITOR_CURSOR);
-        goto handled;
+        goto reallocate;
     }
 
     return FALSE;
 
-handled:
+reallocate:
     gtk_widget_queue_allocate (GTK_WIDGET (self));
+
+redraw:
     gtk_widget_queue_draw (GTK_WIDGET (self));
     return TRUE;
 }
@@ -633,6 +857,38 @@ pointer_pressed (GtkGestureClick *gesture,
                  gdouble          y,
                  TextDisplay     *self)
 {
+    // g_print ("X: %lf Y: %lf\n", x, y);
+
+    if (self->layout_tree) {
+        TextLayoutBox *box;
+
+        // TODO: Account for scrolling
+        box = text_layout_pick (self->layout_tree, x - self->margin_start, y - self->margin_top);
+
+        if (box) {
+            TextItem *item;
+            const TextDimensions *bbox;
+
+            item = text_layout_box_get_item (box);
+            bbox = text_layout_box_get_bbox (box);
+
+            // TODO: Properly find the nearest leaf node
+            // when we have more complex renderers
+            g_return_if_fail (TEXT_IS_PARAGRAPH (item));
+
+            int index, trailing;
+
+            // Pango automatically clamps the coordinates to the layout for us
+            pango_layout_xy_to_index (text_layout_box_get_pango_layout (box),
+                                          (x - bbox->x) * PANGO_SCALE,
+                                          (y - bbox->y) * PANGO_SCALE,
+                                          &index, &trailing);
+
+            self->document->cursor->paragraph = TEXT_PARAGRAPH (item);
+            self->document->cursor->index = index;
+        }
+    }
+
     gtk_widget_grab_focus (GTK_WIDGET (self));
     gtk_widget_queue_draw (GTK_WIDGET (self));
 }

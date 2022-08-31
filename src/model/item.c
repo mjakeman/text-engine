@@ -11,7 +11,12 @@
 
 #include "item.h"
 
-G_DEFINE_TYPE (TextItem, text_item, TEXT_TYPE_NODE)
+typedef struct
+{
+    TextNode *renderer;
+} TextItemPrivate;
+
+G_DEFINE_TYPE_WITH_PRIVATE (TextItem, text_item, TEXT_TYPE_NODE)
 
 enum {
     PROP_0,
@@ -31,6 +36,32 @@ TextItem *
 text_item_new (void)
 {
     return g_object_new (TEXT_TYPE_ITEM, NULL);
+}
+
+void
+text_item_attach (TextItem *self,
+                  TextNode *attachment)
+{
+    TextItemPrivate *priv = text_item_get_instance_private (self);
+
+    g_return_if_fail (!priv->renderer);
+
+    priv->renderer = g_object_ref (attachment);
+}
+
+TextNode *
+text_item_get_attachment (TextItem *self)
+{
+    TextItemPrivate *priv = text_item_get_instance_private (self);
+    return TEXT_NODE (priv->renderer);
+}
+
+void
+text_item_detach (TextItem *self)
+{
+    TextItemPrivate *priv = text_item_get_instance_private (self);
+    if (priv->renderer)
+        g_clear_object (&priv->renderer);
 }
 
 static void

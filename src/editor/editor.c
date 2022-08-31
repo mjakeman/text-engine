@@ -1190,6 +1190,14 @@ text_editor_split_at_mark (TextEditor *self,
             iter = next;
         }
 
+        // Ensure the original paragraph has at least one run (all runs may be
+        // moved when the split index is at the start of the paragraph)
+        if (text_node_get_num_children (TEXT_PARAGRAPH (current)) == 0)
+        {
+            // Add empty run
+            text_paragraph_append_run(current, text_run_new(""));
+        }
+
         // Append paragraph to document tree
         parent = text_node_get_parent (TEXT_NODE (current));
         text_node_insert_child_after (parent, TEXT_NODE (new), TEXT_NODE (current));
@@ -1209,7 +1217,7 @@ text_editor_split_at_mark (TextEditor *self,
 
         // Mark is on split point
         if (mark->paragraph == current &&
-              mark->index == split->index)
+            mark->index == split->index)
         {
             _distribute_mark (mark, current, split->index, new, 0);
             continue;

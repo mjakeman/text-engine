@@ -32,8 +32,18 @@ TextLayout *text_layout_new (void);
 TextLayoutBox *
 text_layout_build_layout_tree (TextLayout   *self,
                                PangoContext *context,
-                               TextMark     *cursor,
                                TextFrame    *frame,
                                int           width);
+
+TextLayoutBox *
+text_layout_pick (TextLayoutBox *root,
+                  int            x,
+                  int            y);
+
+TextLayoutBox *
+text_layout_find_above (TextLayoutBox *item);
+
+TextLayoutBox *
+text_layout_find_below (TextLayoutBox *item);
 
 G_END_DECLS
