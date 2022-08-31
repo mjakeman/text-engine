@@ -655,27 +655,46 @@ _move_cursor_vertically (TextMark *cursor,
                          gboolean  up)
 {
     TextParagraph *para;
-    TextLayoutBox *layout;
-    PangoRectangle position;
+    TextLayoutBox *box_layout;
+    PangoLayout *pango_layout;
     PangoLayoutLine *line;
+    PangoRectangle position;
+    int cur_line_index;
     int index;
+    int x_pos;
 
     index = cursor->index;
     para = cursor->paragraph;
-    layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
-    pango_layout_index_to_pos(text_layout_box_get_pango_layout(layout), index, &position);
+    box_layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+    pango_layout = text_layout_box_get_pango_layout(box_layout);
 
-    layout = up
-        ? text_layout_find_above (layout)
-        : text_layout_find_below (layout);
+    // First try move within the paragraph
+    pango_layout_index_to_line_x (pango_layout, index, FALSE, &cur_line_index, &x_pos);
 
-    if (!layout)
+    // Try get line +/- 1
+    line = pango_layout_get_line (pango_layout, up ? cur_line_index - 1 : cur_line_index + 1);
+
+    if (line) {
+        pango_layout_line_x_to_index(line, x_pos, &index, FALSE);
+        cursor->index = index;
+        return TRUE;
+    }
+
+    // If there are no more lines left, move to above or below box_layout
+    pango_layout_index_to_pos(pango_layout, index, &position);
+
+    box_layout = up
+        ? text_layout_find_above (box_layout)
+        : text_layout_find_below (box_layout);
+
+    if (!box_layout)
         return FALSE;
 
-    line = g_slist_last (pango_layout_get_lines (text_layout_box_get_pango_layout(layout)))->data;
+    pango_layout = text_layout_box_get_pango_layout(box_layout);
+    line = pango_layout_get_line(pango_layout, up ? pango_layout_get_line_count (pango_layout) - 1 : 0);
     pango_layout_line_x_to_index (line, position.x, &index, NULL);
 
-    para = TEXT_PARAGRAPH (text_layout_box_get_item (layout));
+    para = TEXT_PARAGRAPH (text_layout_box_get_item (box_layout));
 
     cursor->index = index;
     cursor->paragraph = para;
