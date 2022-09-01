@@ -101,19 +101,44 @@ demo_window_init (DemoWindow *self)
     TextFrame *frame;
     TextDisplay *display;
     TextDocument *document;
-    const gchar *test;
+    gchar *contents;
+    gsize contents_length;
 
     GtkWidget *header_bar;
     GtkWidget *vbox;
     GtkWidget *inspector_btn;
     GtkWidget *scroll_area;
 
+    GFile *file;
+    GError *error;
+
+    error = NULL;
+
     vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     adw_application_window_set_content (ADW_APPLICATION_WINDOW (self), vbox);
 
     // Example rich text document (uses html subset)
-    test = "<p>There was an <b>Old Man</b> with a <i>beard</i></p><p>Who said, &quot;<u>It is just as I feared!</u></p><p> &gt; Two Owls and a Hen,<br> &gt; Four Larks and a Wren,</p><p>Have all built their nests <b><u><i>in my beard!</i></u></b>&quot;</p>";
-    frame = format_parse_html (test);
+    file = g_file_new_for_uri ("resource:///com/mattjakeman/TextEngine/Demo/demo.html");
+
+    if (g_file_load_contents (file, NULL, &contents, &contents_length, NULL, &error))
+    {
+        GString *string;
+
+        string = g_string_new_len (contents, contents_length);
+        contents = g_string_free (string, FALSE);
+    }
+    else if (error)
+    {
+        contents = g_strdup_printf ("Unable to load demo.html content: %s\n", error->message);
+        g_clear_pointer (&error, g_error_free);
+    }
+    else
+    {
+        contents = g_strdup ("Unable to load demo.html content.");
+    }
+
+    // test = "<p>There was an <b>Old Man</b> with a <i>beard</i></p><p>Who said, &quot;<u>It is just as I feared!</u></p><p> &gt; Two Owls and a Hen,<br> &gt; Four Larks and a Wren,</p><p>Have all built their nests <b><u><i>in my beard!</i></u></b>&quot;</p>";
+    frame = format_parse_html (contents);
     document = text_document_new ();
     document->frame = frame;
 
