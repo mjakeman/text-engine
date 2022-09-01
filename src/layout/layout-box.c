@@ -113,22 +113,42 @@ _set_attributes (TextParagraph *paragraph,
          run != NULL;
          run = text_node_get_next (run))
     {
-        gboolean is_bold;
-        PangoAttribute *attr_bold;
+        gboolean is_bold, is_italic, is_underline;
+        PangoAttribute *attr;
         int run_length;
 
         run_length = text_run_get_length (TEXT_RUN (run));
 
         // Get Style Properties
         is_bold = text_run_get_style_bold (TEXT_RUN (run));
+        is_italic = text_run_get_style_italic (TEXT_RUN (run));
+        is_underline = text_run_get_style_underline (TEXT_RUN (run));
 
         // Attribute: Bold
         if (is_bold)
         {
-            attr_bold = pango_attr_weight_new (PANGO_WEIGHT_BOLD);
-            attr_bold->start_index = start_index;
-            attr_bold->end_index = start_index + run_length;
-            pango_attr_list_insert (list, attr_bold);
+            attr = pango_attr_weight_new (PANGO_WEIGHT_BOLD);
+            attr->start_index = start_index;
+            attr->end_index = start_index + run_length;
+            pango_attr_list_insert (list, attr);
+        }
+
+        // Attribute: Italic
+        if (is_italic)
+        {
+            attr = pango_attr_style_new (PANGO_STYLE_ITALIC);
+            attr->start_index = start_index;
+            attr->end_index = start_index + run_length;
+            pango_attr_list_insert (list, attr);
+        }
+
+        // Attribute: Underline
+        if (is_underline)
+        {
+            attr = pango_attr_underline_new (PANGO_UNDERLINE_SINGLE);
+            attr->start_index = start_index;
+            attr->end_index = start_index + run_length;
+            pango_attr_list_insert (list, attr);
         }
 
         start_index += run_length;

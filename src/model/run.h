@@ -27,4 +27,10 @@ int      text_run_get_length (TextRun *self);
 gboolean text_run_get_style_bold (TextRun *self);
 void     text_run_set_style_bold (TextRun *self, gboolean is_bold);
 
+gboolean text_run_get_style_italic (TextRun *self);
+void     text_run_set_style_italic (TextRun *self, gboolean is_italic);
+
+gboolean text_run_get_style_underline (TextRun *self);
+void     text_run_set_style_underline (TextRun *self, gboolean is_underline);
+
 G_END_DECLS
