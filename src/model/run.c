@@ -15,6 +15,7 @@ struct _TextRun
 {
     TextItem parent_instance;
     gchar *text;
+    gboolean is_bold;
 };
 
 
@@ -88,6 +89,18 @@ text_run_get_length (TextRun *self)
     g_return_val_if_fail (TEXT_IS_RUN (self), -1);
 
     return strlen (self->text);
+}
+
+gboolean
+text_run_get_style_bold (TextRun *self)
+{
+    return self->is_bold;
+}
+
+void
+text_run_set_style_bold (TextRun *self, gboolean is_bold)
+{
+    self->is_bold = is_bold;
 }
 
 static void
