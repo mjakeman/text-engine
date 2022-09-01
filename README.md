@@ -3,6 +3,13 @@ Text Engine is a rich-text editing framework for GTK 4. The primary user
 of this library is [bluetype](https://github.com/mjakeman/bluetype) but it
 can be used wherever rich text display and editing is needed.
 
+![The text engine demo displaying sample rich text](demo/screenshot.png)
+
+## Status
+The library is under heavy development and generally not suitable for
+use in applications. For packagers, note that Extension Manager builds
+against version 0.1 of this library.
+
 ## Matrix
 Development of text-engine and bluetype takes place on matrix.
 
