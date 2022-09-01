@@ -18,6 +18,11 @@
 #include "../model/block.h"
 #include "../model/run.h"
 
+// Style Info
+// TODO: Refactor this into a stylesheet module rather
+// than setting it on runs directly
+static gboolean is_bold = FALSE;
+
 static void
 build_text_frame_recursive (xmlNode        *nodes,
                             TextFrame      *frame,
@@ -31,8 +36,9 @@ build_text_frame_recursive (xmlNode        *nodes,
     if (nodes == NULL)
         return;
 
-    for (cur_node = nodes; cur_node; cur_node = cur_node->next)
+    for (cur_node = nodes; cur_node != NULL; cur_node = cur_node->next)
     {
+        // ENTER NODE
         if (cur_node->type == XML_ELEMENT_NODE)
         {
             if (g_str_equal (cur_node->name, "p") ||
@@ -40,6 +46,10 @@ build_text_frame_recursive (xmlNode        *nodes,
             {
                 *current = text_paragraph_new ();
                 text_frame_append_block (frame, TEXT_BLOCK (*current));
+            }
+            else if (g_str_equal (cur_node->name, "b"))
+            {
+                is_bold = TRUE;
             }
             else
             {
@@ -50,10 +60,25 @@ build_text_frame_recursive (xmlNode        *nodes,
         else if (cur_node->type == XML_TEXT_NODE)
         {
             // Append text as new run
+            TextRun *new_run;
+
             const gchar *content = (gchar *)cur_node->content;
-            text_paragraph_append_run (*current, text_run_new (content));
+            new_run = text_run_new (content);
+            text_run_set_style_bold (new_run, is_bold);
+            text_paragraph_append_run (*current, new_run);
         }
+
+        // PROCESS CHILDREN
         build_text_frame_recursive (cur_node->children, frame, current);
+
+        // EXIT NODE
+        if (cur_node->type == XML_ELEMENT_NODE)
+        {
+            if (g_str_equal (cur_node->name, "b"))
+            {
+                is_bold = FALSE;
+            }
+        }
     }
 }
 
