@@ -95,6 +95,69 @@ text_layout_box_set_property (GObject      *object,
 }
 
 void
+_set_attributes (TextParagraph *paragraph,
+                 PangoLayout   *pango_layout)
+{
+    TextNode *run;
+    PangoAttrList *list;
+
+    int start_index;
+
+    list = pango_attr_list_new();
+
+    g_return_if_fail (TEXT_IS_PARAGRAPH (paragraph));
+
+    start_index = 0;
+
+    for (run = text_node_get_first_child (TEXT_NODE (paragraph));
+         run != NULL;
+         run = text_node_get_next (run))
+    {
+        gboolean is_bold, is_italic, is_underline;
+        PangoAttribute *attr;
+        int run_length;
+
+        run_length = text_run_get_length (TEXT_RUN (run));
+
+        // Get Style Properties
+        is_bold = text_run_get_style_bold (TEXT_RUN (run));
+        is_italic = text_run_get_style_italic (TEXT_RUN (run));
+        is_underline = text_run_get_style_underline (TEXT_RUN (run));
+
+        // Attribute: Bold
+        if (is_bold)
+        {
+            attr = pango_attr_weight_new (PANGO_WEIGHT_BOLD);
+            attr->start_index = start_index;
+            attr->end_index = start_index + run_length;
+            pango_attr_list_insert (list, attr);
+        }
+
+        // Attribute: Italic
+        if (is_italic)
+        {
+            attr = pango_attr_style_new (PANGO_STYLE_ITALIC);
+            attr->start_index = start_index;
+            attr->end_index = start_index + run_length;
+            pango_attr_list_insert (list, attr);
+        }
+
+        // Attribute: Underline
+        if (is_underline)
+        {
+            attr = pango_attr_underline_new (PANGO_UNDERLINE_SINGLE);
+            attr->start_index = start_index;
+            attr->end_index = start_index + run_length;
+            pango_attr_list_insert (list, attr);
+        }
+
+        start_index += run_length;
+    }
+
+    pango_layout_set_attributes (pango_layout, list);
+}
+
+void
 text_layout_box_layout (TextLayoutBox *self,
                         PangoContext  *context,
                         int            width,
@@ -143,6 +206,10 @@ text_layout_box_layout (TextLayoutBox *self,
             priv->cursor.height = cursor_rect.height / PANGO_SCALE;
             priv->cursor.width = 1;
         }
+
+        // Set style information
+        // TODO: Matching from ruleset
+        _set_attributes (TEXT_PARAGRAPH (priv->item), priv->layout);
 
         g_free (text);
     }

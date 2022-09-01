@@ -2,5 +2,6 @@
 <gresources>
   <gresource prefix="/com/mattjakeman/TextEngine/Demo">
     <file>style.css</file>
+    <file>demo.html</file>
   </gresource>
 </gresources>

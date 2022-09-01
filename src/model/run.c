@@ -15,6 +15,9 @@ struct _TextRun
 {
     TextItem parent_instance;
     gchar *text;
+    gboolean is_bold;
+    gboolean is_italic;
+    gboolean is_underline;
 };
 
 
@@ -88,6 +91,45 @@ text_run_get_length (TextRun *self)
     g_return_val_if_fail (TEXT_IS_RUN (self), -1);
 
     return strlen (self->text);
+}
+
+gboolean
+text_run_get_style_bold (TextRun *self)
+{
+    return self->is_bold;
+}
+
+void
+text_run_set_style_bold (TextRun  *self,
+                         gboolean  is_bold)
+{
+    self->is_bold = is_bold;
+}
+
+gboolean
+text_run_get_style_italic (TextRun *self)
+{
+    return self->is_italic;
+}
+
+void
+text_run_set_style_italic (TextRun  *self,
+                           gboolean  is_italic)
+{
+    self->is_italic = is_italic;
+}
+
+gboolean
+text_run_get_style_underline (TextRun *self)
+{
+    return self->is_underline;
+}
+
+void
+text_run_set_style_underline (TextRun  *self,
+                              gboolean  is_underline)
+{
+    self->is_underline = is_underline;
 }
 
 static void
