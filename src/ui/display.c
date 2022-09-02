@@ -1106,10 +1106,18 @@ set_mark_from_cursor (TextDisplay *self,
                       double       y,
                       TextMark    *mark)
 {
+    double displacement;
+
     if (self->layout_tree) {
         TextLayoutBox *box;
 
-        // TODO: Account for scrolling
+        // Get vertical displacement (horizontal not supported)
+        displacement = self->vadjustment
+                       ? -gtk_adjustment_get_value (self->vadjustment)
+                       : 0;
+
+        y -= displacement;
+
         box = text_layout_pick (self->layout_tree, x - self->margin_start, y - self->margin_top);
 
         if (box) {
