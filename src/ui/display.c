@@ -308,6 +308,60 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
 }
 
 static void
+draw_selection_layout_snapshot (GtkSnapshot *snapshot,
+                                PangoLayout *layout,
+                                GdkRGBA     *color)
+{
+    PangoLayoutIter *iter;
+    gboolean iter_next;
+
+    iter = pango_layout_get_iter (layout);
+    iter_next = TRUE;
+
+    while (iter_next)
+    {
+        PangoRectangle rect;
+
+        // Get extents of current line
+        pango_layout_iter_get_line_extents (iter, &rect, NULL);
+
+        // Advance iter to next line
+        iter_next = pango_layout_iter_next_line (iter);
+
+        // Draw selection box for current line
+        gtk_snapshot_append_color (snapshot, color,&GRAPHENE_RECT_INIT (
+                (float) rect.x / PANGO_SCALE,
+                (float) rect.y / PANGO_SCALE,
+                (float) rect.width / PANGO_SCALE,
+                (float) rect.height / PANGO_SCALE));
+    }
+}
+
+static void
+draw_selection_snapshot (GtkSnapshot *snapshot,
+                         TextMark *cursor,
+                         TextMark *selection)
+{
+    GdkRGBA rgba;
+    GdkRGBA selection_color;
+    TextLayoutBox *layout;
+    const TextDimensions *bbox;
+
+    gdk_rgba_parse (&rgba, "blue");
+    selection_color.alpha = 0.6;
+
+    gdk_rgba_parse (&rgba, "red");
+    draw_cursor_snapshot (snapshot, selection, &rgba);
+
+    layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (cursor->paragraph)));
+    bbox = text_layout_box_get_bbox (layout);
+
+    gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->y));
+    draw_selection_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout), &selection_color);
+
+}
+
+static void
 text_display_snapshot (GtkWidget   *widget,
                        GtkSnapshot *snapshot)
 {
@@ -346,6 +400,12 @@ text_display_snapshot (GtkWidget   *widget,
     if (gtk_widget_has_focus (widget)) {
         gtk_snapshot_save (snapshot);
         draw_cursor_snapshot (snapshot, self->document->cursor, &fg_color);
+        gtk_snapshot_restore (snapshot);
+    }
+
+    if (self->document->selection) {
+        gtk_snapshot_save (snapshot);
+        draw_selection_snapshot (snapshot, self->document->cursor, self->document->selection);
         gtk_snapshot_restore (snapshot);
     }
 }
