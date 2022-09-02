@@ -282,7 +282,7 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
     item = cursor->paragraph;
     index = cursor->index;
 
-    box = text_item_get_attachment(item);
+    box = TEXT_LAYOUT_BOX (text_item_get_attachment (item));
 
     if (TEXT_IS_LAYOUT_BOX (box)) {
         int x, y, height, width;
@@ -304,6 +304,143 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
         width = 1;
 
         gtk_snapshot_append_color (snapshot, color, &GRAPHENE_RECT_INIT (bbox->x + x, bbox->y + y, width, height));
+    }
+}
+
+static void
+draw_selection_partial_layout_snapshot (GtkSnapshot *snapshot,
+                                        PangoLayout *layout,
+                                        int          start_index,
+                                        int          end_index,
+                                        GdkRGBA     *color)
+{
+    PangoLayoutIter *iter;
+    gboolean iter_next;
+
+    iter = pango_layout_get_iter (layout);
+    iter_next = TRUE;
+
+    // Make sure start index is actually smaller than the end index
+    if (start_index > end_index) {
+        int tmp;
+        tmp = start_index;
+        start_index = end_index;
+        end_index = tmp;
+    }
+
+    while (iter_next)
+    {
+        PangoRectangle rect;
+        PangoLayoutLine *line;
+        int line_start_index;
+        int line_end_index;
+
+        // Get line indices
+        line = pango_layout_iter_get_line_readonly (iter);
+        line_start_index = pango_layout_line_get_start_index (line);
+        line_end_index = line_start_index + pango_layout_line_get_length (line);
+
+        // Get extents of current line
+        pango_layout_iter_get_line_extents (iter, &rect, NULL);
+
+        // Advance iter to next line
+        iter_next = pango_layout_iter_next_line (iter);
+
+        // Skip lines outside the range
+        if (line_end_index < start_index || line_start_index > end_index)
+            continue;
+
+        g_print ("Line Start %d Line End %d Selection Start %d Selection End %d\n",
+                 line_start_index,
+                 line_end_index,
+                 start_index,
+                 end_index);
+
+        // Handle case where start and end are within the same line
+        if (start_index >= line_start_index &&
+            start_index <= line_end_index &&
+            end_index >= line_start_index &&
+            end_index <= line_end_index)
+        {
+            int selection_start_x;
+            int selection_end_x;
+            int width;
+
+            pango_layout_line_index_to_x (line, start_index, FALSE, &selection_start_x);
+            pango_layout_line_index_to_x (line, end_index, FALSE, &selection_end_x);
+
+            width = selection_end_x - selection_start_x;
+
+            // Draw selection box for current line
+            gtk_snapshot_append_color (snapshot, color,&GRAPHENE_RECT_INIT (
+                    (float) (rect.x + selection_start_x) / PANGO_SCALE,
+                    (float) rect.y / PANGO_SCALE,
+                    (float) width / PANGO_SCALE,
+                    (float) rect.height / PANGO_SCALE));
+
+            return;
+        }
+
+        // Handle starting line
+        if (start_index >= line_start_index && start_index <= line_end_index)
+        {
+            int selection_x;
+            int line_end_x;
+            int width;
+
+            // Get the horizontal starting point of the selection and the ending
+            // index of the line and draw between them. We need to do this to
+            // support both left-to-right and right-to-left languages.
+            pango_layout_line_index_to_x (line, start_index, FALSE, &selection_x);
+            pango_layout_line_index_to_x (line, line_end_index, FALSE, &line_end_x);
+
+            g_print ("Start Segment: %d to %d\n", start_index, line_end_index);
+
+            width = selection_x - line_end_x;
+
+            // Draw selection box for current line
+            gtk_snapshot_append_color (snapshot, color,&GRAPHENE_RECT_INIT (
+                    (float) (rect.x + line_end_x) / PANGO_SCALE,
+                    (float) rect.y / PANGO_SCALE,
+                    (float) width / PANGO_SCALE,
+                    (float) rect.height / PANGO_SCALE));
+
+            continue;
+        }
+
+        // Handle ending line
+        if (end_index >= line_start_index && end_index <= line_end_index)
+        {
+            int selection_x;
+            int line_start_x;
+            int width;
+
+            // Get the horizontal ending point of the selection and the starting
+            // index of the line and draw between them. We need to do this to
+            // support both left-to-right and right-to-left languages.
+            pango_layout_line_index_to_x (line, end_index, FALSE, &selection_x);
+            pango_layout_line_index_to_x (line, line_start_index, FALSE, &line_start_x);
+
+            g_print ("End Segment: %d to %d\n", line_start_index, end_index);
+
+            width = line_start_x - selection_x;
+
+            // Draw selection box for current line
+            gtk_snapshot_append_color (snapshot, color,&GRAPHENE_RECT_INIT (
+                    (float) (rect.x + selection_x) / PANGO_SCALE,
+                    (float) rect.y / PANGO_SCALE,
+                    (float) width / PANGO_SCALE,
+                    (float) rect.height / PANGO_SCALE));
+
+            continue;
+        }
+
+        // Draw selection box for current line
+        gtk_snapshot_append_color (snapshot, color,&GRAPHENE_RECT_INIT (
+                (float) rect.x / PANGO_SCALE,
+                (float) rect.y / PANGO_SCALE,
+                (float) rect.width / PANGO_SCALE,
+                (float) rect.height / PANGO_SCALE));
     }
 }
 
@@ -357,7 +494,8 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
     bbox = text_layout_box_get_bbox (layout);
 
     gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->y));
-    draw_selection_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout), &selection_color);
+    // draw_selection_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout), &selection_color);
+    draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout), cursor->index, selection->index, &selection_color);
 
 }
 
