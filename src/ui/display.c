@@ -1004,7 +1004,7 @@ key_pressed (GtkEventControllerKey *controller,
     if (keyval == GDK_KEY_Home)
     {
         if (ctrl_pressed) {
-            text_editor_move_first (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+            text_editor_move_first (self->editor, TEXT_EDITOR_CURSOR);
             goto redraw;
         }
         else if (_move_cursor_home (self->document->cursor)) {
@@ -1017,7 +1017,7 @@ key_pressed (GtkEventControllerKey *controller,
     if (keyval == GDK_KEY_End)
     {
         if (ctrl_pressed) {
-            text_editor_move_last (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+            text_editor_move_last (self->editor, TEXT_EDITOR_CURSOR);
         }
         else if (_move_cursor_end (self->document->cursor)) {
             goto redraw;
@@ -1029,13 +1029,13 @@ key_pressed (GtkEventControllerKey *controller,
     // Handle directional movemenent
     if (keyval == GDK_KEY_Left)
     {
-        text_editor_move_left (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
+        text_editor_move_left (self->editor, TEXT_EDITOR_CURSOR, 1);
         goto redraw;
     }
 
     if (keyval == GDK_KEY_Right)
     {
-        text_editor_move_right (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
+        text_editor_move_right (self->editor, TEXT_EDITOR_CURSOR, 1);
         goto redraw;
     }
 
