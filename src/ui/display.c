@@ -466,18 +466,14 @@ draw_selection_layout_snapshot (GtkSnapshot *snapshot,
 
 static void
 draw_selection_snapshot (GtkSnapshot *snapshot,
+                         GdkRGBA     *selection_color,
                          TextMark    *cursor,
                          TextMark    *selection)
 {
-    GdkRGBA rgba;
-    GdkRGBA selection_color;
     TextLayoutBox *layout;
     TextParagraph *current;
     const TextDimensions *bbox;
     gboolean draw_selection;
-
-    gdk_rgba_parse (&selection_color, "blue");
-    selection_color.alpha = 0.6;
 
     // Check if cursor and selection are within the same paragraph
     if (cursor->paragraph == selection->paragraph)
@@ -488,7 +484,7 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
         gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->y));
         draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
                                                 cursor->index, selection->index,
-                                                &selection_color);
+                                                selection_color);
 
         return;
     }
@@ -518,7 +514,7 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
             draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
                                                     cursor->index,
                                                     text_paragraph_get_length(cursor->paragraph),
-                                                    &selection_color);
+                                                    selection_color);
         }
         else if (current == selection->paragraph)
         {
@@ -526,7 +522,7 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
             draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
                                                     0,
                                                     selection->index,
-                                                    &selection_color);
+                                                    selection_color);
 
             // Finished drawing, break out of loop
             draw_selection = FALSE;
@@ -536,7 +532,7 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
             // Draw full segment
             draw_selection_layout_snapshot (snapshot,
                                             text_layout_box_get_pango_layout (layout),
-                                            &selection_color);
+                                            selection_color);
         }
 
         gtk_snapshot_restore (snapshot);
@@ -549,11 +545,11 @@ static void
 text_display_snapshot (GtkWidget   *widget,
                        GtkSnapshot *snapshot)
 {
-    int width;
     int displacement;
     int delta_height;
     TextDisplay *self;
     GdkRGBA fg_color;
+    GdkRGBA selection_color;
 
     g_return_if_fail (TEXT_IS_DISPLAY (widget));
 
@@ -567,6 +563,7 @@ text_display_snapshot (GtkWidget   *widget,
 
     // Get default colours
     gtk_style_context_get_color (gtk_widget_get_style_context (widget), &fg_color);
+    gdk_rgba_parse (&selection_color, "lightskyblue");
 
     // Set vertical displacement (horizontal not supported)
     displacement = self->vadjustment
@@ -574,6 +571,13 @@ text_display_snapshot (GtkWidget   *widget,
                    : 0;
 
     gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (self->margin_start, self->margin_top + displacement));
+
+    // Draw selection
+    if (self->document->selection) {
+        gtk_snapshot_save (snapshot);
+        draw_selection_snapshot (snapshot, &selection_color, self->document->cursor, self->document->selection);
+        gtk_snapshot_restore (snapshot);
+    }
 
     // Draw layout tree
     gtk_snapshot_save (snapshot);
@@ -584,12 +588,6 @@ text_display_snapshot (GtkWidget   *widget,
     if (gtk_widget_has_focus (widget)) {
         gtk_snapshot_save (snapshot);
         draw_cursor_snapshot (snapshot, self->document->cursor, &fg_color);
-        gtk_snapshot_restore (snapshot);
-    }
-
-    if (self->document->selection) {
-        gtk_snapshot_save (snapshot);
-        draw_selection_snapshot (snapshot, self->document->cursor, self->document->selection);
         gtk_snapshot_restore (snapshot);
     }
 }
@@ -1145,8 +1143,6 @@ drag_begin (GtkGestureDrag *gesture,
             gdouble         start_y,
             TextDisplay    *self)
 {
-    g_print ("Drag");
-
     set_mark_from_cursor (self, start_x, start_y, self->document->cursor);
 
     _unset_selection (self->document);
