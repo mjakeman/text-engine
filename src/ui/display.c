@@ -479,9 +479,6 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
     gdk_rgba_parse (&selection_color, "blue");
     selection_color.alpha = 0.6;
 
-    gdk_rgba_parse (&rgba, "red");
-    draw_cursor_snapshot (snapshot, selection, &rgba);
-
     // Check if cursor and selection are within the same paragraph
     if (cursor->paragraph == selection->paragraph)
     {
