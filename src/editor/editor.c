@@ -1328,6 +1328,35 @@ _get_mark (TextEditor         *self,
         : self->document->selection;
 }
 
+TextParagraph *
+text_editor_next_paragraph (TextParagraph *paragraph)
+{
+    return walk_until_next_paragraph (TEXT_ITEM (paragraph));
+}
+
+TextParagraph *
+text_editor_previous_paragraph (TextParagraph *paragraph)
+{
+    return walk_until_previous_paragraph (TEXT_ITEM (paragraph));
+}
+
+void
+text_editor_sort_marks (TextMark   *mark1,
+                        TextMark   *mark2,
+                        TextMark **first,
+                        TextMark **last)
+{
+    g_return_if_fail (mark1 != NULL);
+    g_return_if_fail (mark2 != NULL);
+
+    _ensure_ordered (&mark1,&mark2);
+
+    if (first)
+        *first = mark1;
+    if (last)
+        *last = mark2;
+}
+
 void
 text_editor_move_first (TextEditor         *self,
                         TextEditorMarkType  type)

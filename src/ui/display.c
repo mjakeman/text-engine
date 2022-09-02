@@ -350,12 +350,6 @@ draw_selection_partial_layout_snapshot (GtkSnapshot *snapshot,
         if (line_end_index < start_index || line_start_index > end_index)
             continue;
 
-        g_print ("Line Start %d Line End %d Selection Start %d Selection End %d\n",
-                 line_start_index,
-                 line_end_index,
-                 start_index,
-                 end_index);
-
         // Handle case where start and end are within the same line
         if (start_index >= line_start_index &&
             start_index <= line_end_index &&
@@ -394,8 +388,6 @@ draw_selection_partial_layout_snapshot (GtkSnapshot *snapshot,
             pango_layout_line_index_to_x (line, start_index, FALSE, &selection_x);
             pango_layout_line_index_to_x (line, line_end_index, FALSE, &line_end_x);
 
-            g_print ("Start Segment: %d to %d\n", start_index, line_end_index);
-
             width = selection_x - line_end_x;
 
             // Draw selection box for current line
@@ -420,8 +412,6 @@ draw_selection_partial_layout_snapshot (GtkSnapshot *snapshot,
             // support both left-to-right and right-to-left languages.
             pango_layout_line_index_to_x (line, end_index, FALSE, &selection_x);
             pango_layout_line_index_to_x (line, line_start_index, FALSE, &line_start_x);
-
-            g_print ("End Segment: %d to %d\n", line_start_index, end_index);
 
             width = line_start_x - selection_x;
 
@@ -476,27 +466,86 @@ draw_selection_layout_snapshot (GtkSnapshot *snapshot,
 
 static void
 draw_selection_snapshot (GtkSnapshot *snapshot,
-                         TextMark *cursor,
-                         TextMark *selection)
+                         TextMark    *cursor,
+                         TextMark    *selection)
 {
     GdkRGBA rgba;
     GdkRGBA selection_color;
     TextLayoutBox *layout;
+    TextParagraph *current;
     const TextDimensions *bbox;
+    gboolean draw_selection;
 
-    gdk_rgba_parse (&rgba, "blue");
+    gdk_rgba_parse (&selection_color, "blue");
     selection_color.alpha = 0.6;
 
     gdk_rgba_parse (&rgba, "red");
     draw_cursor_snapshot (snapshot, selection, &rgba);
 
-    layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (cursor->paragraph)));
-    bbox = text_layout_box_get_bbox (layout);
+    // Check if cursor and selection are within the same paragraph
+    if (cursor->paragraph == selection->paragraph)
+    {
+        layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (cursor->paragraph)));
+        bbox = text_layout_box_get_bbox (layout);
 
-    gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->y));
-    // draw_selection_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout), &selection_color);
-    draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout), cursor->index, selection->index, &selection_color);
+        gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->y));
+        draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
+                                                cursor->index, selection->index,
+                                                &selection_color);
 
+        return;
+    }
+
+    // Ensure cursor comes before selection in order. The actual meaning
+    // doesn't matter as long as cursor comes first.
+    text_editor_sort_marks (cursor, selection, &cursor, &selection);
+
+    // Iterate over all paragraphs between the cursor and selection marks
+    draw_selection = TRUE;
+    current = cursor->paragraph;
+
+    while (draw_selection)
+    {
+        if (!current)
+            break;
+
+        layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (current)));
+        bbox = text_layout_box_get_bbox (layout);
+
+        gtk_snapshot_save (snapshot);
+        gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->y));
+
+        if (current == cursor->paragraph)
+        {
+            // Draw partial start segment
+            draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
+                                                    cursor->index,
+                                                    text_paragraph_get_length(cursor->paragraph),
+                                                    &selection_color);
+        }
+        else if (current == selection->paragraph)
+        {
+            // Draw partial end segment
+            draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
+                                                    0,
+                                                    selection->index,
+                                                    &selection_color);
+
+            // Finished drawing, break out of loop
+            draw_selection = FALSE;
+        }
+        else
+        {
+            // Draw full segment
+            draw_selection_layout_snapshot (snapshot,
+                                            text_layout_box_get_pango_layout (layout),
+                                            &selection_color);
+        }
+
+        gtk_snapshot_restore (snapshot);
+
+        current = text_editor_next_paragraph (current);
+    }
 }
 
 static void
@@ -978,7 +1027,6 @@ key_pressed (GtkEventControllerKey *controller,
     }
 
     // Handle directional movemenent
-    // TODO: Can we draw cursors/selections on another layer?
     if (keyval == GDK_KEY_Left)
     {
         text_editor_move_left (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
