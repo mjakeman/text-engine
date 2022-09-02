@@ -760,6 +760,17 @@ text_display_class_init (TextDisplayClass *klass)
     gtk_widget_class_set_css_name (widget_class, "textdisplay");
 }
 
+TextMark *
+_set_selection (TextDocument *doc)
+{
+    TextMark *selection;
+
+    selection = text_mark_copy (doc->cursor);
+    doc->selection = selection;
+
+    return selection;
+}
+
 void
 _unset_selection (TextDocument *doc)
 {
@@ -971,9 +982,7 @@ key_pressed (GtkEventControllerKey *controller,
     // Setup selection
     if (shift_pressed && !selection)
     {
-        g_print ("No selection!\n");
-        selection = text_mark_copy (cursor);
-        self->document->selection = selection;
+        selection = _set_selection (self->document);
     }
     else if (!shift_pressed && selection)
     {
@@ -1097,14 +1106,11 @@ redraw:
 }
 
 void
-pointer_pressed (GtkGestureClick *gesture,
-                 gint             n_press,
-                 gdouble          x,
-                 gdouble          y,
-                 TextDisplay     *self)
+set_mark_from_cursor (TextDisplay *self,
+                      double       x,
+                      double       y,
+                      TextMark    *mark)
 {
-    // g_print ("X: %lf Y: %lf\n", x, y);
-
     if (self->layout_tree) {
         TextLayoutBox *box;
 
@@ -1126,14 +1132,45 @@ pointer_pressed (GtkGestureClick *gesture,
 
             // Pango automatically clamps the coordinates to the layout for us
             pango_layout_xy_to_index (text_layout_box_get_pango_layout (box),
-                                          (x - bbox->x) * PANGO_SCALE,
-                                          (y - bbox->y) * PANGO_SCALE,
-                                          &index, &trailing);
+                                      (x - bbox->x) * PANGO_SCALE,
+                                      (y - bbox->y) * PANGO_SCALE,
+                                      &index, &trailing);
 
-            self->document->cursor->paragraph = TEXT_PARAGRAPH (item);
-            self->document->cursor->index = index;
+            mark->paragraph = TEXT_PARAGRAPH (item);
+            mark->index = index;
         }
     }
+}
+
+void
+drag_begin (GtkGestureDrag *gesture,
+            gdouble         start_x,
+            gdouble         start_y,
+            TextDisplay    *self)
+{
+    g_print ("Drag");
+
+    set_mark_from_cursor (self, start_x, start_y, self->document->cursor);
+
+    _unset_selection (self->document);
+
+    gtk_widget_grab_focus (GTK_WIDGET (self));
+    gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+void
+drag_update (GtkGestureDrag *gesture,
+             gdouble         offset_x,
+             gdouble         offset_y,
+             TextDisplay    *self)
+{
+    double start_x, start_y;
+    gtk_gesture_drag_get_start_point (gesture, &start_x, &start_y);
+
+    if (!self->document->selection)
+        _set_selection (self->document);
+
+    set_mark_from_cursor (self, start_x + offset_x, start_y + offset_y, self->document->cursor);
 
     gtk_widget_grab_focus (GTK_WIDGET (self));
     gtk_widget_queue_draw (GTK_WIDGET (self));
@@ -1152,13 +1189,17 @@ text_display_init (TextDisplay *self)
 
     g_signal_connect (self->context, "commit", G_CALLBACK (commit), self);
 
+    gtk_widget_set_cursor_from_name (GTK_WIDGET (self), "text");
+
     controller = gtk_event_controller_key_new ();
     gtk_event_controller_key_set_im_context (GTK_EVENT_CONTROLLER_KEY (controller), self->context);
     g_signal_connect (controller, "key-pressed", G_CALLBACK (key_pressed), self);
     gtk_widget_add_controller (GTK_WIDGET (self), controller);
 
-    gesture = gtk_gesture_click_new ();
-    g_signal_connect (gesture, "pressed", G_CALLBACK (pointer_pressed), self);
+    // Handles clicks and drags
+    gesture = gtk_gesture_drag_new ();
+    g_signal_connect (gesture, "drag-begin", G_CALLBACK (drag_begin), self);
+    g_signal_connect (gesture, "drag-update", G_CALLBACK (drag_update), self);
     gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (gesture));
 
     gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
