@@ -545,11 +545,13 @@ static void
 text_display_snapshot (GtkWidget   *widget,
                        GtkSnapshot *snapshot)
 {
-    int displacement;
+    double displacement;
     int delta_height;
     TextDisplay *self;
+    GtkStyleContext *context;
     GdkRGBA fg_color;
     GdkRGBA selection_color;
+    GdkRGBA unfocused_selection_color;
 
     g_return_if_fail (TEXT_IS_DISPLAY (widget));
 
@@ -562,8 +564,12 @@ text_display_snapshot (GtkWidget   *widget,
         return;
 
     // Get default colours
-    gtk_style_context_get_color (gtk_widget_get_style_context (widget), &fg_color);
-    gdk_rgba_parse (&selection_color, "lightskyblue");
+    context = gtk_widget_get_style_context (widget);
+    gtk_style_context_get_color (context, &fg_color);
+    gtk_style_context_lookup_color (context, "theme_selected_bg_color", &selection_color);
+    gtk_style_context_lookup_color (context, "theme_unfocused_selected_bg_color", &unfocused_selection_color);
+    selection_color.alpha = 0.3f;
+    unfocused_selection_color.alpha = 0.3f;
 
     // Set vertical displacement (horizontal not supported)
     displacement = self->vadjustment
@@ -575,7 +581,10 @@ text_display_snapshot (GtkWidget   *widget,
     // Draw selection
     if (self->document->selection) {
         gtk_snapshot_save (snapshot);
-        draw_selection_snapshot (snapshot, &selection_color, self->document->cursor, self->document->selection);
+        draw_selection_snapshot (snapshot,
+                                 &selection_color,
+                                 self->document->cursor,
+                                 self->document->selection);
         gtk_snapshot_restore (snapshot);
     }
 
