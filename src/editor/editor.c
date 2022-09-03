@@ -1125,6 +1125,45 @@ _ensure_ordered (TextMark **start,
 }
 
 void
+split_run_at_offset (TextRun  *run,
+                     TextRun **new,
+                     int offset)
+{
+    char *first_text;
+    char *second_text;
+
+    g_return_if_fail (TEXT_IS_RUN (run));
+    g_return_if_fail (new != NULL);
+
+    g_object_get (run, "text", &first_text, NULL);
+
+    second_text = g_utf8_substring (first_text, offset, -1);
+    first_text = g_utf8_substring (first_text, 0, offset);
+
+    g_object_set (run, "text", first_text, NULL);
+    *new = text_run_new (second_text);
+
+    // Copy formatting
+    text_run_set_style_bold (*new, text_run_get_style_bold (run));
+    text_run_set_style_italic (*new, text_run_get_style_italic (run));
+    text_run_set_style_underline (*new, text_run_get_style_underline (run));
+}
+
+void
+split_run_in_place (TextRun *run,
+                    TextRun **new,
+                    int offset)
+{
+    TextParagraph *parent;
+
+    parent = TEXT_PARAGRAPH (text_node_get_parent (TEXT_NODE (run)));
+    split_run_at_offset (run, new, offset);
+    text_node_insert_child_after (TEXT_NODE (parent),
+                                  TEXT_NODE (*new),
+                                  TEXT_NODE (run));
+}
+
+void
 text_editor_split_at_mark (TextEditor *self,
                            TextMark   *split)
 
@@ -1165,18 +1204,12 @@ text_editor_split_at_mark (TextEditor *self,
         // Split first run if run offset is not at beginning
         if (split->index != run_offset)
         {
-            char *first_text;
-            char *second_text;
             int split_index_within_run;
-
-            g_object_get (start, "text", &first_text, NULL);
+            TextRun *new_run;
 
             split_index_within_run = split->index - run_offset;
-            second_text = g_utf8_substring (first_text, split_index_within_run, -1);
-            first_text = g_utf8_substring (first_text, 0, split_index_within_run);
-
-            g_object_set (start, "text", first_text, NULL);
-            text_paragraph_append_run (new, text_run_new (second_text));
+            split_run_at_offset (start, &new_run, split_index_within_run);
+            text_paragraph_append_run (new, new_run);
 
             // Move to next run
             iter = text_node_get_next (iter);
@@ -1325,6 +1358,89 @@ text_editor_insert_at_mark (TextEditor *self,
     }
 
     g_slist_free (marks);
+}
+
+void
+text_editor_apply_format_bold (TextEditor *self,
+                               TextMark   *start,
+                               TextMark   *end,
+                               gboolean    is_bold)
+{
+    TextRun *iter;
+    TextRun *last;
+    int start_run_index;
+    int end_run_index;
+
+    _ensure_ordered (&start, &end);
+
+    iter = text_paragraph_get_run_at_index (start->paragraph, start->index, &start_run_index);
+    last = text_paragraph_get_run_at_index (end->paragraph, end->index, &end_run_index);
+
+    // Check if start and end indices are in the same run
+    if (iter == last)
+    {
+        TextRun *first_split;
+        TextRun *second_split;
+        int start_index_offset;
+        int end_index_offset;
+
+        g_assert (start_run_index == end_run_index);
+
+        start_index_offset = start->index - start_run_index;
+        end_index_offset = end->index - end_run_index;
+
+        // Split first run
+        split_run_in_place (iter, &first_split, start_index_offset);
+
+        // Calculate offset into new run and split again
+        end_index_offset -= start_index_offset;
+        split_run_in_place (first_split, &second_split, end_index_offset);
+
+        // Apply format to middle run
+        text_run_set_style_bold (first_split, is_bold);
+        return;
+    }
+
+    // Check if we need to split the first run
+    if (start->index - start_run_index != 0)
+    {
+        TextRun *new_run;
+        split_run_in_place (iter, &new_run, start->index - start_run_index);
+
+        // Apply format to new run
+        text_run_set_style_bold (new_run, is_bold);
+        iter = new_run;
+    }
+
+    // Check if we need to split the last run
+    if (end->index - end_run_index != 0)
+    {
+        TextRun *new_run;
+        split_run_in_place (last, &new_run, end->index - end_run_index);
+
+        // Apply format to old run
+        text_run_set_style_bold (last, is_bold);
+    }
+
+    while (iter != NULL)
+    {
+        if (iter == last)
+            break;
+
+        text_run_set_style_bold (iter, is_bold);
+
+        iter = walk_until_next_run (TEXT_ITEM (iter));
+    }
+}
+
+gboolean
+text_editor_get_format_bold_at_mark (TextEditor *self,
+                                     TextMark   *mark)
+{
+    TextRun *run;
+
+    run = text_editor_get_run_at_mark (self, mark);
+    return text_run_get_style_bold (run);
 }
 
 TextMark *
