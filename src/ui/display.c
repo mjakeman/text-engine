@@ -990,8 +990,8 @@ key_pressed (GtkEventControllerKey *controller,
     }
     else if (!shift_pressed && selection)
     {
-        _unset_selection (self->document);
-        selection = NULL;
+        //_unset_selection (self->document);
+        //selection = NULL;
     }
 
     // Handle Save
@@ -1096,6 +1096,13 @@ key_pressed (GtkEventControllerKey *controller,
     if (keyval == GDK_KEY_Return)
     {
         text_editor_split (self->editor, TEXT_EDITOR_CURSOR);
+        goto reallocate;
+    }
+
+    // Handle formatting
+    if (keyval == GDK_KEY_b && ctrl_pressed)
+    {
+        text_editor_apply_format_bold (self->editor, self->document->cursor, self->document->selection, TRUE);
         goto reallocate;
     }
 
