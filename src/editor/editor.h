@@ -52,4 +52,10 @@ TextRun    *text_editor_get_run_at_mark (TextEditor *self, TextMark *mark);
 
 gchar      *text_editor_dump_plain_text (TextEditor *self);
 
+// Traversal Helpers
+// TODO: These shouldn't really be part of the editor
+void            text_editor_sort_marks          (TextMark *mark1, TextMark *mark2, TextMark **first, TextMark **last);
+TextParagraph  *text_editor_next_paragraph      (TextParagraph *paragraph);
+TextParagraph  *text_editor_previous_paragraph  (TextParagraph *paragraph);
+
 G_END_DECLS

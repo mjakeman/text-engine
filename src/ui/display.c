@@ -282,7 +282,7 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
     item = cursor->paragraph;
     index = cursor->index;
 
-    box = text_item_get_attachment(item);
+    box = TEXT_LAYOUT_BOX (text_item_get_attachment (item));
 
     if (TEXT_IS_LAYOUT_BOX (box)) {
         int x, y, height, width;
@@ -308,14 +308,250 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
 }
 
 static void
+draw_selection_partial_layout_snapshot (GtkSnapshot *snapshot,
+                                        PangoLayout *layout,
+                                        int          start_index,
+                                        int          end_index,
+                                        GdkRGBA     *color)
+{
+    PangoLayoutIter *iter;
+    gboolean iter_next;
+
+    iter = pango_layout_get_iter (layout);
+    iter_next = TRUE;
+
+    // Make sure start index is actually smaller than the end index
+    if (start_index > end_index) {
+        int tmp;
+        tmp = start_index;
+        start_index = end_index;
+        end_index = tmp;
+    }
+
+    while (iter_next)
+    {
+        PangoRectangle rect;
+        PangoLayoutLine *line;
+        int line_start_index;
+        int line_end_index;
+
+        // Get line indices
+        line = pango_layout_iter_get_line_readonly (iter);
+        line_start_index = pango_layout_line_get_start_index (line);
+        line_end_index = line_start_index + pango_layout_line_get_length (line);
+
+        // Get extents of current line
+        pango_layout_iter_get_line_extents (iter, &rect, NULL);
+
+        // Advance iter to next line
+        iter_next = pango_layout_iter_next_line (iter);
+
+        // Skip lines outside the range
+        if (line_end_index < start_index || line_start_index > end_index)
+            continue;
+
+        // Handle case where start and end are within the same line
+        if (start_index >= line_start_index &&
+            start_index <= line_end_index &&
+            end_index >= line_start_index &&
+            end_index <= line_end_index)
+        {
+            int selection_start_x;
+            int selection_end_x;
+            int width;
+
+            pango_layout_line_index_to_x (line, start_index, FALSE, &selection_start_x);
+            pango_layout_line_index_to_x (line, end_index, FALSE, &selection_end_x);
+
+            width = selection_end_x - selection_start_x;
+
+            // Draw selection box for current line
+            gtk_snapshot_append_color (snapshot, color,&GRAPHENE_RECT_INIT (
+                    (float) (rect.x + selection_start_x) / PANGO_SCALE,
+                    (float) rect.y / PANGO_SCALE,
+                    (float) width / PANGO_SCALE,
+                    (float) rect.height / PANGO_SCALE));
+
+            return;
+        }
+
+        // Handle starting line
+        if (start_index >= line_start_index && start_index <= line_end_index)
+        {
+            int selection_x;
+            int line_end_x;
+            int width;
+
+            // Get the horizontal starting point of the selection and the ending
+            // index of the line and draw between them. We need to do this to
+            // support both left-to-right and right-to-left languages.
+            pango_layout_line_index_to_x (line, start_index, FALSE, &selection_x);
+            pango_layout_line_index_to_x (line, line_end_index, FALSE, &line_end_x);
+
+            width = selection_x - line_end_x;
+
+            // Draw selection box for current line
+            gtk_snapshot_append_color (snapshot, color,&GRAPHENE_RECT_INIT (
+                    (float) (rect.x + line_end_x) / PANGO_SCALE,
+                    (float) rect.y / PANGO_SCALE,
+                    (float) width / PANGO_SCALE,
+                    (float) rect.height / PANGO_SCALE));
+
+            continue;
+        }
+
+        // Handle ending line
+        if (end_index >= line_start_index && end_index <= line_end_index)
+        {
+            int selection_x;
+            int line_start_x;
+            int width;
+
+            // Get the horizontal ending point of the selection and the starting
+            // index of the line and draw between them. We need to do this to
+            // support both left-to-right and right-to-left languages.
+            pango_layout_line_index_to_x (line, end_index, FALSE, &selection_x);
+            pango_layout_line_index_to_x (line, line_start_index, FALSE, &line_start_x);
+
+            width = line_start_x - selection_x;
+
+            // Draw selection box for current line
+            gtk_snapshot_append_color (snapshot, color,&GRAPHENE_RECT_INIT (
+                    (float) (rect.x + selection_x) / PANGO_SCALE,
+                    (float) rect.y / PANGO_SCALE,
+                    (float) width / PANGO_SCALE,
+                    (float) rect.height / PANGO_SCALE));
+
+            continue;
+        }
+
+        // Draw selection box for current line
+        gtk_snapshot_append_color (snapshot, color,&GRAPHENE_RECT_INIT (
+                (float) rect.x / PANGO_SCALE,
+                (float) rect.y / PANGO_SCALE,
+                (float) rect.width / PANGO_SCALE,
+                (float) rect.height / PANGO_SCALE));
+    }
+}
+
+static void
+draw_selection_layout_snapshot (GtkSnapshot *snapshot,
+                                PangoLayout *layout,
+                                GdkRGBA     *color)
+{
+    PangoLayoutIter *iter;
+    gboolean iter_next;
+
+    iter = pango_layout_get_iter (layout);
+    iter_next = TRUE;
+
+    while (iter_next)
+    {
+        PangoRectangle rect;
+
+        // Get extents of current line
+        pango_layout_iter_get_line_extents (iter, &rect, NULL);
+
+        // Advance iter to next line
+        iter_next = pango_layout_iter_next_line (iter);
+
+        // Draw selection box for current line
+        gtk_snapshot_append_color (snapshot, color,&GRAPHENE_RECT_INIT (
+                (float) rect.x / PANGO_SCALE,
+                (float) rect.y / PANGO_SCALE,
+                (float) rect.width / PANGO_SCALE,
+                (float) rect.height / PANGO_SCALE));
+    }
+}
+
+static void
+draw_selection_snapshot (GtkSnapshot *snapshot,
+                         GdkRGBA     *selection_color,
+                         TextMark    *cursor,
+                         TextMark    *selection)
+{
+    TextLayoutBox *layout;
+    TextParagraph *current;
+    const TextDimensions *bbox;
+    gboolean draw_selection;
+
+    // Check if cursor and selection are within the same paragraph
+    if (cursor->paragraph == selection->paragraph)
+    {
+        layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (cursor->paragraph)));
+        bbox = text_layout_box_get_bbox (layout);
+
+        gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->y));
+        draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
+                                                cursor->index, selection->index,
+                                                selection_color);
+
+        return;
+    }
+
+    // Ensure cursor comes before selection in order. The actual meaning
+    // doesn't matter as long as cursor comes first.
+    text_editor_sort_marks (cursor, selection, &cursor, &selection);
+
+    // Iterate over all paragraphs between the cursor and selection marks
+    draw_selection = TRUE;
+    current = cursor->paragraph;
+
+    while (draw_selection)
+    {
+        if (!current)
+            break;
+
+        layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (current)));
+        bbox = text_layout_box_get_bbox (layout);
+
+        gtk_snapshot_save (snapshot);
+        gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->y));
+
+        if (current == cursor->paragraph)
+        {
+            // Draw partial start segment
+            draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
+                                                    cursor->index,
+                                                    text_paragraph_get_length(cursor->paragraph),
+                                                    selection_color);
+        }
+        else if (current == selection->paragraph)
+        {
+            // Draw partial end segment
+            draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
+                                                    0,
+                                                    selection->index,
+                                                    selection_color);
+
+            // Finished drawing, break out of loop
+            draw_selection = FALSE;
+        }
+        else
+        {
+            // Draw full segment
+            draw_selection_layout_snapshot (snapshot,
+                                            text_layout_box_get_pango_layout (layout),
+                                            selection_color);
+        }
+
+        gtk_snapshot_restore (snapshot);
+
+        current = text_editor_next_paragraph (current);
+    }
+}
+
+static void
 text_display_snapshot (GtkWidget   *widget,
                        GtkSnapshot *snapshot)
 {
-    int width;
-    int displacement;
+    double displacement;
     int delta_height;
     TextDisplay *self;
+    GtkStyleContext *context;
     GdkRGBA fg_color;
+    GdkRGBA selection_color;
+    GdkRGBA unfocused_selection_color;
 
     g_return_if_fail (TEXT_IS_DISPLAY (widget));
 
@@ -328,7 +564,12 @@ text_display_snapshot (GtkWidget   *widget,
         return;
 
     // Get default colours
-    gtk_style_context_get_color (gtk_widget_get_style_context (widget), &fg_color);
+    context = gtk_widget_get_style_context (widget);
+    gtk_style_context_get_color (context, &fg_color);
+    gtk_style_context_lookup_color (context, "theme_selected_bg_color", &selection_color);
+    gtk_style_context_lookup_color (context, "theme_unfocused_selected_bg_color", &unfocused_selection_color);
+    selection_color.alpha = 0.3f;
+    unfocused_selection_color.alpha = 0.3f;
 
     // Set vertical displacement (horizontal not supported)
     displacement = self->vadjustment
@@ -336,6 +577,16 @@ text_display_snapshot (GtkWidget   *widget,
                    : 0;
 
     gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (self->margin_start, self->margin_top + displacement));
+
+    // Draw selection
+    if (self->document->selection) {
+        gtk_snapshot_save (snapshot);
+        draw_selection_snapshot (snapshot,
+                                 &selection_color,
+                                 self->document->cursor,
+                                 self->document->selection);
+        gtk_snapshot_restore (snapshot);
+    }
 
     // Draw layout tree
     gtk_snapshot_save (snapshot);
@@ -511,6 +762,17 @@ text_display_class_init (TextDisplayClass *klass)
     widget_class->size_allocate = text_display_size_allocate;
 
     gtk_widget_class_set_css_name (widget_class, "textdisplay");
+}
+
+TextMark *
+_set_selection (TextDocument *doc)
+{
+    TextMark *selection;
+
+    selection = text_mark_copy (doc->cursor);
+    doc->selection = selection;
+
+    return selection;
 }
 
 void
@@ -724,9 +986,7 @@ key_pressed (GtkEventControllerKey *controller,
     // Setup selection
     if (shift_pressed && !selection)
     {
-        g_print ("No selection!\n");
-        selection = text_mark_copy (cursor);
-        self->document->selection = selection;
+        selection = _set_selection (self->document);
     }
     else if (!shift_pressed && selection)
     {
@@ -757,7 +1017,7 @@ key_pressed (GtkEventControllerKey *controller,
     if (keyval == GDK_KEY_Home)
     {
         if (ctrl_pressed) {
-            text_editor_move_first (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+            text_editor_move_first (self->editor, TEXT_EDITOR_CURSOR);
             goto redraw;
         }
         else if (_move_cursor_home (self->document->cursor)) {
@@ -770,7 +1030,7 @@ key_pressed (GtkEventControllerKey *controller,
     if (keyval == GDK_KEY_End)
     {
         if (ctrl_pressed) {
-            text_editor_move_last (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR);
+            text_editor_move_last (self->editor, TEXT_EDITOR_CURSOR);
         }
         else if (_move_cursor_end (self->document->cursor)) {
             goto redraw;
@@ -780,16 +1040,15 @@ key_pressed (GtkEventControllerKey *controller,
     }
 
     // Handle directional movemenent
-    // TODO: Can we draw cursors/selections on another layer?
     if (keyval == GDK_KEY_Left)
     {
-        text_editor_move_left (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
+        text_editor_move_left (self->editor, TEXT_EDITOR_CURSOR, 1);
         goto redraw;
     }
 
     if (keyval == GDK_KEY_Right)
     {
-        text_editor_move_right (self->editor, shift_pressed ? TEXT_EDITOR_SELECTION : TEXT_EDITOR_CURSOR, 1);
+        text_editor_move_right (self->editor, TEXT_EDITOR_CURSOR, 1);
         goto redraw;
     }
 
@@ -851,18 +1110,23 @@ redraw:
 }
 
 void
-pointer_pressed (GtkGestureClick *gesture,
-                 gint             n_press,
-                 gdouble          x,
-                 gdouble          y,
-                 TextDisplay     *self)
+set_mark_from_cursor (TextDisplay *self,
+                      double       x,
+                      double       y,
+                      TextMark    *mark)
 {
-    // g_print ("X: %lf Y: %lf\n", x, y);
+    double displacement;
 
     if (self->layout_tree) {
         TextLayoutBox *box;
 
-        // TODO: Account for scrolling
+        // Get vertical displacement (horizontal not supported)
+        displacement = self->vadjustment
+                       ? -gtk_adjustment_get_value (self->vadjustment)
+                       : 0;
+
+        y -= displacement;
+
         box = text_layout_pick (self->layout_tree, x - self->margin_start, y - self->margin_top);
 
         if (box) {
@@ -880,14 +1144,43 @@ pointer_pressed (GtkGestureClick *gesture,
 
             // Pango automatically clamps the coordinates to the layout for us
             pango_layout_xy_to_index (text_layout_box_get_pango_layout (box),
-                                          (x - bbox->x) * PANGO_SCALE,
-                                          (y - bbox->y) * PANGO_SCALE,
-                                          &index, &trailing);
+                                      (x - bbox->x) * PANGO_SCALE,
+                                      (y - bbox->y) * PANGO_SCALE,
+                                      &index, &trailing);
 
-            self->document->cursor->paragraph = TEXT_PARAGRAPH (item);
-            self->document->cursor->index = index;
+            mark->paragraph = TEXT_PARAGRAPH (item);
+            mark->index = index;
         }
     }
+}
+
+void
+drag_begin (GtkGestureDrag *gesture,
+            gdouble         start_x,
+            gdouble         start_y,
+            TextDisplay    *self)
+{
+    set_mark_from_cursor (self, start_x, start_y, self->document->cursor);
+
+    _unset_selection (self->document);
+
+    gtk_widget_grab_focus (GTK_WIDGET (self));
+    gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+void
+drag_update (GtkGestureDrag *gesture,
+             gdouble         offset_x,
+             gdouble         offset_y,
+             TextDisplay    *self)
+{
+    double start_x, start_y;
+    gtk_gesture_drag_get_start_point (gesture, &start_x, &start_y);
+
+    if (!self->document->selection)
+        _set_selection (self->document);
+
+    set_mark_from_cursor (self, start_x + offset_x, start_y + offset_y, self->document->cursor);
 
     gtk_widget_grab_focus (GTK_WIDGET (self));
     gtk_widget_queue_draw (GTK_WIDGET (self));
@@ -906,13 +1199,17 @@ text_display_init (TextDisplay *self)
 
     g_signal_connect (self->context, "commit", G_CALLBACK (commit), self);
 
+    gtk_widget_set_cursor_from_name (GTK_WIDGET (self), "text");
+
     controller = gtk_event_controller_key_new ();
     gtk_event_controller_key_set_im_context (GTK_EVENT_CONTROLLER_KEY (controller), self->context);
     g_signal_connect (controller, "key-pressed", G_CALLBACK (key_pressed), self);
     gtk_widget_add_controller (GTK_WIDGET (self), controller);
 
-    gesture = gtk_gesture_click_new ();
-    g_signal_connect (gesture, "pressed", G_CALLBACK (pointer_pressed), self);
+    // Handles clicks and drags
+    gesture = gtk_gesture_drag_new ();
+    g_signal_connect (gesture, "drag-begin", G_CALLBACK (drag_begin), self);
+    g_signal_connect (gesture, "drag-update", G_CALLBACK (drag_update), self);
     gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (gesture));
 
     gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);

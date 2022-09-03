@@ -788,8 +788,6 @@ text_editor_delete_at_mark (TextEditor *self,
                             int         length)
 {
     TextParagraph *paragraph;
-    TextMark *cursor;
-
     int num_indices;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
@@ -798,7 +796,6 @@ text_editor_delete_at_mark (TextEditor *self,
     g_return_if_fail (start != NULL);
 
     paragraph = start->paragraph;
-    cursor = self->document->cursor;
 
     if (length < 0)
     {
@@ -806,6 +803,7 @@ text_editor_delete_at_mark (TextEditor *self,
 
         // Handles case where the cursor cannot be moved by the
         // full '-length' because the start of document is reached
+        // TODO: Should this refer to cursor directly?
         remaining = _try_move_mark_left  (self, self->document->cursor, -length);
         text_editor_delete_at_mark (self, start, (-length - remaining));
         return;
@@ -871,6 +869,8 @@ text_editor_delete_at_mark (TextEditor *self,
                 _offset_mark (mark, -length);
             }
         }
+
+        g_slist_free (marks);
 
         return;
     }
@@ -976,6 +976,8 @@ text_editor_delete_at_mark (TextEditor *self,
             }
         }
 
+        g_slist_free (marks);
+
         // Perform lazy deletion
         g_slist_free_full (dirty, (GDestroyNotify)text_node_delete);
 
@@ -983,8 +985,6 @@ text_editor_delete_at_mark (TextEditor *self,
         if (iter != NULL)
             _join_paragraphs (start->paragraph, &iter);
     }
-
-    return;
 }
 
 /**
@@ -1103,9 +1103,16 @@ _ensure_ordered (TextMark **start,
     g_return_if_fail (*start != NULL);
     g_return_if_fail (*end != NULL);
 
-    _relate_nodes (TEXT_NODE ((*start)->paragraph),
-                   TEXT_NODE ((*end)->paragraph),
-                   &in_order);
+    if ((*start)->paragraph == (*end)->paragraph)
+    {
+        in_order = (*start)->index < (*end)->index;
+    }
+    else
+    {
+        _relate_nodes (TEXT_NODE ((*start)->paragraph),
+                       TEXT_NODE ((*end)->paragraph),
+                       &in_order);
+    }
 
     // Swap if in wrong order
     if (!in_order)
@@ -1231,6 +1238,8 @@ text_editor_split_at_mark (TextEditor *self,
             _offset_mark (mark, -split->index);
         }
     }
+
+    g_slist_free (marks);
 }
 
 void
@@ -1314,6 +1323,8 @@ text_editor_insert_at_mark (TextEditor *self,
             _offset_mark (mark, length);
         }
     }
+
+    g_slist_free (marks);
 }
 
 TextMark *
@@ -1326,6 +1337,35 @@ _get_mark (TextEditor         *self,
     return (type == TEXT_EDITOR_CURSOR)
         ? self->document->cursor
         : self->document->selection;
+}
+
+TextParagraph *
+text_editor_next_paragraph (TextParagraph *paragraph)
+{
+    return walk_until_next_paragraph (TEXT_ITEM (paragraph));
+}
+
+TextParagraph *
+text_editor_previous_paragraph (TextParagraph *paragraph)
+{
+    return walk_until_previous_paragraph (TEXT_ITEM (paragraph));
+}
+
+void
+text_editor_sort_marks (TextMark   *mark1,
+                        TextMark   *mark2,
+                        TextMark **first,
+                        TextMark **last)
+{
+    g_return_if_fail (mark1 != NULL);
+    g_return_if_fail (mark2 != NULL);
+
+    _ensure_ordered (&mark1,&mark2);
+
+    if (first)
+        *first = mark1;
+    if (last)
+        *last = mark2;
 }
 
 void
