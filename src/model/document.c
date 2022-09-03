@@ -80,10 +80,10 @@ text_document_get_all_marks (TextDocument *doc)
     GSList *marks;
 
     marks = g_slist_copy (doc->marks);
-    marks = g_slist_append (doc->marks, doc->cursor);
+    marks = g_slist_append (marks, doc->cursor);
 
     if (doc->selection)
-        marks = g_slist_append (doc->marks, doc->selection);
+        marks = g_slist_append (marks, doc->selection);
 
     return marks;
 }
