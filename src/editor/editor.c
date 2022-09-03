@@ -1379,6 +1379,25 @@ text_editor_apply_format_bold (TextEditor *self,
     // Check if start and end indices are in the same run
     if (iter == last)
     {
+        TextRun *first_split;
+        TextRun *second_split;
+        int start_index_offset;
+        int end_index_offset;
+
+        g_assert (start_run_index == end_run_index);
+
+        start_index_offset = start->index - start_run_index;
+        end_index_offset = end->index - end_run_index;
+
+        // Split first run
+        split_run_in_place (iter, &first_split, start_index_offset);
+
+        // Calculate offset into new run and split again
+        end_index_offset -= start_index_offset;
+        split_run_in_place (first_split, &second_split, end_index_offset);
+
+        // Apply format to middle run
+        text_run_set_style_bold (first_split, is_bold);
         return;
     }
 
@@ -1387,7 +1406,6 @@ text_editor_apply_format_bold (TextEditor *self,
     {
         TextRun *new_run;
         split_run_in_place (iter, &new_run, start->index - start_run_index);
-        g_print ("Start split: %d %d\n", start->index, start_run_index);
 
         // Apply format to new run
         text_run_set_style_bold (new_run, is_bold);
@@ -1413,6 +1431,16 @@ text_editor_apply_format_bold (TextEditor *self,
 
         iter = walk_until_next_run (TEXT_ITEM (iter));
     }
+}
+
+gboolean
+text_editor_get_format_bold_at_mark (TextEditor *self,
+                                     TextMark   *mark)
+{
+    TextRun *run;
+
+    run = text_editor_get_run_at_mark (self, mark);
+    return text_run_get_style_bold (run);
 }
 
 TextMark *

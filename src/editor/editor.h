@@ -60,6 +60,7 @@ TextParagraph  *text_editor_previous_paragraph  (TextParagraph *paragraph);
 
 // Format Helpers
 // TODO: Make this more abstract
-void            text_editor_apply_format_bold   (TextEditor *self, TextMark *start, TextMark *end, gboolean is_bold);
+void            text_editor_apply_format_bold       (TextEditor *self, TextMark *start, TextMark *end, gboolean is_bold);
+gboolean        text_editor_get_format_bold_at_mark (TextEditor *self, TextMark *mark);
 
 G_END_DECLS

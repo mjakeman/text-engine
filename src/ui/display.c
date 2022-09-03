@@ -1102,7 +1102,13 @@ key_pressed (GtkEventControllerKey *controller,
     // Handle formatting
     if (keyval == GDK_KEY_b && ctrl_pressed)
     {
-        text_editor_apply_format_bold (self->editor, self->document->cursor, self->document->selection, TRUE);
+        gboolean is_bold;
+
+        is_bold = text_editor_get_format_bold_at_mark (self->editor, self->document->cursor);
+        text_editor_apply_format_bold (self->editor,
+                                       self->document->cursor,
+                                       self->document->selection,
+                                       !is_bold);
         goto reallocate;
     }
 
