@@ -988,11 +988,6 @@ key_pressed (GtkEventControllerKey *controller,
     {
         selection = _set_selection (self->document);
     }
-    else if (!shift_pressed && selection)
-    {
-        //_unset_selection (self->document);
-        //selection = NULL;
-    }
 
     // Handle Save
     if (ctrl_pressed && keyval == GDK_KEY_s)
@@ -1016,6 +1011,9 @@ key_pressed (GtkEventControllerKey *controller,
     // Handle Home/End
     if (keyval == GDK_KEY_Home)
     {
+        if (!shift_pressed && selection)
+            _unset_selection (self->document);
+
         if (ctrl_pressed) {
             text_editor_move_first (self->editor, TEXT_EDITOR_CURSOR);
             goto redraw;
@@ -1029,6 +1027,9 @@ key_pressed (GtkEventControllerKey *controller,
 
     if (keyval == GDK_KEY_End)
     {
+        if (!shift_pressed && selection)
+            _unset_selection (self->document);
+
         if (ctrl_pressed) {
             text_editor_move_last (self->editor, TEXT_EDITOR_CURSOR);
         }
@@ -1042,18 +1043,27 @@ key_pressed (GtkEventControllerKey *controller,
     // Handle directional movemenent
     if (keyval == GDK_KEY_Left)
     {
+        if (!shift_pressed && selection)
+            _unset_selection (self->document);
+
         text_editor_move_left (self->editor, TEXT_EDITOR_CURSOR, 1);
         goto redraw;
     }
 
     if (keyval == GDK_KEY_Right)
     {
+        if (!shift_pressed && selection)
+            _unset_selection (self->document);
+
         text_editor_move_right (self->editor, TEXT_EDITOR_CURSOR, 1);
         goto redraw;
     }
 
     if (keyval == GDK_KEY_Up)
     {
+        if (!shift_pressed && selection)
+            _unset_selection (self->document);
+
         if (_move_cursor_vertically (self->document->cursor, TRUE))
             goto redraw;
         return TRUE;
@@ -1061,6 +1071,9 @@ key_pressed (GtkEventControllerKey *controller,
 
     if (keyval == GDK_KEY_Down)
     {
+        if (!shift_pressed && selection)
+            _unset_selection (self->document);
+
         if (_move_cursor_vertically (self->document->cursor, FALSE))
             goto redraw;
         return TRUE;
@@ -1095,6 +1108,12 @@ key_pressed (GtkEventControllerKey *controller,
 
     if (keyval == GDK_KEY_Return)
     {
+        if (selection)
+        {
+            text_editor_replace (self->editor, TEXT_EDITOR_CURSOR, TEXT_EDITOR_SELECTION, "");
+            _unset_selection (self->document);
+        }
+
         text_editor_split (self->editor, TEXT_EDITOR_CURSOR);
         goto reallocate;
     }
