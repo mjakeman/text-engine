@@ -13,7 +13,7 @@
 
 struct _TextRun
 {
-    TextItem parent_instance;
+    TextInline parent_instance;
     gchar *text;
     gboolean is_bold;
     gboolean is_italic;
@@ -21,11 +21,11 @@ struct _TextRun
 };
 
 
-G_DEFINE_FINAL_TYPE (TextRun, text_run, TEXT_TYPE_ITEM)
+G_DEFINE_FINAL_TYPE (TextRun, text_run, TEXT_TYPE_INLINE)
 
 enum {
     PROP_0,
-    PROP_TEXT,
+    PROP_SRC,
     N_PROPS
 };
 
@@ -57,7 +57,7 @@ text_run_get_property (GObject    *object,
 
     switch (prop_id)
     {
-    case PROP_TEXT:
+    case PROP_SRC:
         g_value_set_string (value, self->text);
         break;
     default:
@@ -75,7 +75,7 @@ text_run_set_property (GObject      *object,
 
     switch (prop_id)
     {
-    case PROP_TEXT:
+    case PROP_SRC:
         if (self->text)
             g_free (self->text);
         self->text = g_value_dup_string (value);
@@ -86,11 +86,11 @@ text_run_set_property (GObject      *object,
 }
 
 int
-text_run_get_length (TextRun *self)
+text_run_get_length (TextInline *self)
 {
     g_return_val_if_fail (TEXT_IS_RUN (self), -1);
 
-    return strlen (self->text);
+    return (int) strlen (((TextRun *)self)->text);
 }
 
 gboolean
@@ -141,7 +141,7 @@ text_run_class_init (TextRunClass *klass)
     object_class->get_property = text_run_get_property;
     object_class->set_property = text_run_set_property;
 
-    properties [PROP_TEXT]
+    properties [PROP_SRC]
         = g_param_spec_string ("text",
                                "Text",
                                "Text",
@@ -149,6 +149,10 @@ text_run_class_init (TextRunClass *klass)
                                G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
 
     g_object_class_install_properties (object_class, N_PROPS, properties);
+
+    TextInlineClass *inline_class = TEXT_INLINE_CLASS (klass);
+
+    inline_class->get_length = text_run_get_length;
 }
 
 static void

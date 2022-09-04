@@ -117,7 +117,7 @@ _set_attributes (TextParagraph *paragraph,
         PangoAttribute *attr;
         int run_length;
 
-        run_length = text_run_get_length (TEXT_RUN (run));
+        run_length = text_inline_get_length (TEXT_INLINE (run));
 
         // Get Style Properties
         is_bold = text_run_get_style_bold (TEXT_RUN (run));

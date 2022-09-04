@@ -131,7 +131,7 @@ text_paragraph_get_length (TextParagraph *self)
          child = text_node_get_next (child))
     {
         g_assert (TEXT_IS_RUN (child));
-        length += text_run_get_length (TEXT_RUN (child));
+        length += text_inline_get_length (TEXT_INLINE (child));
     }
 
     return length;
@@ -165,7 +165,7 @@ text_paragraph_get_run_at_index (TextParagraph *self,
     {
         int delta_length;
         g_assert (TEXT_IS_RUN (child));
-        delta_length = text_run_get_length (TEXT_RUN (child));
+        delta_length = text_inline_get_length (TEXT_INLINE (child));
 
         // Index is considered part of a run if it is immediately
         // after the last character in the run. For example:

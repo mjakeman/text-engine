@@ -696,7 +696,7 @@ _delete_within_paragraph (TextParagraph *paragraph,
         int cur_deleted;
         int offset_within_run;
 
-        run_length = text_run_get_length (start);
+        run_length = text_inline_get_length (TEXT_INLINE (start));
         offset_within_run = start_index - start_run_offset;
         cur_deleted = 0;
 
@@ -720,7 +720,7 @@ _delete_within_paragraph (TextParagraph *paragraph,
         {
             g_assert (iter != NULL);
 
-            run_length = text_run_get_length (iter);
+            run_length = text_inline_get_length (TEXT_INLINE (iter));
 
             // Check if the run is entirely contained within the deletion
             if (cur_deleted + run_length <= deletion_length)
