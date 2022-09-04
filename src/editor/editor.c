@@ -1360,11 +1360,39 @@ text_editor_insert_at_mark (TextEditor *self,
     g_slist_free (marks);
 }
 
-void
-text_editor_apply_format_bold (TextEditor *self,
-                               TextMark   *start,
-                               TextMark   *end,
-                               gboolean    is_bold)
+// TODO: Decouple format from run when we introduce the stylesheet
+typedef enum
+{
+    FORMAT_BOLD,
+    FORMAT_ITALIC,
+    FORMAT_UNDERLINE
+} Format;
+
+static void
+set_run_format (TextRun *run,
+                Format   format,
+                gboolean in_use)
+{
+    switch (format)
+    {
+        case FORMAT_BOLD:
+            text_run_set_style_bold (run, in_use);
+            break;
+        case FORMAT_ITALIC:
+            text_run_set_style_italic (run, in_use);
+            break;
+        case FORMAT_UNDERLINE:
+            text_run_set_style_underline (run, in_use);
+            break;
+    }
+}
+
+static void
+text_editor_apply_format (TextEditor *self,
+                          TextMark   *start,
+                          TextMark   *end,
+                          Format      format,
+                          gboolean    in_use)
 {
     TextRun *iter;
     TextRun *last;
@@ -1397,7 +1425,7 @@ text_editor_apply_format_bold (TextEditor *self,
         split_run_in_place (first_split, &second_split, end_index_offset);
 
         // Apply format to middle run
-        text_run_set_style_bold (first_split, is_bold);
+        set_run_format (first_split, format, in_use);
         return;
     }
 
@@ -1408,7 +1436,7 @@ text_editor_apply_format_bold (TextEditor *self,
         split_run_in_place (iter, &new_run, start->index - start_run_index);
 
         // Apply format to new run
-        text_run_set_style_bold (new_run, is_bold);
+        set_run_format (new_run, format, in_use);
         iter = new_run;
     }
 
@@ -1419,7 +1447,7 @@ text_editor_apply_format_bold (TextEditor *self,
         split_run_in_place (last, &new_run, end->index - end_run_index);
 
         // Apply format to old run
-        text_run_set_style_bold (last, is_bold);
+        set_run_format (last, format, in_use);
     }
 
     while (iter != NULL)
@@ -1427,10 +1455,37 @@ text_editor_apply_format_bold (TextEditor *self,
         if (iter == last)
             break;
 
-        text_run_set_style_bold (iter, is_bold);
+        set_run_format (iter, format, in_use);
 
         iter = walk_until_next_run (TEXT_ITEM (iter));
     }
+}
+
+void
+text_editor_apply_format_bold (TextEditor *self,
+                               TextMark   *start,
+                               TextMark   *end,
+                               gboolean    is_bold)
+{
+    text_editor_apply_format (self, start, end, FORMAT_BOLD, is_bold);
+}
+
+void
+text_editor_apply_format_italic (TextEditor *self,
+                                 TextMark   *start,
+                                 TextMark   *end,
+                                 gboolean    is_italic)
+{
+    text_editor_apply_format (self, start, end, FORMAT_ITALIC, is_italic);
+}
+
+void
+text_editor_apply_format_underline (TextEditor *self,
+                                    TextMark   *start,
+                                    TextMark   *end,
+                                    gboolean    is_underline)
+{
+    text_editor_apply_format (self, start, end, FORMAT_UNDERLINE, is_underline);
 }
 
 gboolean
@@ -1441,6 +1496,26 @@ text_editor_get_format_bold_at_mark (TextEditor *self,
 
     run = text_editor_get_run_at_mark (self, mark);
     return text_run_get_style_bold (run);
+}
+
+gboolean
+text_editor_get_format_italic_at_mark (TextEditor *self,
+                                       TextMark   *mark)
+{
+    TextRun *run;
+
+    run = text_editor_get_run_at_mark (self, mark);
+    return text_run_get_style_italic (run);
+}
+
+gboolean
+text_editor_get_format_underline_at_mark (TextEditor *self,
+                                          TextMark   *mark)
+{
+    TextRun *run;
+
+    run = text_editor_get_run_at_mark (self, mark);
+    return text_run_get_style_underline (run);
 }
 
 TextMark *
