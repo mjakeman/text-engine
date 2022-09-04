@@ -29,10 +29,10 @@ enum {
 static GParamSpec *properties [N_PROPS];
 
 TextImage *
-text_image_new (const gchar *text)
+text_image_new (const gchar *src)
 {
     return g_object_new (TEXT_TYPE_IMAGE,
-                         "text", text,
+                         "src", src,
                          NULL);
 }
 

@@ -22,6 +22,6 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (TextImage, text_image, TEXT, IMAGE, TextInline)
 
-TextImage *text_image_new        (const gchar *text);
+TextImage *text_image_new        (const gchar *src);
 
 G_END_DECLS

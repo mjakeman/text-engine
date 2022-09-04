@@ -70,13 +70,13 @@ text_paragraph_set_property (GObject      *object,
 }
 
 void
-text_paragraph_append_run (TextParagraph *self,
-                           TextRun       *run)
+text_paragraph_append_inline (TextParagraph *self,
+                              TextInline    *element)
 {
     g_return_if_fail (TEXT_IS_PARAGRAPH (self));
-    g_return_if_fail (TEXT_IS_RUN (run));
+    g_return_if_fail (TEXT_IS_INLINE (element));
 
-    text_node_append_child (TEXT_NODE (self), TEXT_NODE (run));
+    text_node_append_child (TEXT_NODE (self), TEXT_NODE (element));
 }
 
 /**
@@ -107,7 +107,8 @@ text_paragraph_get_text (TextParagraph *self)
     {
         const gchar *run_text;
 
-        g_assert (TEXT_IS_RUN (child));
+        if (!TEXT_IS_RUN (child))
+            continue;
 
         g_object_get (child, "text", &run_text, NULL);
         g_string_append (str, run_text);
@@ -130,7 +131,6 @@ text_paragraph_get_length (TextParagraph *self)
          child != NULL;
          child = text_node_get_next (child))
     {
-        g_assert (TEXT_IS_RUN (child));
         length += text_inline_get_length (TEXT_INLINE (child));
     }
 

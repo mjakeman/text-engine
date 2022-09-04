@@ -117,6 +117,9 @@ _set_attributes (TextParagraph *paragraph,
         PangoAttribute *attr;
         int run_length;
 
+        if (!TEXT_IS_RUN (run))
+            continue;
+
         run_length = text_inline_get_length (TEXT_INLINE (run));
 
         // Get Style Properties
@@ -189,23 +192,6 @@ text_layout_box_layout (TextLayoutBox *self,
         pango_layout_set_width (priv->layout, PANGO_SCALE * width);
         pango_layout_get_pixel_size (priv->layout, NULL, &height);
         g_debug (" - Height %d\n", height);
-
-        // TODO: THIS WILL NOT WORK FOR PARAGRAPHS WITH MORE THAN
-        // ONE RUN -> FIX BY CONSIDERING RUNS INDIVIDUALLY
-        // (might need support for inline layouts?)
-        if (priv->has_cursor)
-        {
-            PangoRectangle cursor_rect;
-            pango_layout_index_to_pos (priv->layout,
-                                       priv->cursor_index,
-                                       &cursor_rect);
-
-            // Hardcode width to 1
-            priv->cursor.x = cursor_rect.x / PANGO_SCALE;
-            priv->cursor.y = cursor_rect.y / PANGO_SCALE;
-            priv->cursor.height = cursor_rect.height / PANGO_SCALE;
-            priv->cursor.width = 1;
-        }
 
         // Set style information
         // TODO: Matching from ruleset

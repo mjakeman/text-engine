@@ -50,19 +50,19 @@ delete_fixture_set_up (DeleteFixture *fixture,
     run1 = text_run_new (RUN1);
     run2 = text_run_new (RUN2);
     run3 = text_run_new (RUN3);
-    text_paragraph_append_run (para1, run1);
-    text_paragraph_append_run (para1, run2);
-    text_paragraph_append_run (para1, run3);
+    text_paragraph_append_inline(para1, run1);
+    text_paragraph_append_inline(para1, run2);
+    text_paragraph_append_inline(para1, run3);
     text_frame_append_block (frame, TEXT_BLOCK (para1));
 
     para2 = text_paragraph_new ();
     run4 = text_run_new (RUN4);
-    text_paragraph_append_run (para2, run4);
+    text_paragraph_append_inline(para2, run4);
     text_frame_append_block (frame, TEXT_BLOCK (para2));
 
     para3 = text_paragraph_new ();
     run5 = text_run_new (RUN5);
-    text_paragraph_append_run (para3, run5);
+    text_paragraph_append_inline(para3, run5);
     text_frame_append_block (frame, TEXT_BLOCK (para3));
 
     fixture->doc = text_document_new ();

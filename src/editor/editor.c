@@ -557,7 +557,7 @@ _ensure_paragraph (TextEditor *self)
     {
         paragraph = text_paragraph_new ();
         text_frame_append_block (document_frame, TEXT_BLOCK (paragraph));
-        text_paragraph_append_run (paragraph, text_run_new (""));
+        text_paragraph_append_inline(paragraph, text_run_new(""));
     }
 }
 
@@ -1183,7 +1183,7 @@ text_editor_split_at_mark (TextEditor *self,
     {
         // Append a new paragraph with empty run
         new = text_paragraph_new ();
-        text_paragraph_append_run (new, text_run_new (""));
+        text_paragraph_append_inline(new, text_run_new(""));
 
         parent = text_node_get_parent (TEXT_NODE (current));
         text_node_insert_child_after (parent, TEXT_NODE (new), TEXT_NODE (current));
@@ -1209,7 +1209,7 @@ text_editor_split_at_mark (TextEditor *self,
 
             split_index_within_run = split->index - run_offset;
             split_run_at_offset (start, &new_run, split_index_within_run);
-            text_paragraph_append_run (new, new_run);
+            text_paragraph_append_inline(new, new_run);
 
             // Move to next run
             iter = text_node_get_next (iter);
@@ -1225,7 +1225,7 @@ text_editor_split_at_mark (TextEditor *self,
             next = text_node_get_next (iter);
 
             text_node_unparent (iter);
-            text_paragraph_append_run (new, TEXT_RUN (iter));
+            text_paragraph_append_inline(new, TEXT_RUN(iter));
 
             iter = next;
         }
@@ -1235,7 +1235,7 @@ text_editor_split_at_mark (TextEditor *self,
         if (text_node_get_num_children (TEXT_PARAGRAPH (current)) == 0)
         {
             // Add empty run
-            text_paragraph_append_run(current, text_run_new(""));
+            text_paragraph_append_inline(current, text_run_new(""));
         }
 
         // Append paragraph to document tree
