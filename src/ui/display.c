@@ -1118,6 +1118,18 @@ key_pressed (GtkEventControllerKey *controller,
         goto reallocate;
     }
 
+    // Select all
+    if (keyval == GDK_KEY_a && ctrl_pressed)
+    {
+        if (!selection)
+            _set_selection (self->document);
+
+        text_editor_move_first (self->editor, TEXT_EDITOR_SELECTION);
+        text_editor_move_last (self->editor, TEXT_EDITOR_CURSOR);
+
+        goto reallocate;
+    }
+
     // Handle formatting
     if (keyval == GDK_KEY_b && ctrl_pressed)
     {
