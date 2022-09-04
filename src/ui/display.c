@@ -1131,6 +1131,30 @@ key_pressed (GtkEventControllerKey *controller,
         goto reallocate;
     }
 
+    if (keyval == GDK_KEY_i && ctrl_pressed)
+    {
+        gboolean is_italic;
+
+        is_italic = text_editor_get_format_italic_at_mark (self->editor, self->document->cursor);
+        text_editor_apply_format_italic (self->editor,
+                                         self->document->cursor,
+                                         self->document->selection,
+                                         !is_italic);
+        goto reallocate;
+    }
+
+    if (keyval == GDK_KEY_u && ctrl_pressed)
+    {
+        gboolean is_underline;
+
+        is_underline = text_editor_get_format_underline_at_mark (self->editor, self->document->cursor);
+        text_editor_apply_format_underline (self->editor,
+                                            self->document->cursor,
+                                            self->document->selection,
+                                            !is_underline);
+        goto reallocate;
+    }
+
     return FALSE;
 
 reallocate:
