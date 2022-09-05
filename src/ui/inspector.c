@@ -14,6 +14,7 @@
 #include "display.h"
 #include "../model/document.h"
 #include "../model/run.h"
+#include "../model/image.h"
 
 struct _TextInspector
 {
@@ -231,13 +232,23 @@ common_setup (GtkSignalListItemFactory *self,
               GtkListItem              *listitem,
               gpointer                  user_data)
 {
-    GtkWidget *label;
+    GtkWidget *label, *tag;
+    GtkWidget *hbox;
+
+    hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 4);
+
+    tag = gtk_label_new ("");
+    gtk_label_set_xalign (GTK_LABEL (tag), 0.5f);
+    gtk_widget_add_css_class (tag, "inspector-tag");
+    gtk_box_append (GTK_BOX (hbox), tag);
+    gtk_widget_hide (tag);
 
     label = gtk_label_new ("");
     gtk_label_set_xalign (GTK_LABEL (label), 0);
     gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
+    gtk_box_append (GTK_BOX (hbox), label);
 
-    gtk_list_item_set_child (listitem, label);
+    gtk_list_item_set_child (listitem, hbox);
 }
 
 void
@@ -245,18 +256,22 @@ text_bind (GtkSignalListItemFactory *self,
            GtkListItem              *listitem,
            gpointer                  user_data)
 {
-    GtkWidget *label;
+    GtkWidget *hbox, *tag, *label;
     GtkTreeListRow *row;
     TextItem *item;
-    const gchar *type;
 
-    label = gtk_list_item_get_child (listitem);
+    hbox = gtk_list_item_get_child (listitem);
     row = GTK_TREE_LIST_ROW (gtk_list_item_get_item (listitem));
 
     item = gtk_tree_list_row_get_item (row);
 
+    tag = gtk_widget_get_first_child ( hbox);
+    label = gtk_widget_get_next_sibling (tag);
+
     g_assert (GTK_IS_TREE_LIST_ROW (row));
     g_assert (TEXT_IS_ITEM (item));
+
+    gtk_widget_hide (tag);
 
     if (TEXT_IS_RUN (item))
     {
@@ -264,6 +279,16 @@ text_bind (GtkSignalListItemFactory *self,
 
         g_object_get (item, "text", &text, NULL);
         gtk_label_set_text (GTK_LABEL (label), text);
+    }
+    else if (TEXT_IS_IMAGE (item))
+    {
+        const gchar *src;
+
+        g_object_get (item, "src", &src, NULL);
+        gtk_label_set_text (GTK_LABEL (label), src);
+
+        gtk_widget_show (tag);
+        gtk_label_set_text (GTK_LABEL (tag), "image");
     }
     else
     {
@@ -276,15 +301,17 @@ style_bind (GtkSignalListItemFactory *self,
             GtkListItem              *listitem,
             gpointer                  user_data)
 {
-    GtkWidget *label;
+    GtkWidget *hbox, *tag, *label;
     GtkTreeListRow *row;
     TextItem *item;
-    const gchar *type;
 
-    label = gtk_list_item_get_child (listitem);
+    hbox = gtk_list_item_get_child (listitem);
     row = GTK_TREE_LIST_ROW (gtk_list_item_get_item (listitem));
 
     item = gtk_tree_list_row_get_item (row);
+
+    tag = gtk_widget_get_first_child ( hbox);
+    label = gtk_widget_get_next_sibling (tag);
 
     g_assert (GTK_IS_TREE_LIST_ROW (row));
     g_assert (TEXT_IS_ITEM (item));
