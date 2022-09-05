@@ -189,7 +189,7 @@ text_layout_pick_internal (TextLayoutBox *root,
         bbox = text_layout_box_get_bbox (layout_item);
 
         // Recursively check child layouts first
-        found = TEXT_NODE (text_layout_pick (layout_item, x - bbox->x, y - bbox->y));
+        found = TEXT_NODE (text_layout_pick_internal (layout_item, x - bbox->x, y - bbox->y, min_y_distance, min_y_layout));
 
         if (found) {
             return found;

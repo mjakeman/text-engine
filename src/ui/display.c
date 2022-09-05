@@ -1253,18 +1253,29 @@ set_mark_from_cursor (TextDisplay *self,
             // when we have more complex renderers
             g_print ("%s %lf %lf %lf %lf\n", g_type_name_from_instance(item),
                      bbox->x, bbox->y, bbox->width, bbox->height);
-            g_return_if_fail (TEXT_IS_PARAGRAPH (item));
 
-            int index, trailing;
+            if (TEXT_IS_PARAGRAPH (item))
+            {
+                int index, trailing;
 
-            // Pango automatically clamps the coordinates to the layout for us
-            pango_layout_xy_to_index (text_layout_box_get_pango_layout (box),
-                                      (x - bbox->x) * PANGO_SCALE,
-                                      (y - bbox->y) * PANGO_SCALE,
-                                      &index, &trailing);
+                // Pango automatically clamps the coordinates to the layout for us
+                pango_layout_xy_to_index (text_layout_box_get_pango_layout (box),
+                                          (x - bbox->x) * PANGO_SCALE,
+                                          (y - bbox->y) * PANGO_SCALE,
+                                          &index, &trailing);
 
-            mark->paragraph = TEXT_PARAGRAPH (item);
-            mark->index = index;
+                mark->paragraph = TEXT_PARAGRAPH (item);
+                mark->index = index;
+            }
+            else if (TEXT_IS_IMAGE (item))
+            {
+                // Treat bounding box opaquely
+                mark->index = 0;
+                mark->paragraph = TEXT_PARAGRAPH (text_node_get_parent (TEXT_NODE (item)));
+                if ((x - bbox->x) > (bbox->width / 2))
+                    mark->index = 1;
+
+            }
         }
     }
 }
