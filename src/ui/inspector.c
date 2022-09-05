@@ -20,7 +20,7 @@ struct _TextInspector
     GtkWidget parent_instance;
 
     GObject *object;
-    TextFrame *frame;
+    TextDocument *document;
 
     GtkWidget *vbox;
     GtkWidget *colview;
@@ -39,9 +39,7 @@ static GParamSpec *properties [N_PROPS];
 
 #define TITLE "Text Engine"
 
-static void
-bind_frame (TextInspector *inspector,
-            TextFrame     *frame);
+static void populate_data_from_frame (TextInspector *inspector);
 
 TextInspector *
 text_inspector_new (void)
@@ -96,11 +94,9 @@ text_inspector_set_property (GObject      *object,
         if (TEXT_IS_DISPLAY (self->object))
         {
             TextDocument *document;
-
             g_object_get (self->object, "document", &document, NULL);
-
-            if (TEXT_IS_FRAME (document->frame))
-                bind_frame (self, document->frame);
+            self->document = document;
+            populate_data_from_frame (self);
         }
         break;
     default:
@@ -132,18 +128,18 @@ create_list_model (TextItem *item)
 }
 
 static void
-bind_frame (TextInspector *self,
-            TextFrame     *frame)
+populate_data_from_frame (TextInspector *self)
 {
     GtkTreeListModel *tree_model;
     GtkSingleSelection *selection_model;
     GListStore *root;
 
     g_return_if_fail (TEXT_IS_INSPECTOR (self));
-    g_return_if_fail (TEXT_IS_FRAME (frame));
+    g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+    g_return_if_fail (TEXT_IS_FRAME (self->document->frame));
 
     root = g_list_store_new (TEXT_TYPE_ITEM);
-    g_list_store_append (root, TEXT_ITEM (frame));
+    g_list_store_append (root, TEXT_ITEM (self->document->frame));
 
     tree_model = gtk_tree_list_model_new (G_LIST_MODEL (root), FALSE, TRUE,
                                           (GtkTreeListModelCreateModelFunc) create_list_model,
@@ -314,6 +310,7 @@ text_inspector_init (TextInspector *self)
 {
     GtkWidget *infobar;
     GtkWidget *label;
+    GtkWidget *scroll_area;
 
     self->vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_parent (self->vbox, GTK_WIDGET (self));
@@ -323,8 +320,13 @@ text_inspector_init (TextInspector *self)
 
     infobar = gtk_info_bar_new ();
     gtk_info_bar_add_child (GTK_INFO_BAR (infobar), label);
+    gtk_info_bar_add_button (GTK_INFO_BAR (infobar), "Refresh Model", GTK_BUTTONS_OK);
+    g_signal_connect_swapped (infobar, "response", G_CALLBACK (populate_data_from_frame), self);
     gtk_box_append (GTK_BOX (self->vbox), infobar);
 
+    scroll_area = gtk_scrolled_window_new ();
+    gtk_box_append (GTK_BOX (self->vbox), scroll_area);
+
     self->colview = setup_colview ();
-    gtk_box_append (GTK_BOX (self->vbox), self->colview);
+    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll_area), self->colview);
 }
