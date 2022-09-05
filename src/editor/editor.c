@@ -12,6 +12,7 @@
 #include "editor.h"
 
 #include "../model/paragraph.h"
+#include "../model/opaque.h"
 
 struct _TextEditor
 {
@@ -613,8 +614,7 @@ _erase_content (TextFragment *item,
     {
         _erase_text (TEXT_RUN (item), index, length);
     }
-    // TODO: Add new TextOpaque class?
-    else if (text_fragment_get_length (TEXT_FRAGMENT (item)) == 1)
+    else if (TEXT_IS_OPAQUE (item))
     {
         TextParagraph *parent;
         parent = TEXT_PARAGRAPH (text_node_get_parent (TEXT_NODE (item)));
