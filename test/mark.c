@@ -307,7 +307,7 @@ test_insert_on (MarkFixture   *fixture,
 
     // Perform insertion
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 9);
-    text_editor_insert (fixture->editor, TEXT_EDITOR_CURSOR, "Hello");
+    text_editor_insert_text(fixture->editor, TEXT_EDITOR_CURSOR, "Hello");
 
     // before:
     //      cursor >< mark
@@ -341,7 +341,7 @@ test_insert_after (MarkFixture   *fixture,
 
     // Perform insertion
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 9);
-    text_editor_insert (fixture->editor, TEXT_EDITOR_CURSOR, "Hello");
+    text_editor_insert_text(fixture->editor, TEXT_EDITOR_CURSOR, "Hello");
 
     // before:
     //      cursor ><      >< mark

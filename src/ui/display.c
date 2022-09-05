@@ -842,7 +842,7 @@ commit (GtkIMContext *context,
 
     self->document->selection != NULL
         ? text_editor_replace (self->editor, TEXT_EDITOR_CURSOR, TEXT_EDITOR_SELECTION, str)
-        : text_editor_insert (self->editor, TEXT_EDITOR_CURSOR, str);
+        : text_editor_insert_text(self->editor, TEXT_EDITOR_CURSOR, str);
 
     _unset_selection (self->document);
 
@@ -1209,6 +1209,16 @@ key_pressed (GtkEventControllerKey *controller,
                                             self->document->cursor,
                                             self->document->selection,
                                             !is_underline);
+        goto reallocate;
+    }
+
+    // Insert image
+    if (keyval == GDK_KEY_1 && ctrl_pressed)
+    {
+        TextImage *img;
+        img = text_image_new ("placeholder.png");
+        text_editor_insert_inline (self->editor, TEXT_EDITOR_CURSOR, TEXT_INLINE (img));
+
         goto reallocate;
     }
 
