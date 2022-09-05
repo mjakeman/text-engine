@@ -322,7 +322,7 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
             height = cursor_rect.height / PANGO_SCALE;
             width = 1;
         }
-        else
+        else if (inline_item != NULL)
         {
             // Treat object as opaque with start and end cursor positions
             // TODO: Make this far more robust e.g. for editable inlines

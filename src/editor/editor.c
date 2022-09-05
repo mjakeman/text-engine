@@ -1325,15 +1325,31 @@ text_editor_insert_at_mark (TextEditor *self,
 
     item = text_paragraph_get_item_at_index (start->paragraph, start->index, &run_start_index);
 
+    run_offset = start->index - run_start_index;
+
     if (!TEXT_IS_RUN (item))
     {
-        g_print ("Not supported: Inserting into non-text run\n");
-        return;
+        if (run_offset == 0)
+        {
+            run = text_run_new ("");
+            text_node_insert_child_before (TEXT_NODE (start->paragraph), TEXT_NODE (run), TEXT_NODE (item));
+        }
+        else if (run_offset == text_inline_get_length (item))
+        {
+            run = text_run_new ("");
+            text_node_insert_child_after (TEXT_NODE (start->paragraph), TEXT_NODE (run), TEXT_NODE (item));
+            run_offset = 0;
+        }
+        else
+        {
+            g_print ("Not supported: Inserting into non-text run\n");
+            return;
+        }
     }
-
-    run = TEXT_RUN (item);
-
-    run_offset = start->index - run_start_index;
+    else
+    {
+        run = TEXT_RUN (item);
+    }
 
     // TODO: Replace with hybrid tree/piece-table structure?
     // Textual data is stored in buffers and indexed by the tree
