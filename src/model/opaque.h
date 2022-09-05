@@ -1,4 +1,4 @@
-/* image.h
+/* opaque.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -13,15 +13,17 @@
 
 #include <glib-object.h>
 
-#include "item.h"
-#include "opaque.h"
+#include "fragment.h"
 
 G_BEGIN_DECLS
 
-#define TEXT_TYPE_IMAGE (text_image_get_type())
+#define TEXT_TYPE_OPAQUE (text_opaque_get_type())
 
-G_DECLARE_FINAL_TYPE (TextImage, text_image, TEXT, IMAGE, TextOpaque)
+G_DECLARE_DERIVABLE_TYPE (TextOpaque, text_opaque, TEXT, OPAQUE, TextFragment)
 
-TextImage *text_image_new        (const gchar *src);
+struct _TextOpaqueClass
+{
+    TextFragmentClass parent_class;
+};
 
 G_END_DECLS
