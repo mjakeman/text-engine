@@ -1217,7 +1217,7 @@ key_pressed (GtkEventControllerKey *controller,
     {
         TextImage *img;
         img = text_image_new ("placeholder.png");
-        text_editor_insert_inline (self->editor, TEXT_EDITOR_CURSOR, TEXT_FRAGMENT (img));
+        text_editor_insert_fragment(self->editor, TEXT_EDITOR_CURSOR, TEXT_FRAGMENT(img));
 
         goto reallocate;
     }

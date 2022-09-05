@@ -34,7 +34,7 @@ void        text_editor_move_mark_last          (TextEditor *self, TextMark *mar
 void        text_editor_move_mark_right         (TextEditor *self, TextMark *mark, int amount);
 void        text_editor_move_mark_left          (TextEditor *self, TextMark *mark, int amount);
 void        text_editor_insert_text_at_mark     (TextEditor *self, TextMark *start, gchar *str);
-void        text_editor_insert_inline_at_mark   (TextEditor *self, TextMark *start, TextFragment *item);
+void        text_editor_insert_fragment_at_mark (TextEditor *self, TextMark *start, TextFragment *fragment);
 void        text_editor_delete_at_mark          (TextEditor *self, TextMark *start, int length);
 void        text_editor_replace_at_mark         (TextEditor *self, TextMark *start, TextMark *end, gchar *text);
 void        text_editor_split_at_mark           (TextEditor *self, TextMark *mark);
@@ -44,7 +44,7 @@ void        text_editor_move_last       (TextEditor *self, TextEditorMarkType ty
 void        text_editor_move_right      (TextEditor *self, TextEditorMarkType type, int amount);
 void        text_editor_move_left       (TextEditor *self, TextEditorMarkType type, int amount);
 void        text_editor_insert_text     (TextEditor *self, TextEditorMarkType type, gchar *str);
-void        text_editor_insert_inline   (TextEditor *self, TextEditorMarkType type, TextFragment *item);
+void        text_editor_insert_fragment (TextEditor *self, TextEditorMarkType type, TextFragment *fragment);
 void        text_editor_delete          (TextEditor *self, TextEditorMarkType type, int length);
 void        text_editor_replace         (TextEditor *self, TextEditorMarkType start_type, TextEditorMarkType end_type, gchar *text);
 void        text_editor_split           (TextEditor *self, TextEditorMarkType type);

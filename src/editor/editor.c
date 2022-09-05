@@ -128,7 +128,7 @@ go_up (TextItem *item,
 }
 
 static TextFragment *
-walk_until_previous_inline (TextItem *item)
+walk_until_previous_fragment (TextItem *item)
 {
     TextNode *child;
     TextNode *sibling;
@@ -143,7 +143,7 @@ walk_until_previous_inline (TextItem *item)
             return TEXT_FRAGMENT (child);
         }
 
-        return walk_until_previous_inline (TEXT_ITEM(child));
+        return walk_until_previous_fragment(TEXT_ITEM(child));
     }
 
     sibling = text_node_get_previous (TEXT_NODE (item));
@@ -153,7 +153,7 @@ walk_until_previous_inline (TextItem *item)
             return TEXT_FRAGMENT (sibling);
         }
 
-        return walk_until_previous_inline (TEXT_ITEM(sibling));
+        return walk_until_previous_fragment(TEXT_ITEM(sibling));
     }
 
     parent = go_up (item, FALSE);
@@ -163,14 +163,14 @@ walk_until_previous_inline (TextItem *item)
             return TEXT_FRAGMENT (parent);
         }
 
-        return walk_until_previous_inline (parent);
+        return walk_until_previous_fragment(parent);
     }
 
     return NULL;
 }
 
 static TextFragment *
-walk_until_next_inline (TextItem *item)
+walk_until_next_fragment (TextItem *item)
 {
     TextNode *child;
     TextNode *sibling;
@@ -185,7 +185,7 @@ walk_until_next_inline (TextItem *item)
             return TEXT_FRAGMENT (child);
         }
 
-        return walk_until_next_inline (TEXT_ITEM(child));
+        return walk_until_next_fragment(TEXT_ITEM(child));
     }
 
     sibling = text_node_get_next (TEXT_NODE (item));
@@ -195,7 +195,7 @@ walk_until_next_inline (TextItem *item)
             return TEXT_FRAGMENT (sibling);
         }
 
-        return walk_until_next_inline (TEXT_ITEM(sibling));
+        return walk_until_next_fragment(TEXT_ITEM(sibling));
     }
 
     parent = go_up (item, TRUE);
@@ -205,7 +205,7 @@ walk_until_next_inline (TextItem *item)
             return TEXT_FRAGMENT (parent);
         }
 
-        return walk_until_next_inline (parent);
+        return walk_until_next_fragment(parent);
     }
 
     return NULL;
@@ -553,7 +553,7 @@ _ensure_paragraph (TextEditor *self)
     document_frame = self->document->frame;
 
     // Add paragraph with run if none exists
-    if (!walk_until_next_inline(TEXT_ITEM(document_frame)))
+    if (!walk_until_next_fragment(TEXT_ITEM(document_frame)))
     {
         paragraph = text_paragraph_new ();
         text_frame_append_block (document_frame, TEXT_BLOCK (paragraph));
@@ -730,7 +730,7 @@ _delete_within_paragraph (TextParagraph *paragraph,
             to_delete = MIN (deletion_length, run_length - offset_within_run);
 
             cur_deleted += to_delete;
-            iter = walk_until_next_inline(TEXT_ITEM(start));
+            iter = walk_until_next_fragment(TEXT_ITEM(start));
 
             // Delete part of run
             _erase_content (start, offset_within_run, to_delete);
@@ -748,7 +748,7 @@ _delete_within_paragraph (TextParagraph *paragraph,
             {
                 TextRun *next;
 
-                next = walk_until_next_inline(TEXT_ITEM(iter));
+                next = walk_until_next_fragment(TEXT_ITEM(iter));
                 text_node_delete (TEXT_NODE (iter));
 
                 cur_deleted += run_length;
@@ -1415,9 +1415,9 @@ text_editor_insert_text_at_mark (TextEditor *self,
 }
 
 void
-text_editor_insert_inline_at_mark (TextEditor *self,
-                                   TextMark   *start,
-                                   TextFragment *new_item)
+text_editor_insert_fragment_at_mark (TextEditor *self,
+                                     TextMark   *start,
+                                     TextFragment *fragment)
 {
     // Encapsulates insertion inside an editor module/object.
     // This should accept user input in the form of Operational
@@ -1439,17 +1439,17 @@ text_editor_insert_inline_at_mark (TextEditor *self,
 
     if (run_offset == 0)
     {
-        text_node_insert_child_before (TEXT_NODE (start->paragraph), TEXT_NODE (new_item), TEXT_NODE (item));
+        text_node_insert_child_before (TEXT_NODE (start->paragraph), TEXT_NODE (fragment), TEXT_NODE (item));
     }
     else if (run_offset == text_fragment_get_length (item))
     {
-        text_node_insert_child_after (TEXT_NODE (start->paragraph), TEXT_NODE (new_item), TEXT_NODE (item));
+        text_node_insert_child_after (TEXT_NODE (start->paragraph), TEXT_NODE (fragment), TEXT_NODE (item));
     }
     else if (TEXT_IS_RUN (item))
     {
         TextRun *new_run;
         split_run_in_place (TEXT_RUN (item), &new_run, run_offset);
-        text_node_insert_child_before (TEXT_NODE (start->paragraph), TEXT_NODE (new_item), TEXT_NODE (new_run));
+        text_node_insert_child_before (TEXT_NODE (start->paragraph), TEXT_NODE (fragment), TEXT_NODE (new_run));
     }
     else
     {
@@ -1457,7 +1457,7 @@ text_editor_insert_inline_at_mark (TextEditor *self,
         return;
     }
 
-    length = text_fragment_get_length (new_item);
+    length = text_fragment_get_length (fragment);
 
     // Adjust marks according to gravity
     marks = text_document_get_all_marks (self->document);
@@ -1588,7 +1588,7 @@ text_editor_apply_format (TextEditor *self,
 
         set_run_format (iter, format, in_use);
 
-        iter = walk_until_next_inline(TEXT_ITEM(iter));
+        iter = walk_until_next_fragment(TEXT_ITEM(iter));
     }
 }
 
@@ -1738,11 +1738,11 @@ text_editor_insert_text (TextEditor         *self,
 }
 
 void
-text_editor_insert_inline (TextEditor         *self,
-                           TextEditorMarkType  type,
-                           TextFragment         *item)
+text_editor_insert_fragment (TextEditor         *self,
+                             TextEditorMarkType  type,
+                             TextFragment         *fragment)
 {
-    text_editor_insert_inline_at_mark (self, _get_mark(self, type), item);
+    text_editor_insert_fragment_at_mark(self, _get_mark(self, type), fragment);
 }
 
 void
