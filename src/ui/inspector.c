@@ -110,7 +110,7 @@ create_list_model (TextItem *item)
     GListStore *store;
     TextNode *node;
 
-    if (TEXT_IS_RUN (item))
+    if (TEXT_IS_INLINE (item))
         return NULL;
 
     store = g_list_store_new (TEXT_TYPE_ITEM);
@@ -227,9 +227,9 @@ type_bind (GtkSignalListItemFactory *self,
 }
 
 void
-text_setup (GtkSignalListItemFactory *self,
-            GtkListItem              *listitem,
-            gpointer                  user_data)
+common_setup (GtkSignalListItemFactory *self,
+              GtkListItem              *listitem,
+              gpointer                  user_data)
 {
     GtkWidget *label;
 
@@ -271,6 +271,47 @@ text_bind (GtkSignalListItemFactory *self,
     }
 }
 
+void
+style_bind (GtkSignalListItemFactory *self,
+            GtkListItem              *listitem,
+            gpointer                  user_data)
+{
+    GtkWidget *label;
+    GtkTreeListRow *row;
+    TextItem *item;
+    const gchar *type;
+
+    label = gtk_list_item_get_child (listitem);
+    row = GTK_TREE_LIST_ROW (gtk_list_item_get_item (listitem));
+
+    item = gtk_tree_list_row_get_item (row);
+
+    g_assert (GTK_IS_TREE_LIST_ROW (row));
+    g_assert (TEXT_IS_ITEM (item));
+
+    if (TEXT_IS_RUN (item))
+    {
+        GString *string;
+        char *text;
+
+        string = g_string_new ("");
+        if (text_run_get_style_bold (TEXT_RUN (item)))
+            string = g_string_append (string, "bold ");
+        if (text_run_get_style_italic (TEXT_RUN (item)))
+            string = g_string_append (string, "italic ");
+        if (text_run_get_style_underline (TEXT_RUN (item)))
+            string = g_string_append (string, "underline ");
+
+        text = g_string_free (string, FALSE);
+        gtk_label_set_text (GTK_LABEL (label), text);
+        g_free (text);
+    }
+    else
+    {
+        gtk_label_set_text (GTK_LABEL (label), NULL);
+    }
+}
+
 static GtkWidget *
 setup_colview ()
 {
@@ -294,10 +335,19 @@ setup_colview ()
     gtk_column_view_append_column (GTK_COLUMN_VIEW (colview), column);
 
     factory = gtk_signal_list_item_factory_new ();
-    g_signal_connect (factory, "setup", G_CALLBACK (text_setup), NULL);
+    g_signal_connect (factory, "setup", G_CALLBACK (common_setup), NULL);
     g_signal_connect (factory, "bind", G_CALLBACK (text_bind), NULL);
 
     column = gtk_column_view_column_new ("Contents", factory);
+    gtk_column_view_column_set_expand (column, TRUE);
+    gtk_column_view_column_set_resizable (column, TRUE);
+    gtk_column_view_append_column (GTK_COLUMN_VIEW (colview), column);
+
+    factory = gtk_signal_list_item_factory_new ();
+    g_signal_connect (factory, "setup", G_CALLBACK (common_setup), NULL);
+    g_signal_connect (factory, "bind", G_CALLBACK (style_bind), NULL);
+
+    column = gtk_column_view_column_new ("Style", factory);
     gtk_column_view_column_set_expand (column, TRUE);
     gtk_column_view_column_set_resizable (column, TRUE);
     gtk_column_view_append_column (GTK_COLUMN_VIEW (colview), column);
