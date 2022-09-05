@@ -20,6 +20,7 @@
 #include "../model/frame.h"
 #include "../model/paragraph.h"
 #include "../model/mark.h"
+#include "../model/image.h"
 
 G_BEGIN_DECLS
 

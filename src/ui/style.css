@@ -1,5 +1,6 @@
 .inspector-tag {
     background-color: @blue_5;
+    color: @fg_color;
     padding: 4px;
     border-radius: 4px;
 }

@@ -240,7 +240,9 @@ layout_snapshot_recursive (GtkWidget     *widget,
                            int           *delta_height)
 {
     int offset = 0;
+    TextItem *item;
 
+    gtk_snapshot_save (snapshot);
     for (TextNode *node = text_node_get_first_child (TEXT_NODE (layout_box));
          node != NULL;
          node = text_node_get_next (node))
@@ -248,9 +250,11 @@ layout_snapshot_recursive (GtkWidget     *widget,
         g_assert (TEXT_IS_LAYOUT_BOX (node));
 
         int delta_height;
+
         layout_snapshot_recursive (widget, TEXT_LAYOUT_BOX (node), snapshot, fg_color, &delta_height);
         offset += delta_height;
     }
+    gtk_snapshot_restore (snapshot);
 
     PangoLayout *layout = text_layout_box_get_pango_layout (layout_box);
     const TextDimensions *bbox = text_layout_box_get_bbox (layout_box);
@@ -261,8 +265,17 @@ layout_snapshot_recursive (GtkWidget     *widget,
         gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, offset));
         gtk_snapshot_append_layout (snapshot, layout, fg_color);
         gtk_snapshot_restore (snapshot);
+    }
 
-        offset = bbox->height;
+    item = text_layout_box_get_item (layout_box);
+
+    // TODO: Replace with render style?
+    // Or perhaps custom renderer/layout component
+    if (TEXT_IS_IMAGE (item))
+    {
+        GdkRGBA placeholder;
+        gdk_rgba_parse (&placeholder, "red");
+        gtk_snapshot_append_color (snapshot, &placeholder, &GRAPHENE_RECT_INIT (bbox->x, bbox->y, bbox->width, bbox->height));
     }
 
     gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->height));
@@ -277,31 +290,63 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
 {
     TextLayoutBox *box;
     TextParagraph *item;
+    TextInline *inline_item;
     int index;
 
     item = cursor->paragraph;
     index = cursor->index;
 
+    inline_item = text_paragraph_get_item_at_index (item, index, NULL);
     box = TEXT_LAYOUT_BOX (text_item_get_attachment (item));
 
-    if (TEXT_IS_LAYOUT_BOX (box)) {
+    if (TEXT_IS_LAYOUT_BOX (box))
+    {
         int x, y, height, width;
         const TextDimensions *bbox;
         PangoLayout *layout;
 
         bbox = text_layout_box_get_bbox(box);
-        layout = text_layout_box_get_pango_layout(box);
 
-        PangoRectangle cursor_rect;
-        pango_layout_index_to_pos (layout,
-                                   index,
-                                   &cursor_rect);
+        if (TEXT_IS_RUN (inline_item))
+        {
+            layout = text_layout_box_get_pango_layout(box);
 
-        // Hardcode width to 1
-        x = cursor_rect.x / PANGO_SCALE;
-        y = cursor_rect.y / PANGO_SCALE;
-        height = cursor_rect.height / PANGO_SCALE;
-        width = 1;
+            PangoRectangle cursor_rect;
+            pango_layout_index_to_pos (layout,
+                                       index,
+                                       &cursor_rect);
+
+            // Hardcode width to 1
+            x = cursor_rect.x / PANGO_SCALE;
+            y = cursor_rect.y / PANGO_SCALE;
+            height = cursor_rect.height / PANGO_SCALE;
+            width = 1;
+        }
+        else
+        {
+            // Treat object as opaque with start and end cursor positions
+            // TODO: Make this far more robust e.g. for editable inlines
+            // TODO: What even is an inline_box? Give this a proper name
+            TextLayoutBox *inline_box;
+            const TextDimensions *inline_bbox;
+            inline_box = TEXT_LAYOUT_BOX (text_item_get_attachment (inline_item));
+            inline_bbox = text_layout_box_get_bbox (inline_box);
+
+            if (index == 0)
+            {
+                x = 0;
+                y = 0;
+                height = (int) inline_bbox->height;
+                width = 1;
+            }
+            else
+            {
+                x = (int) inline_bbox->width;
+                y = 0;
+                height = (int) inline_bbox->height;
+                width = 1;
+            }
+        }
 
         gtk_snapshot_append_color (snapshot, color, &GRAPHENE_RECT_INIT (bbox->x + x, bbox->y + y, width, height));
     }
@@ -1206,6 +1251,8 @@ set_mark_from_cursor (TextDisplay *self,
 
             // TODO: Properly find the nearest leaf node
             // when we have more complex renderers
+            g_print ("%s %lf %lf %lf %lf\n", g_type_name_from_instance(item),
+                     bbox->x, bbox->y, bbox->width, bbox->height);
             g_return_if_fail (TEXT_IS_PARAGRAPH (item));
 
             int index, trailing;

@@ -115,7 +115,7 @@ test_whole_run_others_in_paragraph (DeleteFixture *fixture,
     text_editor_delete (fixture->editor, TEXT_EDITOR_CURSOR, 10);
 
     // run 2 should no longer exist
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
     g_assert_cmpint (fixture->doc->cursor->index, ==, 10);
 
     // check length
@@ -150,7 +150,7 @@ test_whole_run_last_in_paragraph (DeleteFixture *fixture,
     g_assert_cmpint (length, ==, 0);
 
     // check cursor position
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run4);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run4);
     g_assert_cmpint (fixture->doc->cursor->index, ==, 0);
 
     // check text

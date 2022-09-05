@@ -74,11 +74,11 @@ do_layout_recursive (TextLayout    *self,
                      TextLayoutBox *parent,
                      PangoContext  *context,
                      TextItem      *item,
-                     int            width)
+                     int            width,
+                     int            child_offset_x,
+                     int            child_offset_y)
 {
-    int child_offset_x;
-    int child_offset_y;
-
+    // TODO: Remove these when actually recursive
     child_offset_x = 0;
     child_offset_y = 0;
 
@@ -98,7 +98,23 @@ do_layout_recursive (TextLayout    *self,
         // Let's treat paragraphs opaquely for now. In the future, we need
         // to manually consider each text run in order for inline equations
         // and images.
-        if (TEXT_IS_PARAGRAPH (node))
+        if (TEXT_IS_RUN (node))
+            return;
+        else if (TEXT_IS_IMAGE (node))
+        {
+            TextLayoutBox *box = text_layout_box_new ();
+            text_layout_box_set_item (box, TEXT_ITEM (node));
+            text_item_detach (TEXT_ITEM (node)); // TODO: Don't do this
+            text_item_attach (TEXT_ITEM (node), TEXT_NODE (box));
+
+            text_node_append_child (TEXT_NODE (parent), TEXT_NODE (box));
+            g_debug ("Added child %s\n", g_type_name_from_instance (node));
+
+            // TODO: This should be done recursively
+            text_layout_box_layout (box, context, width, child_offset_x, child_offset_y);
+            child_offset_y += text_layout_box_get_bbox (box)->height;
+        }
+        else if (TEXT_IS_PARAGRAPH (node))
         {
             TextLayoutBox *box = text_layout_box_new ();
             text_layout_box_set_item (box, TEXT_ITEM (node));
@@ -111,6 +127,7 @@ do_layout_recursive (TextLayout    *self,
             // TODO: This function should be properly recursive in the future,
             // so avoid calling it here. Below should be the only time it is
             // called (i.e. post-order traversal).
+            do_layout_recursive (self, box, context, node, width, child_offset_x, child_offset_y);
             text_layout_box_layout (box, context, width, child_offset_x, child_offset_y);
             child_offset_y += text_layout_box_get_bbox (box)->height;
         }
@@ -131,7 +148,7 @@ text_layout_build_layout_tree (TextLayout   *self,
     g_return_val_if_fail (TEXT_IS_FRAME (frame), NULL);
 
     TextLayoutBox *root = text_layout_box_new ();
-    do_layout_recursive (self, root, context, TEXT_ITEM (frame), width);
+    do_layout_recursive (self, root, context, TEXT_ITEM (frame), width, 0, 0);
     return root;
 }
 

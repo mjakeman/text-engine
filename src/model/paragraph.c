@@ -137,10 +137,10 @@ text_paragraph_get_length (TextParagraph *self)
     return length;
 }
 
-TextRun *
-text_paragraph_get_run_at_index (TextParagraph *self,
-                                 int            index,
-                                 int           *starting_index)
+TextInline *
+text_paragraph_get_item_at_index (TextParagraph *self,
+                                  int            index,
+                                  int           *starting_index)
 {
     TextNode *child;
     int length;
@@ -156,7 +156,7 @@ text_paragraph_get_run_at_index (TextParagraph *self,
 
         if (starting_index)
             *starting_index = 0;
-        return TEXT_RUN (first);
+        return TEXT_INLINE (first);
     }
 
     for (child = text_node_get_first_child (TEXT_NODE (self));
@@ -164,7 +164,7 @@ text_paragraph_get_run_at_index (TextParagraph *self,
          child = text_node_get_next (child))
     {
         int delta_length;
-        g_assert (TEXT_IS_RUN (child));
+        g_assert (TEXT_IS_INLINE (child));
         delta_length = text_inline_get_length (TEXT_INLINE (child));
 
         // Index is considered part of a run if it is immediately
@@ -179,7 +179,7 @@ text_paragraph_get_run_at_index (TextParagraph *self,
         {
             if (starting_index)
                 *starting_index = length;
-            return TEXT_RUN (child);
+            return TEXT_INLINE (child);
         }
 
         length += delta_length;

@@ -12,16 +12,12 @@
 #include "layout-box.h"
 
 #include "../model/paragraph.h"
-#include "../tree/node.h"
+#include "../model/image.h"
 
 typedef struct
 {
     TextItem *item;
     PangoLayout *layout;
-    gboolean has_cursor;
-    int cursor_index;
-
-    TextDimensions cursor;
     TextDimensions bbox;
 } TextLayoutBoxPrivate;
 
@@ -199,6 +195,11 @@ text_layout_box_layout (TextLayoutBox *self,
 
         g_free (text);
     }
+    else if (priv->item && TEXT_IS_IMAGE (priv->item))
+    {
+        width = 100;
+        height = 100;
+    }
 
     // Account for children (should we force elements to choose between
     // children and text? seems like a sensible simplification)
@@ -241,34 +242,6 @@ text_layout_box_get_item (TextLayoutBox *self)
     return priv->item;
 }
 
-void
-text_layout_box_set_cursor (TextLayoutBox *self,
-                            int index)
-{
-    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
-
-    if (index < 0) {
-        priv->has_cursor = FALSE;
-        priv->cursor_index = -1;
-        return;
-    }
-
-    priv->has_cursor = TRUE;
-    priv->cursor_index = index;
-}
-
-gboolean
-text_layout_box_get_cursor (TextLayoutBox         *self,
-                            const TextDimensions **cursor)
-
-{
-    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
-
-    *cursor = &priv->cursor;
-
-    return priv->has_cursor;
-}
-
 const TextDimensions *
 text_layout_box_get_bbox (TextLayoutBox *self)
 {
@@ -298,7 +271,4 @@ static void
 text_layout_box_init (TextLayoutBox *self)
 {
     TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
-
-    priv->has_cursor = FALSE;
-    priv->cursor_index = -1;
 }

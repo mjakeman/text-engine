@@ -195,11 +195,11 @@ test_left_traversal_across_run (MoveFixture   *fixture,
 
     // go to index 29 (run two)
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 29);
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run2);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run2);
 
     // test moving left by amount
     text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, amount);
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
 
     g_assert_cmpint (fixture->doc->cursor->index, ==, 29 - amount);
 }
@@ -213,11 +213,11 @@ test_right_traversal_across_run (MoveFixture   *fixture,
 
     // go to index 28 (run one)
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 28);
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
 
     // test moving right by amount
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, amount);
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run2);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run2);
 
     g_assert_cmpint (fixture->doc->cursor->index, ==, 28 + amount);
 }
@@ -247,12 +247,12 @@ test_left_traversal_across_paragraph (MoveFixture   *fixture,
 
     // move to start of p2 (run3)
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 65);
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run3);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run3);
     g_assert_cmpint (fixture->doc->cursor->index, ==, 0);
 
     // move backwards by amount
     text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, amount);
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run2);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run2);
 
     // check index
     g_assert_cmpint (fixture->doc->cursor->index, ==, (64 - (amount - 1)));
@@ -267,11 +267,11 @@ test_right_traversal_across_paragraph (MoveFixture   *fixture,
 
     // move to end of p1 (run2)
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 64);
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run2);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run2);
 
     // move forwards by amount
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, amount);
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run3);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run3);
 
     // check index
     g_assert_cmpint (fixture->doc->cursor->index, ==, amount - 1);
@@ -283,11 +283,11 @@ test_left_traversal_across_several_paragraphs (MoveFixture   *fixture,
 {
     // move to start of p3 (run4)
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 85);
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run4);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run4);
 
     // move left by 62 characters (to run1)
     text_editor_move_left (fixture->editor, TEXT_EDITOR_CURSOR, 62);
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
 
     // check index is 23 in p1
     g_assert_cmpint (fixture->doc->cursor->index, ==, 23);
@@ -299,7 +299,7 @@ test_right_traversal_across_several_paragraphs (MoveFixture   *fixture,
 {
     // move to p3, index 2 (run4)
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 87);
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run4);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run4);
 
     // check index is 2 in p3
     g_assert_cmpint (fixture->doc->cursor->index, ==, 2);

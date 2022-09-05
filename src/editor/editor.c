@@ -295,16 +295,16 @@ walk_until_next_paragraph (TextItem *item)
     return NULL;
 }
 
-TextRun *
-text_editor_get_run_at_mark (TextEditor *self,
-                             TextMark   *mark)
+TextInline *
+text_editor_get_item_at_mark (TextEditor *self,
+                              TextMark   *mark)
 {
     g_return_val_if_fail (TEXT_IS_EDITOR (self), NULL);
     g_return_val_if_fail (mark != NULL, NULL);
 
-    return text_paragraph_get_run_at_index (mark->paragraph,
-                                            mark->index,
-                                            NULL);
+    return text_paragraph_get_item_at_index (mark->paragraph,
+                                             mark->index,
+                                             NULL);
 }
 
 /**
@@ -621,7 +621,7 @@ _join_paragraphs (TextParagraph *start,
         TextNode *swap;
 
         swap = iter;
-        g_assert (TEXT_IS_RUN (swap));
+        g_assert (TEXT_IS_INLINE (swap));
 
         iter = text_node_get_next (iter);
 
@@ -666,8 +666,8 @@ _delete_within_paragraph (TextParagraph *paragraph,
 
     // Check run immediately after the start_index
     // (as start_index may be the final index of a run)
-    start = text_paragraph_get_run_at_index (paragraph, start_index + 1, &start_run_offset);
-    end = text_paragraph_get_run_at_index (paragraph, end_index, NULL);
+    start = text_paragraph_get_item_at_index (paragraph, start_index + 1, &start_run_offset);
+    end = text_paragraph_get_item_at_index (paragraph, end_index, NULL);
 
     g_assert (0 <= start_index && start_index <= paragraph_length);
     g_assert (0 <= end_index && end_index <= paragraph_length);
@@ -1192,12 +1192,12 @@ text_editor_split_at_mark (TextEditor *self,
     // Case 2: Split happens mid-paragraph
     else
     {
-        TextRun *start;
+        TextInline *start;
         TextNode *iter;
         int run_offset;
 
         new = text_paragraph_new ();
-        start = text_paragraph_get_run_at_index (current, split->index, &run_offset);
+        start = text_paragraph_get_item_at_index (current, split->index, &run_offset);
 
         iter = TEXT_NODE (start);
 
@@ -1207,9 +1207,17 @@ text_editor_split_at_mark (TextEditor *self,
             int split_index_within_run;
             TextRun *new_run;
 
-            split_index_within_run = split->index - run_offset;
-            split_run_at_offset (start, &new_run, split_index_within_run);
-            text_paragraph_append_inline(new, new_run);
+            // TODO: Make supported
+            if (!TEXT_IS_RUN (start))
+            {
+                g_print ("Unsupported!\n");
+            }
+            else
+            {
+                split_index_within_run = split->index - run_offset;
+                split_run_at_offset (start, &new_run, split_index_within_run);
+                text_paragraph_append_inline(new, new_run);
+            }
 
             // Move to next run
             iter = text_node_get_next (iter);
@@ -1220,12 +1228,12 @@ text_editor_split_at_mark (TextEditor *self,
         {
             TextNode *next;
 
-            g_assert (TEXT_IS_RUN (iter));
+            g_assert (TEXT_IS_INLINE (iter));
 
             next = text_node_get_next (iter);
 
             text_node_unparent (iter);
-            text_paragraph_append_inline(new, TEXT_RUN(iter));
+            text_paragraph_append_inline(new, TEXT_INLINE (iter));
 
             iter = next;
         }
@@ -1305,6 +1313,7 @@ text_editor_insert_at_mark (TextEditor *self,
     GSList *marks;
     char *text;
     GString *modified;
+    TextInline *item;
     TextRun *run;
     int run_start_index;
     int run_offset;
@@ -1314,7 +1323,15 @@ text_editor_insert_at_mark (TextEditor *self,
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
     g_return_if_fail (TEXT_IS_PARAGRAPH (start->paragraph));
 
-    run = text_paragraph_get_run_at_index (start->paragraph, start->index, &run_start_index);
+    item = text_paragraph_get_item_at_index (start->paragraph, start->index, &run_start_index);
+
+    if (!TEXT_IS_RUN (item))
+    {
+        g_print ("Not supported: Inserting into non-text run\n");
+        return;
+    }
+
+    run = TEXT_RUN (item);
 
     run_offset = start->index - run_start_index;
 
@@ -1394,21 +1411,21 @@ text_editor_apply_format (TextEditor *self,
                           Format      format,
                           gboolean    in_use)
 {
-    TextRun *iter;
-    TextRun *last;
+    TextInline *iter;
+    TextInline *last;
     int start_run_index;
     int end_run_index;
 
     _ensure_ordered (&start, &end);
 
-    iter = text_paragraph_get_run_at_index (start->paragraph, start->index, &start_run_index);
-    last = text_paragraph_get_run_at_index (end->paragraph, end->index, &end_run_index);
+    iter = text_paragraph_get_item_at_index (start->paragraph, start->index, &start_run_index);
+    last = text_paragraph_get_item_at_index (end->paragraph, end->index, &end_run_index);
 
     // Check if start and end indices are in the same run
     if (iter == last)
     {
-        TextRun *first_split;
-        TextRun *second_split;
+        TextInline *first_split;
+        TextInline *second_split;
         int start_index_offset;
         int end_index_offset;
 
@@ -1432,7 +1449,7 @@ text_editor_apply_format (TextEditor *self,
     // Check if we need to split the first run
     if (start->index - start_run_index != 0)
     {
-        TextRun *new_run;
+        TextInline *new_run;
         split_run_in_place (iter, &new_run, start->index - start_run_index);
 
         // Apply format to new run
@@ -1492,30 +1509,39 @@ gboolean
 text_editor_get_format_bold_at_mark (TextEditor *self,
                                      TextMark   *mark)
 {
-    TextRun *run;
+    TextInline *run;
 
-    run = text_editor_get_run_at_mark (self, mark);
-    return text_run_get_style_bold (run);
+    run = text_editor_get_item_at_mark (self, mark);
+    if (TEXT_IS_RUN (run))
+        return text_run_get_style_bold (TEXT_RUN (run));
+
+    return FALSE;
 }
 
 gboolean
 text_editor_get_format_italic_at_mark (TextEditor *self,
                                        TextMark   *mark)
 {
-    TextRun *run;
+    TextInline *run;
 
-    run = text_editor_get_run_at_mark (self, mark);
-    return text_run_get_style_italic (run);
+    run = text_editor_get_item_at_mark (self, mark);
+    if (TEXT_IS_RUN (run))
+        return text_run_get_style_italic (TEXT_RUN (run));
+
+    return FALSE;
 }
 
 gboolean
 text_editor_get_format_underline_at_mark (TextEditor *self,
                                           TextMark   *mark)
 {
-    TextRun *run;
+    TextInline *run;
 
-    run = text_editor_get_run_at_mark (self, mark);
-    return text_run_get_style_underline (run);
+    run = text_editor_get_item_at_mark (self, mark);
+    if (TEXT_IS_RUN (run))
+        return text_run_get_style_underline (TEXT_RUN (run));
+
+    return FALSE;
 }
 
 TextMark *
@@ -1621,11 +1647,11 @@ text_editor_split (TextEditor         *self,
     text_editor_split_at_mark (self, _get_mark (self, type));
 }
 
-TextRun *
-text_editor_get_run (TextEditor         *self,
-                     TextEditorMarkType  type)
+TextInline *
+text_editor_get_item (TextEditor         *self,
+                      TextEditorMarkType  type)
 {
-    return text_editor_get_run_at_mark (self, _get_mark (self, type));
+    return text_editor_get_item_at_mark (self, _get_mark (self, type));
 }
 
 gchar *

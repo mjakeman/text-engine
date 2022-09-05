@@ -47,8 +47,8 @@ void        text_editor_delete          (TextEditor *self, TextEditorMarkType ty
 void        text_editor_replace         (TextEditor *self, TextEditorMarkType start_type, TextEditorMarkType end_type, gchar *text);
 void        text_editor_split           (TextEditor *self, TextEditorMarkType type);
 
-TextRun    *text_editor_get_run         (TextEditor *self, TextEditorMarkType type);
-TextRun    *text_editor_get_run_at_mark (TextEditor *self, TextMark *mark);
+TextInline *text_editor_get_item         (TextEditor *self, TextEditorMarkType type);
+TextInline *text_editor_get_item_at_mark (TextEditor *self, TextMark *mark);
 
 gchar      *text_editor_dump_plain_text (TextEditor *self);
 
