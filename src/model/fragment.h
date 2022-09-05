@@ -1,4 +1,4 @@
-/* inline.h
+/* fragment.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -17,16 +17,16 @@
 
 G_BEGIN_DECLS
 
-#define TEXT_TYPE_INLINE (text_inline_get_type())
+#define TEXT_TYPE_FRAGMENT (text_fragment_get_type())
 
-G_DECLARE_DERIVABLE_TYPE (TextInline, text_inline, TEXT, INLINE, TextItem)
+G_DECLARE_DERIVABLE_TYPE (TextFragment, text_fragment, TEXT, FRAGMENT, TextItem)
 
-struct _TextInlineClass
+struct _TextFragmentClass
 {
     TextNodeClass parent_class;
-    int (*get_length)(TextInline *self);
+    int (*get_length)(TextFragment *self);
 };
 
-int      text_inline_get_length (TextInline *self);
+int      text_fragment_get_length (TextFragment *self);
 
 G_END_DECLS

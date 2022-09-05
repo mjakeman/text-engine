@@ -6,7 +6,7 @@ text_engine_sources += files([
   'paragraph.c',
   'mark.c',
   'document.c',
-  'inline.c',
+  'fragment.c',
   'image.c'
 ])
 
@@ -18,7 +18,7 @@ model_headers = [
   'paragraph.h',
   'mark.h',
   'document.h',
-  'inline.h',
+  'fragment.h',
   'image.h'
 ]
 

@@ -14,13 +14,13 @@
 #include <glib-object.h>
 
 #include "item.h"
-#include "inline.h"
+#include "fragment.h"
 
 G_BEGIN_DECLS
 
 #define TEXT_TYPE_RUN (text_run_get_type())
 
-G_DECLARE_FINAL_TYPE (TextRun, text_run, TEXT, RUN, TextInline)
+G_DECLARE_FINAL_TYPE (TextRun, text_run, TEXT, RUN, TextFragment)
 
 TextRun *text_run_new        (const gchar *text);
 

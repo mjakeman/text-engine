@@ -1,4 +1,4 @@
-/* inline.c
+/* fragment.c
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -9,14 +9,14 @@
  * SPDX-License-Identifier: MPL-2.0 OR LGPL-2.1-or-later
  */
 
-#include "inline.h"
+#include "fragment.h"
 
 typedef struct
 {
     int _padding;
-} TextInlinePrivate;
+} TextFragmentPrivate;
 
-G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (TextInline, text_inline, TEXT_TYPE_ITEM)
+G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (TextFragment, text_fragment, TEXT_TYPE_ITEM)
 
 enum {
     PROP_0,
@@ -26,21 +26,21 @@ enum {
 static GParamSpec *properties [N_PROPS];
 
 static void
-text_inline_finalize (GObject *object)
+text_fragment_finalize (GObject *object)
 {
-    TextInline *self = (TextInline *)object;
-    TextInlinePrivate *priv = text_inline_get_instance_private (self);
+    TextFragment *self = (TextFragment *)object;
+    TextFragmentPrivate *priv = text_fragment_get_instance_private (self);
 
-    G_OBJECT_CLASS (text_inline_parent_class)->finalize (object);
+    G_OBJECT_CLASS (text_fragment_parent_class)->finalize (object);
 }
 
 static void
-text_inline_get_property (GObject    *object,
+text_fragment_get_property (GObject    *object,
                          guint       prop_id,
                          GValue     *value,
                          GParamSpec *pspec)
 {
-    TextInline *self = TEXT_INLINE (object);
+    TextFragment *self = TEXT_FRAGMENT (object);
 
     switch (prop_id)
     {
@@ -50,12 +50,12 @@ text_inline_get_property (GObject    *object,
 }
 
 static void
-text_inline_set_property (GObject      *object,
+text_fragment_set_property (GObject      *object,
                          guint         prop_id,
                          const GValue *value,
                          GParamSpec   *pspec)
 {
-    TextInline *self = TEXT_INLINE (object);
+    TextFragment *self = TEXT_FRAGMENT (object);
 
     switch (prop_id)
     {
@@ -65,30 +65,30 @@ text_inline_set_property (GObject      *object,
 }
 
 int
-text_inline_real_get_length (TextInline *self)
+text_fragment_real_get_length (TextFragment *self)
 {
     return 1;
 }
 
 int
-text_inline_get_length (TextInline *self)
+text_fragment_get_length (TextFragment *self)
 {
-    return TEXT_INLINE_CLASS (G_OBJECT_GET_CLASS (self))->get_length (self);
+    return TEXT_FRAGMENT_CLASS (G_OBJECT_GET_CLASS (self))->get_length (self);
 }
 
 static void
-text_inline_class_init (TextInlineClass *klass)
+text_fragment_class_init (TextFragmentClass *klass)
 {
-    klass->get_length = text_inline_real_get_length;
+    klass->get_length = text_fragment_real_get_length;
 
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-    object_class->finalize = text_inline_finalize;
-    object_class->get_property = text_inline_get_property;
-    object_class->set_property = text_inline_set_property;
+    object_class->finalize = text_fragment_finalize;
+    object_class->get_property = text_fragment_get_property;
+    object_class->set_property = text_fragment_set_property;
 }
 
 static void
-text_inline_init (TextInline *self)
+text_fragment_init (TextFragment *self)
 {
 }

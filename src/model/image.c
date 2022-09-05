@@ -13,12 +13,12 @@
 
 struct _TextImage
 {
-    TextInline parent_instance;
+    TextFragment parent_instance;
     gchar *src;
 };
 
 
-G_DEFINE_FINAL_TYPE (TextImage, text_image, TEXT_TYPE_INLINE)
+G_DEFINE_FINAL_TYPE (TextImage, text_image, TEXT_TYPE_FRAGMENT)
 
 enum {
     PROP_0,

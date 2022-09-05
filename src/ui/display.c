@@ -290,7 +290,7 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
 {
     TextLayoutBox *box;
     TextParagraph *item;
-    TextInline *inline_item;
+    TextFragment *inline_item;
     int index;
 
     item = cursor->paragraph;
@@ -1217,7 +1217,7 @@ key_pressed (GtkEventControllerKey *controller,
     {
         TextImage *img;
         img = text_image_new ("placeholder.png");
-        text_editor_insert_inline (self->editor, TEXT_EDITOR_CURSOR, TEXT_INLINE (img));
+        text_editor_insert_inline (self->editor, TEXT_EDITOR_CURSOR, TEXT_FRAGMENT (img));
 
         goto reallocate;
     }

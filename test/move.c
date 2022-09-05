@@ -43,7 +43,7 @@ move_fixture_set_up_single (MoveFixture   *fixture,
 
     para1 = text_paragraph_new ();
     run1 = text_run_new (RUN1);
-    text_paragraph_append_inline(para1, run1);
+    text_paragraph_append_fragment(para1, run1);
     text_frame_append_block (frame, TEXT_BLOCK (para1));
 
     fixture->doc = text_document_new ();
@@ -77,9 +77,9 @@ move_fixture_set_up_runs (MoveFixture   *fixture,
     run1 = text_run_new (RUN5);
     run2 = text_run_new (RUN6);
     run3 = text_run_new (RUN7);
-    text_paragraph_append_inline(para1, run1);
-    text_paragraph_append_inline(para1, run2);
-    text_paragraph_append_inline(para1, run3);
+    text_paragraph_append_fragment(para1, run1);
+    text_paragraph_append_fragment(para1, run2);
+    text_paragraph_append_fragment(para1, run3);
     text_frame_append_block (frame, TEXT_BLOCK (para1));
 
     fixture->doc = text_document_new ();
@@ -108,18 +108,18 @@ move_fixture_set_up_paragraphs (MoveFixture   *fixture,
     para1 = text_paragraph_new ();
     run1 = text_run_new (RUN1);
     run2 = text_run_new (RUN2);
-    text_paragraph_append_inline(para1, run1);
-    text_paragraph_append_inline(para1, run2);
+    text_paragraph_append_fragment(para1, run1);
+    text_paragraph_append_fragment(para1, run2);
     text_frame_append_block (frame, TEXT_BLOCK (para1));
 
     para2 = text_paragraph_new ();
     run3 = text_run_new (RUN3);
-    text_paragraph_append_inline(para2, run3);
+    text_paragraph_append_fragment(para2, run3);
     text_frame_append_block (frame, TEXT_BLOCK (para2));
 
     para3 = text_paragraph_new ();
     run4 = text_run_new (RUN4);
-    text_paragraph_append_inline(para3, run4);
+    text_paragraph_append_fragment(para3, run4);
     text_frame_append_block (frame, TEXT_BLOCK (para3));
 
     fixture->doc = text_document_new ();

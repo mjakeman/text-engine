@@ -127,7 +127,7 @@ go_up (TextItem *item,
     return NULL;
 }
 
-static TextInline *
+static TextFragment *
 walk_until_previous_inline (TextItem *item)
 {
     TextNode *child;
@@ -139,8 +139,8 @@ walk_until_previous_inline (TextItem *item)
     child = text_node_get_last_child (TEXT_NODE (item));
 
     if (child && TEXT_IS_ITEM (child)) {
-        if (TEXT_IS_INLINE (child)) {
-            return TEXT_INLINE (child);
+        if (TEXT_IS_FRAGMENT (child)) {
+            return TEXT_FRAGMENT (child);
         }
 
         return walk_until_previous_inline (TEXT_ITEM(child));
@@ -149,8 +149,8 @@ walk_until_previous_inline (TextItem *item)
     sibling = text_node_get_previous (TEXT_NODE (item));
 
     if (sibling && TEXT_IS_ITEM (sibling)) {
-        if (TEXT_IS_INLINE (sibling)) {
-            return TEXT_INLINE (sibling);
+        if (TEXT_IS_FRAGMENT (sibling)) {
+            return TEXT_FRAGMENT (sibling);
         }
 
         return walk_until_previous_inline (TEXT_ITEM(sibling));
@@ -159,8 +159,8 @@ walk_until_previous_inline (TextItem *item)
     parent = go_up (item, FALSE);
 
     if (parent) {
-        if (TEXT_IS_INLINE (parent)) {
-            return TEXT_INLINE (parent);
+        if (TEXT_IS_FRAGMENT (parent)) {
+            return TEXT_FRAGMENT (parent);
         }
 
         return walk_until_previous_inline (parent);
@@ -169,7 +169,7 @@ walk_until_previous_inline (TextItem *item)
     return NULL;
 }
 
-static TextInline *
+static TextFragment *
 walk_until_next_inline (TextItem *item)
 {
     TextNode *child;
@@ -181,8 +181,8 @@ walk_until_next_inline (TextItem *item)
     child = text_node_get_first_child (TEXT_NODE (item));
 
     if (child && TEXT_IS_ITEM (child)) {
-        if (TEXT_IS_INLINE (child)) {
-            return TEXT_INLINE (child);
+        if (TEXT_IS_FRAGMENT (child)) {
+            return TEXT_FRAGMENT (child);
         }
 
         return walk_until_next_inline (TEXT_ITEM(child));
@@ -191,8 +191,8 @@ walk_until_next_inline (TextItem *item)
     sibling = text_node_get_next (TEXT_NODE (item));
 
     if (sibling && TEXT_IS_ITEM (sibling)) {
-        if (TEXT_IS_INLINE (sibling)) {
-            return TEXT_INLINE (sibling);
+        if (TEXT_IS_FRAGMENT (sibling)) {
+            return TEXT_FRAGMENT (sibling);
         }
 
         return walk_until_next_inline (TEXT_ITEM(sibling));
@@ -201,8 +201,8 @@ walk_until_next_inline (TextItem *item)
     parent = go_up (item, TRUE);
 
     if (parent) {
-        if (TEXT_IS_INLINE (parent)) {
-            return TEXT_INLINE (parent);
+        if (TEXT_IS_FRAGMENT (parent)) {
+            return TEXT_FRAGMENT (parent);
         }
 
         return walk_until_next_inline (parent);
@@ -295,7 +295,7 @@ walk_until_next_paragraph (TextItem *item)
     return NULL;
 }
 
-TextInline *
+TextFragment *
 text_editor_get_item_at_mark (TextEditor *self,
                               TextMark   *mark)
 {
@@ -557,7 +557,7 @@ _ensure_paragraph (TextEditor *self)
     {
         paragraph = text_paragraph_new ();
         text_frame_append_block (document_frame, TEXT_BLOCK (paragraph));
-        text_paragraph_append_inline(paragraph, text_run_new(""));
+        text_paragraph_append_fragment(paragraph, text_run_new(""));
     }
 }
 
@@ -605,7 +605,7 @@ _erase_text (TextRun *run,
 }
 
 static void
-_erase_content (TextInline *item,
+_erase_content (TextFragment *item,
                 int index,
                 int length)
 {
@@ -614,7 +614,7 @@ _erase_content (TextInline *item,
         _erase_text (TEXT_RUN (item), index, length);
     }
     // TODO: Add new TextOpaque class?
-    else if (text_inline_get_length (TEXT_INLINE (item)) == 1)
+    else if (text_fragment_get_length (TEXT_FRAGMENT (item)) == 1)
     {
         TextParagraph *parent;
         parent = TEXT_PARAGRAPH (text_node_get_parent (TEXT_NODE (item)));
@@ -644,7 +644,7 @@ _join_paragraphs (TextParagraph *start,
         TextNode *swap;
 
         swap = iter;
-        g_assert (TEXT_IS_INLINE (swap));
+        g_assert (TEXT_IS_FRAGMENT (swap));
 
         iter = text_node_get_next (iter);
 
@@ -672,7 +672,7 @@ _delete_within_paragraph (TextParagraph *paragraph,
                           int            start_index,
                           int            deletion_length)
 {
-    TextInline *start;
+    TextFragment *start;
     int paragraph_length;
     int end_index;
     int start_run_offset;
@@ -713,11 +713,11 @@ _delete_within_paragraph (TextParagraph *paragraph,
     // Case 3: The paragraph contains multiple runs
     {
         int run_length;
-        TextInline *iter;
+        TextFragment *iter;
         int cur_deleted;
         int offset_within_run;
 
-        run_length = text_inline_get_length (TEXT_INLINE (start));
+        run_length = text_fragment_get_length (TEXT_FRAGMENT (start));
         offset_within_run = start_index - start_run_offset;
         cur_deleted = 0;
 
@@ -741,7 +741,7 @@ _delete_within_paragraph (TextParagraph *paragraph,
         {
             g_assert (iter != NULL);
 
-            run_length = text_inline_get_length (TEXT_INLINE (iter));
+            run_length = text_fragment_get_length (TEXT_FRAGMENT (iter));
 
             // Check if the run is entirely contained within the deletion
             if (cur_deleted + run_length <= deletion_length)
@@ -1204,7 +1204,7 @@ text_editor_split_at_mark (TextEditor *self,
     {
         // Append a new paragraph with empty run
         new = text_paragraph_new ();
-        text_paragraph_append_inline(new, text_run_new(""));
+        text_paragraph_append_fragment(new, text_run_new(""));
 
         parent = text_node_get_parent (TEXT_NODE (current));
         text_node_insert_child_after (parent, TEXT_NODE (new), TEXT_NODE (current));
@@ -1213,7 +1213,7 @@ text_editor_split_at_mark (TextEditor *self,
     // Case 2: Split happens mid-paragraph
     else
     {
-        TextInline *start;
+        TextFragment *start;
         TextNode *iter;
         int run_offset;
 
@@ -1237,7 +1237,7 @@ text_editor_split_at_mark (TextEditor *self,
             {
                 split_index_within_run = split->index - run_offset;
                 split_run_at_offset (start, &new_run, split_index_within_run);
-                text_paragraph_append_inline(new, new_run);
+                text_paragraph_append_fragment(new, new_run);
             }
 
             // Move to next run
@@ -1249,12 +1249,12 @@ text_editor_split_at_mark (TextEditor *self,
         {
             TextNode *next;
 
-            g_assert (TEXT_IS_INLINE (iter));
+            g_assert (TEXT_IS_FRAGMENT (iter));
 
             next = text_node_get_next (iter);
 
             text_node_unparent (iter);
-            text_paragraph_append_inline(new, TEXT_INLINE (iter));
+            text_paragraph_append_fragment(new, TEXT_FRAGMENT(iter));
 
             iter = next;
         }
@@ -1264,7 +1264,7 @@ text_editor_split_at_mark (TextEditor *self,
         if (text_node_get_num_children (TEXT_PARAGRAPH (current)) == 0)
         {
             // Add empty run
-            text_paragraph_append_inline(current, text_run_new(""));
+            text_paragraph_append_fragment(current, text_run_new(""));
         }
 
         // Append paragraph to document tree
@@ -1334,7 +1334,7 @@ text_editor_insert_text_at_mark (TextEditor *self,
     GSList *marks;
     char *text;
     GString *modified;
-    TextInline *item;
+    TextFragment *item;
     TextRun *run;
     int run_start_index;
     int run_offset;
@@ -1355,7 +1355,7 @@ text_editor_insert_text_at_mark (TextEditor *self,
             run = text_run_new ("");
             text_node_insert_child_before (TEXT_NODE (start->paragraph), TEXT_NODE (run), TEXT_NODE (item));
         }
-        else if (run_offset == text_inline_get_length (item))
+        else if (run_offset == text_fragment_get_length (item))
         {
             run = text_run_new ("");
             text_node_insert_child_after (TEXT_NODE (start->paragraph), TEXT_NODE (run), TEXT_NODE (item));
@@ -1417,14 +1417,14 @@ text_editor_insert_text_at_mark (TextEditor *self,
 void
 text_editor_insert_inline_at_mark (TextEditor *self,
                                    TextMark   *start,
-                                   TextInline *new_item)
+                                   TextFragment *new_item)
 {
     // Encapsulates insertion inside an editor module/object.
     // This should accept user input in the form of Operational
     // Transformation commands. This will aid with undo/redo.
 
     GSList *marks;
-    TextInline *item;
+    TextFragment *item;
     int run_start_index;
     int run_offset;
     int length;
@@ -1441,7 +1441,7 @@ text_editor_insert_inline_at_mark (TextEditor *self,
     {
         text_node_insert_child_before (TEXT_NODE (start->paragraph), TEXT_NODE (new_item), TEXT_NODE (item));
     }
-    else if (run_offset == text_inline_get_length (item))
+    else if (run_offset == text_fragment_get_length (item))
     {
         text_node_insert_child_after (TEXT_NODE (start->paragraph), TEXT_NODE (new_item), TEXT_NODE (item));
     }
@@ -1457,7 +1457,7 @@ text_editor_insert_inline_at_mark (TextEditor *self,
         return;
     }
 
-    length = text_inline_get_length (new_item);
+    length = text_fragment_get_length (new_item);
 
     // Adjust marks according to gravity
     marks = text_document_get_all_marks (self->document);
@@ -1525,8 +1525,8 @@ text_editor_apply_format (TextEditor *self,
                           Format      format,
                           gboolean    in_use)
 {
-    TextInline *iter;
-    TextInline *last;
+    TextFragment *iter;
+    TextFragment *last;
     int start_run_index;
     int end_run_index;
 
@@ -1538,8 +1538,8 @@ text_editor_apply_format (TextEditor *self,
     // Check if start and end indices are in the same run
     if (iter == last)
     {
-        TextInline *first_split;
-        TextInline *second_split;
+        TextFragment *first_split;
+        TextFragment *second_split;
         int start_index_offset;
         int end_index_offset;
 
@@ -1563,7 +1563,7 @@ text_editor_apply_format (TextEditor *self,
     // Check if we need to split the first run
     if (start->index - start_run_index != 0)
     {
-        TextInline *new_run;
+        TextFragment *new_run;
         split_run_in_place (iter, &new_run, start->index - start_run_index);
 
         // Apply format to new run
@@ -1623,7 +1623,7 @@ gboolean
 text_editor_get_format_bold_at_mark (TextEditor *self,
                                      TextMark   *mark)
 {
-    TextInline *run;
+    TextFragment *run;
 
     run = text_editor_get_item_at_mark (self, mark);
     if (TEXT_IS_RUN (run))
@@ -1636,7 +1636,7 @@ gboolean
 text_editor_get_format_italic_at_mark (TextEditor *self,
                                        TextMark   *mark)
 {
-    TextInline *run;
+    TextFragment *run;
 
     run = text_editor_get_item_at_mark (self, mark);
     if (TEXT_IS_RUN (run))
@@ -1649,7 +1649,7 @@ gboolean
 text_editor_get_format_underline_at_mark (TextEditor *self,
                                           TextMark   *mark)
 {
-    TextInline *run;
+    TextFragment *run;
 
     run = text_editor_get_item_at_mark (self, mark);
     if (TEXT_IS_RUN (run))
@@ -1740,7 +1740,7 @@ text_editor_insert_text (TextEditor         *self,
 void
 text_editor_insert_inline (TextEditor         *self,
                            TextEditorMarkType  type,
-                           TextInline         *item)
+                           TextFragment         *item)
 {
     text_editor_insert_inline_at_mark (self, _get_mark(self, type), item);
 }
@@ -1769,7 +1769,7 @@ text_editor_split (TextEditor         *self,
     text_editor_split_at_mark (self, _get_mark (self, type));
 }
 
-TextInline *
+TextFragment *
 text_editor_get_item (TextEditor         *self,
                       TextEditorMarkType  type)
 {

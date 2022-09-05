@@ -14,13 +14,13 @@
 #include <glib-object.h>
 
 #include "item.h"
-#include "inline.h"
+#include "fragment.h"
 
 G_BEGIN_DECLS
 
 #define TEXT_TYPE_IMAGE (text_image_get_type())
 
-G_DECLARE_FINAL_TYPE (TextImage, text_image, TEXT, IMAGE, TextInline)
+G_DECLARE_FINAL_TYPE (TextImage, text_image, TEXT, IMAGE, TextFragment)
 
 TextImage *text_image_new        (const gchar *src);
 

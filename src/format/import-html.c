@@ -67,7 +67,7 @@ build_text_frame_recursive (xmlNode        *nodes,
                 }
 
                 image = text_image_new (img_src);
-                text_paragraph_append_inline (*current, TEXT_INLINE (image));
+                text_paragraph_append_fragment(*current, TEXT_FRAGMENT(image));
 
             }
             else if (g_str_equal (cur_node->name, "b"))
@@ -92,7 +92,7 @@ build_text_frame_recursive (xmlNode        *nodes,
             text_run_set_style_bold (new_run, is_bold);
             text_run_set_style_italic (new_run, is_italic);
             text_run_set_style_underline (new_run, is_underline);
-            text_paragraph_append_inline(*current, new_run);
+            text_paragraph_append_fragment(*current, new_run);
         }
 
         // PROCESS CHILDREN

@@ -111,7 +111,7 @@ create_list_model (TextItem *item)
     GListStore *store;
     TextNode *node;
 
-    if (TEXT_IS_INLINE (item))
+    if (TEXT_IS_FRAGMENT (item))
         return NULL;
 
     store = g_list_store_new (TEXT_TYPE_ITEM);

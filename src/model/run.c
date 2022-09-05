@@ -13,7 +13,7 @@
 
 struct _TextRun
 {
-    TextInline parent_instance;
+    TextFragment parent_instance;
     gchar *text;
     gboolean is_bold;
     gboolean is_italic;
@@ -21,7 +21,7 @@ struct _TextRun
 };
 
 
-G_DEFINE_FINAL_TYPE (TextRun, text_run, TEXT_TYPE_INLINE)
+G_DEFINE_FINAL_TYPE (TextRun, text_run, TEXT_TYPE_FRAGMENT)
 
 enum {
     PROP_0,
@@ -86,7 +86,7 @@ text_run_set_property (GObject      *object,
 }
 
 int
-text_run_get_length (TextInline *self)
+text_run_get_length (TextFragment *self)
 {
     g_return_val_if_fail (TEXT_IS_RUN (self), -1);
 
@@ -150,9 +150,9 @@ text_run_class_init (TextRunClass *klass)
 
     g_object_class_install_properties (object_class, N_PROPS, properties);
 
-    TextInlineClass *inline_class = TEXT_INLINE_CLASS (klass);
+    TextFragmentClass *fragment_class = TEXT_FRAGMENT_CLASS (klass);
 
-    inline_class->get_length = text_run_get_length;
+    fragment_class->get_length = text_run_get_length;
 }
 
 static void

@@ -70,13 +70,13 @@ text_paragraph_set_property (GObject      *object,
 }
 
 void
-text_paragraph_append_inline (TextParagraph *self,
-                              TextInline    *element)
+text_paragraph_append_fragment (TextParagraph *self,
+                                TextFragment  *fragment)
 {
     g_return_if_fail (TEXT_IS_PARAGRAPH (self));
-    g_return_if_fail (TEXT_IS_INLINE (element));
+    g_return_if_fail (TEXT_IS_FRAGMENT (fragment));
 
-    text_node_append_child (TEXT_NODE (self), TEXT_NODE (element));
+    text_node_append_child (TEXT_NODE (self), TEXT_NODE (fragment));
 }
 
 /**
@@ -131,13 +131,13 @@ text_paragraph_get_length (TextParagraph *self)
          child != NULL;
          child = text_node_get_next (child))
     {
-        length += text_inline_get_length (TEXT_INLINE (child));
+        length += text_fragment_get_length (TEXT_FRAGMENT (child));
     }
 
     return length;
 }
 
-TextInline *
+TextFragment *
 text_paragraph_get_item_at_index (TextParagraph *self,
                                   int            index,
                                   int           *starting_index)
@@ -156,7 +156,7 @@ text_paragraph_get_item_at_index (TextParagraph *self,
 
         if (starting_index)
             *starting_index = 0;
-        return TEXT_INLINE (first);
+        return TEXT_FRAGMENT (first);
     }
 
     for (child = text_node_get_first_child (TEXT_NODE (self));
@@ -164,8 +164,8 @@ text_paragraph_get_item_at_index (TextParagraph *self,
          child = text_node_get_next (child))
     {
         int delta_length;
-        g_assert (TEXT_IS_INLINE (child));
-        delta_length = text_inline_get_length (TEXT_INLINE (child));
+        g_assert (TEXT_IS_FRAGMENT (child));
+        delta_length = text_fragment_get_length (TEXT_FRAGMENT (child));
 
         // Index is considered part of a run if it is immediately
         // after the last character in the run. For example:
@@ -179,7 +179,7 @@ text_paragraph_get_item_at_index (TextParagraph *self,
         {
             if (starting_index)
                 *starting_index = length;
-            return TEXT_INLINE (child);
+            return TEXT_FRAGMENT (child);
         }
 
         length += delta_length;

@@ -116,7 +116,7 @@ _set_attributes (TextParagraph *paragraph,
         if (!TEXT_IS_RUN (run))
             continue;
 
-        run_length = text_inline_get_length (TEXT_INLINE (run));
+        run_length = text_fragment_get_length (TEXT_FRAGMENT (run));
 
         // Get Style Properties
         is_bold = text_run_get_style_bold (TEXT_RUN (run));

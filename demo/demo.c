@@ -143,19 +143,19 @@ demo_window_init (DemoWindow *self)
     frame = text_frame_new ();
 
     TextParagraph *paragraph = text_paragraph_new ();
-    text_paragraph_append_inline (paragraph, TEXT_INLINE (text_run_new ("Hello World. ")));
-    text_paragraph_append_inline (paragraph, TEXT_INLINE (text_run_new ("This is some text")));
+    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new("Hello World. ")));
+    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new("This is some text")));
     text_frame_append_block (frame, TEXT_BLOCK (paragraph));
 
     paragraph = text_paragraph_new ();
-    // text_paragraph_append_inline (paragraph, TEXT_INLINE (text_run_new ("")));
-    text_paragraph_append_inline (paragraph, TEXT_INLINE (text_image_new ("screenshot.png")));
-    // text_paragraph_append_inline (paragraph, TEXT_INLINE (text_run_new ("")));
+    // text_paragraph_append_fragment (paragraph, TEXT_FRAGMENT (text_run_new ("")));
+    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_image_new("screenshot.png")));
+    // text_paragraph_append_fragment (paragraph, TEXT_FRAGMENT (text_run_new ("")));
     text_frame_append_block (frame, TEXT_BLOCK (paragraph));
 
     paragraph = text_paragraph_new ();
-    text_paragraph_append_inline (paragraph, TEXT_INLINE (text_run_new ("And some more text... ")));
-    text_paragraph_append_inline (paragraph, TEXT_INLINE (text_run_new (":)")));
+    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new("And some more text... ")));
+    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new(":)")));
     text_frame_append_block (frame, TEXT_BLOCK (paragraph));
 
     document = text_document_new ();
