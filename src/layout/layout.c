@@ -98,9 +98,9 @@ do_layout_recursive (TextLayout    *self,
         // Let's treat paragraphs opaquely for now. In the future, we need
         // to manually consider each text run in order for inline equations
         // and images.
-        if (TEXT_IS_RUN (node))
+        if (TEXT_IS_RUN (node) || TEXT_IS_IMAGE (node))
             return;
-        else if (TEXT_IS_IMAGE (node))
+        /*else if (TEXT_IS_IMAGE (node))
         {
             TextLayoutBox *box = text_layout_box_new ();
             text_layout_box_set_item (box, TEXT_ITEM (node));
@@ -113,7 +113,7 @@ do_layout_recursive (TextLayout    *self,
             // TODO: This should be done recursively
             text_layout_box_layout (box, context, width, child_offset_x, child_offset_y);
             child_offset_y += text_layout_box_get_bbox (box)->height;
-        }
+        }*/
         else if (TEXT_IS_PARAGRAPH (node))
         {
             TextLayoutBox *box = text_layout_box_new ();

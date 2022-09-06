@@ -233,6 +233,44 @@ _rebuild_layout_tree (TextDisplay *self, int width)
 }
 
 static void
+draw_inline_elements (GtkSnapshot   *snapshot,
+                      PangoLayout   *layout,
+                      TextItem      *item,
+                      double         x,
+                      double         y)
+{
+    TextNode *iter;
+    int byte_offset;
+
+    byte_offset = 0;
+
+    for (iter = text_node_get_first_child (TEXT_NODE (item));
+         iter != NULL;
+         iter = text_node_get_next (TEXT_NODE (iter)))
+    {
+        // TODO: Replace with render style?
+        // Or perhaps custom renderer/layout component
+        if (TEXT_IS_IMAGE (iter))
+        {
+            GdkRGBA placeholder;
+            PangoRectangle rect;
+
+            gdk_rgba_parse (&placeholder, "red");
+            pango_layout_index_to_pos (layout, byte_offset, &rect);
+
+            gtk_snapshot_append_color (snapshot, &placeholder,
+                                       &GRAPHENE_RECT_INIT (
+                                               (float) rect.x / PANGO_SCALE,
+                                               (float) rect.y / PANGO_SCALE,
+                                               100.0f,
+                                               100.0f));
+        }
+
+        byte_offset += text_fragment_get_size_bytes (TEXT_FRAGMENT (iter));
+    }
+}
+
+static void
 layout_snapshot_recursive (GtkWidget     *widget,
                            TextLayoutBox *layout_box,
                            GtkSnapshot   *snapshot,
@@ -264,18 +302,9 @@ layout_snapshot_recursive (GtkWidget     *widget,
         gtk_snapshot_save (snapshot);
         gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, offset));
         gtk_snapshot_append_layout (snapshot, layout, fg_color);
+        item = text_layout_box_get_item (layout_box);
+        draw_inline_elements (snapshot, layout, item, bbox->x, bbox->y);
         gtk_snapshot_restore (snapshot);
-    }
-
-    item = text_layout_box_get_item (layout_box);
-
-    // TODO: Replace with render style?
-    // Or perhaps custom renderer/layout component
-    if (TEXT_IS_IMAGE (item))
-    {
-        GdkRGBA placeholder;
-        gdk_rgba_parse (&placeholder, "red");
-        gtk_snapshot_append_color (snapshot, &placeholder, &GRAPHENE_RECT_INIT (bbox->x, bbox->y, bbox->width, bbox->height));
     }
 
     gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->height));
@@ -1261,8 +1290,6 @@ set_mark_from_cursor (TextDisplay *self,
 
             // TODO: Properly find the nearest leaf node
             // when we have more complex renderers
-            g_print ("%s %lf %lf %lf %lf\n", g_type_name_from_instance(item),
-                     bbox->x, bbox->y, bbox->width, bbox->height);
 
             if (TEXT_IS_PARAGRAPH (item))
             {

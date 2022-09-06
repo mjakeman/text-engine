@@ -90,11 +90,74 @@ text_layout_box_set_property (GObject      *object,
       }
 }
 
+
+static void
+_set_inline_attribute (TextOpaque    *opaque,
+                       PangoAttrList *list,
+                       int            start_index,
+                       int            run_length)
+{
+    PangoAttribute *attr;
+    PangoRectangle rect;
+
+    // Get Style Properties
+    rect.width = 100 * PANGO_SCALE;
+    rect.height = 100 * PANGO_SCALE;
+
+    // Shape Attribute
+    attr = pango_attr_shape_new (&rect, &rect);
+    attr->start_index = start_index;
+    attr->end_index = start_index + run_length;
+    pango_attr_list_insert (list, attr);
+}
+
+static void
+_set_run_attribute (TextRun       *run,
+                    PangoAttrList *list,
+                    int            start_index,
+                    int            run_length)
+{
+    gboolean is_bold, is_italic, is_underline;
+    PangoAttribute *attr;
+
+    // Get Style Properties
+    is_bold = text_run_get_style_bold (TEXT_RUN (run));
+    is_italic = text_run_get_style_italic (TEXT_RUN (run));
+    is_underline = text_run_get_style_underline (TEXT_RUN (run));
+
+    // Attribute: Bold
+    if (is_bold)
+    {
+        attr = pango_attr_weight_new (PANGO_WEIGHT_BOLD);
+        attr->start_index = start_index;
+        attr->end_index = start_index + run_length;
+        pango_attr_list_insert (list, attr);
+    }
+
+    // Attribute: Italic
+    if (is_italic)
+    {
+        attr = pango_attr_style_new (PANGO_STYLE_ITALIC);
+        attr->start_index = start_index;
+        attr->end_index = start_index + run_length;
+        pango_attr_list_insert (list, attr);
+    }
+
+    // Attribute: Underline
+    if (is_underline)
+    {
+        attr = pango_attr_underline_new (PANGO_UNDERLINE_SINGLE);
+        attr->start_index = start_index;
+        attr->end_index = start_index + run_length;
+        pango_attr_list_insert (list, attr);
+    }
+}
+
 void
 _set_attributes (TextParagraph *paragraph,
                  PangoLayout   *pango_layout)
 {
-    TextNode *run;
+    TextNode *fragment;
     PangoAttrList *list;
 
     int start_index;
@@ -105,50 +168,18 @@ _set_attributes (TextParagraph *paragraph,
 
     start_index = 0;
 
-    for (run = text_node_get_first_child (TEXT_NODE (paragraph));
-         run != NULL;
-         run = text_node_get_next (run))
+    for (fragment = text_node_get_first_child (TEXT_NODE (paragraph));
+         fragment != NULL;
+         fragment = text_node_get_next (fragment))
     {
-        gboolean is_bold, is_italic, is_underline;
-        PangoAttribute *attr;
         int run_length;
 
-        if (!TEXT_IS_RUN (run))
-            continue;
+        run_length = text_fragment_get_size_bytes (TEXT_FRAGMENT (fragment));
 
-        run_length = text_fragment_get_size_bytes (TEXT_FRAGMENT (run));
-
-        // Get Style Properties
-        is_bold = text_run_get_style_bold (TEXT_RUN (run));
-        is_italic = text_run_get_style_italic (TEXT_RUN (run));
-        is_underline = text_run_get_style_underline (TEXT_RUN (run));
-
-        // Attribute: Bold
-        if (is_bold)
-        {
-            attr = pango_attr_weight_new (PANGO_WEIGHT_BOLD);
-            attr->start_index = start_index;
-            attr->end_index = start_index + run_length;
-            pango_attr_list_insert (list, attr);
-        }
-
-        // Attribute: Italic
-        if (is_italic)
-        {
-            attr = pango_attr_style_new (PANGO_STYLE_ITALIC);
-            attr->start_index = start_index;
-            attr->end_index = start_index + run_length;
-            pango_attr_list_insert (list, attr);
-        }
-
-        // Attribute: Underline
-        if (is_underline)
-        {
-            attr = pango_attr_underline_new (PANGO_UNDERLINE_SINGLE);
-            attr->start_index = start_index;
-            attr->end_index = start_index + run_length;
-            pango_attr_list_insert (list, attr);
-        }
+        if (TEXT_IS_RUN (fragment))
+            _set_run_attribute (TEXT_RUN (fragment), list, start_index, run_length);
+        else if (TEXT_IS_OPAQUE (fragment))
+            _set_inline_attribute (TEXT_OPAQUE (fragment), list, start_index, run_length);
 
         start_index += run_length;
     }
@@ -183,22 +214,18 @@ text_layout_box_layout (TextLayoutBox *self,
         if (!priv->layout)
             priv->layout = pango_layout_new (context);
 
+        // Set style information
+        // TODO: Matching from ruleset
+        _set_attributes (TEXT_PARAGRAPH (priv->item), priv->layout);
+
+        // Determine height (must be done *after* attributes are set)
         pango_layout_set_text (priv->layout, text, -1);
         pango_layout_set_wrap (priv->layout, PANGO_WRAP_WORD_CHAR);
         pango_layout_set_width (priv->layout, PANGO_SCALE * width);
         pango_layout_get_pixel_size (priv->layout, NULL, &height);
         g_debug (" - Height %d\n", height);
 
-        // Set style information
-        // TODO: Matching from ruleset
-        _set_attributes (TEXT_PARAGRAPH (priv->item), priv->layout);
-
         g_free (text);
-    }
-    else if (priv->item && TEXT_IS_IMAGE (priv->item))
-    {
-        width = 100;
-        height = 100;
     }
 
     // Account for children (should we force elements to choose between
