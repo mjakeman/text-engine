@@ -107,10 +107,9 @@ text_paragraph_get_text (TextParagraph *self)
     {
         const gchar *run_text;
 
-        if (!TEXT_IS_RUN (child))
-            continue;
+        g_assert (TEXT_IS_FRAGMENT (child));
 
-        g_object_get (child, "text", &run_text, NULL);
+        run_text = text_fragment_get_text (TEXT_FRAGMENT (child));
         g_string_append (str, run_text);
     }
 

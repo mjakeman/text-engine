@@ -25,8 +25,10 @@ struct _TextFragmentClass
 {
     TextNodeClass parent_class;
     int (*get_length)(TextFragment *self);
+    const char *(*get_text)(TextFragment *self);
 };
 
-int      text_fragment_get_length (TextFragment *self);
+int         text_fragment_get_length    (TextFragment *self);
+const char* text_fragment_get_text      (TextFragment *self);
 
 G_END_DECLS

@@ -14,7 +14,6 @@
 struct _TextRun
 {
     TextFragment parent_instance;
-    gchar *text;
     gboolean is_bold;
     gboolean is_italic;
     gboolean is_underline;
@@ -25,7 +24,6 @@ G_DEFINE_FINAL_TYPE (TextRun, text_run, TEXT_TYPE_FRAGMENT)
 
 enum {
     PROP_0,
-    PROP_SRC,
     N_PROPS
 };
 
@@ -57,11 +55,8 @@ text_run_get_property (GObject    *object,
 
     switch (prop_id)
     {
-    case PROP_SRC:
-        g_value_set_string (value, self->text);
-        break;
-    default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
 }
 
@@ -75,22 +70,9 @@ text_run_set_property (GObject      *object,
 
     switch (prop_id)
     {
-    case PROP_SRC:
-        if (self->text)
-            g_free (self->text);
-        self->text = g_value_dup_string (value);
-        break;
-    default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
-}
-
-int
-text_run_get_length (TextFragment *self)
-{
-    g_return_val_if_fail (TEXT_IS_RUN (self), -1);
-
-    return (int) strlen (((TextRun *)self)->text);
 }
 
 gboolean
@@ -140,19 +122,6 @@ text_run_class_init (TextRunClass *klass)
     object_class->finalize = text_run_finalize;
     object_class->get_property = text_run_get_property;
     object_class->set_property = text_run_set_property;
-
-    properties [PROP_SRC]
-        = g_param_spec_string ("text",
-                               "Text",
-                               "Text",
-                               NULL,
-                               G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
-
-    g_object_class_install_properties (object_class, N_PROPS, properties);
-
-    TextFragmentClass *fragment_class = TEXT_FRAGMENT_CLASS (klass);
-
-    fragment_class->get_length = text_run_get_length;
 }
 
 static void

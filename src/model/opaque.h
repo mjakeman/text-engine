@@ -26,4 +26,7 @@ struct _TextOpaqueClass
     TextFragmentClass parent_class;
 };
 
+// Match the unicode replacement character than GTK uses
+static const char TEXT_OPAQUE_REPLACEMENT_CHAR[] = { '\xEF', '\xBF', '\xBC', '\0' };
+
 G_END_DECLS

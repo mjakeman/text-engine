@@ -65,9 +65,15 @@ text_opaque_set_property (GObject      *object,
 }
 
 int
-text_opaque_get_length (TextOpaque *self)
+text_opaque_get_length (TextFragment *self)
 {
     return 1;
+}
+
+const char*
+text_opaque_get_text (TextFragment *self)
+{
+    return &TEXT_OPAQUE_REPLACEMENT_CHAR;
 }
 
 static void
@@ -82,6 +88,7 @@ text_opaque_class_init (TextOpaqueClass *klass)
     TextFragmentClass *fragment_class = TEXT_FRAGMENT_CLASS (klass);
 
     fragment_class->get_length = text_opaque_get_length;
+    fragment_class->get_text = text_opaque_get_text;
 }
 
 static void
