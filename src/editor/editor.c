@@ -102,6 +102,16 @@ text_editor_class_init (TextEditorClass *klass)
     g_object_class_install_properties (object_class, N_PROPS, properties);
 }
 
+static int
+_get_offset (TextParagraph *paragraph,
+             int            byte_index)
+{
+    // NOTE: byte_index must be within bounds!
+    const char *text;
+    text = text_paragraph_get_text (paragraph);
+    return (int) g_utf8_pointer_to_offset (text, text + byte_index);
+}
+
 static TextItem *
 go_up (TextItem *item,
        gboolean  forwards)
@@ -308,6 +318,27 @@ text_editor_get_item_at_mark (TextEditor *self,
                                              NULL);
 }
 
+static void
+move_n_chars_to_byte_index (const gchar *text,
+                            int         *byte_index,
+                            int          amount)
+{
+    // NOTE: Not bounds checked! Make sure to check the
+    // string length with g_utf8_strlen() or similar before
+    // calling.
+
+    const char *new_ptr;
+
+    g_return_if_fail (text != NULL);
+    g_return_if_fail (byte_index != NULL);
+
+    // Go 'amount' characters forwards and find address
+    new_ptr = g_utf8_offset_to_pointer (text + *byte_index, amount);
+
+    // Calculate new byte offset
+    *byte_index = (int)(new_ptr - text);
+}
+
 /**
  * _try_move_mark_left:
  *
@@ -316,22 +347,21 @@ text_editor_get_item_at_mark (TextEditor *self,
  *
  * @self: `TextEditor` instance
  * @mark: the `TextMark` to move
- * @amount: Amount to move by
+ * @amount: Amount to move by (in characters)
  *
  * Returns: The distance remaining or -1 if an error occurred.
  */
 int
-_try_move_mark_left (TextEditor *self,
-                     TextMark   *mark,
+_try_move_mark_left (TextMark   *mark,
                      int         amount)
 {
     TextParagraph *iter;
+    const gchar *text;
     int amount_moved;
+    int mark_char_offset;
 
-    g_return_val_if_fail (TEXT_IS_EDITOR (self), -1);
-    g_return_val_if_fail (TEXT_IS_DOCUMENT (self->document), -1);
-    g_return_val_if_fail (amount >= 0, -1);
     g_return_val_if_fail (mark != NULL, -1);
+    g_return_val_if_fail (amount >= 0, -1);
 
     if (amount == 0)
         return 0;
@@ -339,16 +369,21 @@ _try_move_mark_left (TextEditor *self,
     iter = mark->paragraph;
     amount_moved = 0;
 
+    text = text_paragraph_get_text (iter);
+
+    // Calculate how many characters into the paragraph the mark is
+    mark_char_offset = (int) g_utf8_strlen (text, mark->index);
+
     // Simple case: The movement is contained entirely
     // within the current paragraph.
-    if (mark->index - amount >= 0)
+    if (mark_char_offset - amount >= 0)
     {
-        mark->index -= amount;
+        move_n_chars_to_byte_index (text, &mark->index, -amount);
         return 0;
     }
 
     // Crossing one or more paragraphs
-    amount_moved += mark->index;
+    amount_moved += mark_char_offset;
 
     while (amount_moved < amount)
     {
@@ -375,13 +410,16 @@ _try_move_mark_left (TextEditor *self,
 
         // Move partially through the paragraph by
         // the amount to move remaining
-        mark->index = num_indices - (amount - amount_moved);
+        // TODO: Check if this actually works
+        text = text_paragraph_get_text (iter);
+        mark->index = (int) (g_utf8_offset_to_pointer (text, num_indices - (amount - amount_moved)) - text);
         mark->paragraph = iter;
+        g_print ("Index: %d\n", mark->index);
         return 0;
     }
 
     // Reached start of document
-    text_editor_move_mark_first (self, mark);
+    text_editor_move_mark_first (mark);
     return amount - amount_moved;
 }
 
@@ -397,11 +435,10 @@ _try_move_mark_left (TextEditor *self,
  * @amount: Amount to move by
  */
 void
-text_editor_move_mark_left (TextEditor *self,
-                            TextMark   *mark,
+text_editor_move_mark_left (TextMark   *mark,
                             int         amount)
 {
-    _try_move_mark_left (self, mark, amount);
+    _try_move_mark_left (mark, amount);
 }
 
 /**
@@ -417,18 +454,17 @@ text_editor_move_mark_left (TextEditor *self,
  * Returns: The distance remaining or -1 if an error occurred.
  */
 int
-_try_move_mark_right (TextEditor *self,
-                      TextMark   *mark,
+_try_move_mark_right (TextMark   *mark,
                       int         amount)
 {
     TextParagraph *iter;
+    gchar *text;
     int amount_moved;
     int last_index;
+    int mark_char_offset;
 
-    g_return_val_if_fail (TEXT_IS_EDITOR (self), -1);
-    g_return_val_if_fail (TEXT_IS_DOCUMENT (self->document), -1);
-    g_return_val_if_fail (amount >= 0, -1);
     g_return_val_if_fail (mark != NULL, -1);
+    g_return_val_if_fail (amount >= 0, -1);
 
     if (amount == 0)
         return 0;
@@ -436,17 +472,22 @@ _try_move_mark_right (TextEditor *self,
     iter = mark->paragraph;
     amount_moved = 0;
 
+    text = text_paragraph_get_text (iter);
+
+    // Calculate how many characters into the paragraph the mark is
+    mark_char_offset = (int) g_utf8_strlen (text, mark->index);
+
     // Simple case: The movement is contained entirely
     // within the current paragraph.
     last_index = text_paragraph_get_length (iter);
-    if (mark->index + amount <= last_index)
+    if (mark_char_offset + amount <= last_index)
     {
-        mark->index += amount;
+        move_n_chars_to_byte_index (text, &mark->index, amount);
         return 0;
     }
 
     // Crossing one or more paragraphs
-    amount_moved += (last_index - mark->index);
+    amount_moved += (last_index - mark_char_offset);
 
     while (amount_moved < amount)
     {
@@ -473,13 +514,16 @@ _try_move_mark_right (TextEditor *self,
 
         // Move partially through the paragraph by
         // the amount to move remaining
-        mark->index = (amount - amount_moved) - 1;
+        // TODO: Check if this actually works
+        text = text_paragraph_get_text (iter);
+        mark->index = (int) (g_utf8_offset_to_pointer (text, (amount - amount_moved) - 1) - text);
         mark->paragraph = iter;
+        g_print ("Index: %d\n", mark->index);
         return 0;
     }
 
     // Reached end of document
-    text_editor_move_mark_last (self, mark);
+    text_editor_move_mark_last (mark);
     return amount - amount_moved;
 }
 
@@ -495,11 +539,10 @@ _try_move_mark_right (TextEditor *self,
  * @amount: Amount to move by
  */
 void
-text_editor_move_mark_right (TextEditor *self,
-                             TextMark   *mark,
+text_editor_move_mark_right (TextMark   *mark,
                              int         amount)
 {
-    _try_move_mark_right (self, mark, amount);
+    _try_move_mark_right (mark, amount);
 }
 
 /**
@@ -507,17 +550,15 @@ text_editor_move_mark_right (TextEditor *self,
  *
  * Move the mark to the beginning of the document.
  *
- * @self: `TextEditor` instance
  * @mark: The `TextMark` to move
  */
 void
-text_editor_move_mark_first (TextEditor *self,
-                             TextMark   *mark)
+text_editor_move_mark_first (TextMark *mark)
 {
-    g_return_if_fail (TEXT_IS_EDITOR (self));
-    g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+    g_return_if_fail (mark != NULL);
+    g_return_if_fail (TEXT_IS_DOCUMENT (mark->document));
 
-    mark->paragraph = walk_until_next_paragraph (TEXT_ITEM (self->document->frame));
+    mark->paragraph = walk_until_next_paragraph (TEXT_ITEM (mark->document->frame));
     mark->index = 0;
 }
 
@@ -526,22 +567,20 @@ text_editor_move_mark_first (TextEditor *self,
  *
  * Move the mark to the end of the document.
  *
- * @self: `TextEditor` instance
  * @mark: The `TextMark` to move
  */
 void
-text_editor_move_mark_last (TextEditor *self,
-                            TextMark   *mark)
+text_editor_move_mark_last (TextMark *mark)
 {
-    g_return_if_fail (TEXT_IS_EDITOR (self));
-    g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+    g_return_if_fail (mark != NULL);
+    g_return_if_fail (TEXT_IS_DOCUMENT (mark->document));
 
-    mark->paragraph = walk_until_previous_paragraph (TEXT_ITEM (self->document->frame));
+    mark->paragraph = walk_until_previous_paragraph (TEXT_ITEM (mark->document->frame));
     mark->index = 0;
 
     if (mark->paragraph)
     {
-        mark->index = text_paragraph_get_length (mark->paragraph);
+        mark->index = text_paragraph_get_size_bytes (mark->paragraph);
     }
 }
 
@@ -591,32 +630,49 @@ _delete_run (TextEditor *self,
 static void
 _erase_text (TextRun *run,
              int      index,
-             int      length)
+             int      num_chars,
+             int     *bytes_deleted)
 {
     GString *modified;
-    char *text;
+    const char *text;
+    int length_bytes;
 
-    g_object_get (run, "text", &text, NULL);
+    text = text_fragment_get_text (TEXT_FRAGMENT (run));
+
+    // Calculate length (in bytes) to erase
+    length_bytes = (int) (g_utf8_offset_to_pointer (text + index, num_chars) - (text + index));
 
     // Assumes index and length are within range
     modified = g_string_new (text);
-    modified = g_string_erase (modified, index, length);
+    modified = g_string_erase (modified, index, length_bytes);
     g_object_set (run, "text", modified->str, NULL);
     g_string_free (modified, TRUE);
+
+    if (bytes_deleted)
+        *bytes_deleted = length_bytes;
 }
 
 static void
 _erase_content (TextFragment *item,
                 int index,
-                int length)
+                int num_chars,
+                int *bytes_deleted)
 {
+    // Initialise to zero
+    if (bytes_deleted)
+        *bytes_deleted = 0;
+
     if (TEXT_IS_RUN (item))
     {
-        _erase_text (TEXT_RUN (item), index, length);
+        _erase_text (TEXT_RUN (item), index, num_chars, bytes_deleted);
     }
     else if (TEXT_IS_OPAQUE (item))
     {
         TextParagraph *parent;
+
+        if (bytes_deleted)
+            *bytes_deleted = text_fragment_get_size_bytes (item);
+
         parent = TEXT_PARAGRAPH (text_node_get_parent (TEXT_NODE (item)));
         text_node_insert_child_before (TEXT_NODE (parent), TEXT_NODE (text_run_new ("")), TEXT_NODE (item));
         text_node_delete (TEXT_NODE (item));
@@ -661,43 +717,51 @@ _join_paragraphs (TextParagraph *start,
  * _delete_within_paragraph:
  *
  * @paragraph: Paragraph the deletion will be performed on
- * @start_index: Starting index of the deletion. It is the caller's
- * responsibility to ensure this is in-range.
- * @deletion_length: The number of characters to be erased.
+ * @start_index: Starting byte index of the deletion. Note
+ * this is a byte index, not a unicode character offset
+ * @deletion_length: The number of unicode characters to
+ * be deleted.
  *
  * Returns: `TRUE` if the paragraph was deleted
  */
 static gboolean
 _delete_within_paragraph (TextParagraph *paragraph,
                           int            start_index,
-                          int            deletion_length)
+                          int            deletion_length,
+                          int           *bytes_deleted)
 {
     TextFragment *start;
     int paragraph_length;
+    int paragraph_size;
     int end_index;
     int start_run_offset;
     gboolean is_only;
+    const char *text;
 
     if (deletion_length == 0)
         return FALSE;
 
+    text = text_paragraph_get_text (paragraph);
     paragraph_length = text_paragraph_get_length (paragraph);
-    end_index = start_index + deletion_length;
+    paragraph_size = text_paragraph_get_size_bytes(paragraph);
 
     is_only = text_node_get_num_children (TEXT_NODE (paragraph)) == 1;
 
     // Check run immediately after the start_index
     // (as start_index may be the final index of a run)
     start = text_paragraph_get_item_at_index (paragraph, start_index + 1, &start_run_offset);
+    end_index = (int) (g_utf8_offset_to_pointer (text + start_index, deletion_length) - text);
 
-    g_assert (0 <= start_index && start_index <= paragraph_length);
-    g_assert (0 <= end_index && end_index <= paragraph_length);
+    g_return_val_if_fail (bytes_deleted != NULL, -1);
+    g_assert (0 <= start_index && start_index <= paragraph_size);
+    g_assert (0 <= end_index && end_index <= paragraph_size);
     g_assert (start_index <= end_index);
 
     // Case 1: The whole paragraph is to be deleted
-    if (start_index == 0 && end_index == paragraph_length + 1)
+    if (start_index == 0 && deletion_length == paragraph_length)
     {
         text_node_delete (TEXT_NODE (paragraph));
+        *bytes_deleted = 0;
         return TRUE;
     }
 
@@ -706,34 +770,36 @@ _delete_within_paragraph (TextParagraph *paragraph,
     {
         // The paragraph should not be deleted (handled
         // by above condition) so erase contents
-        _erase_content (start, start_index, deletion_length);
+        _erase_content (start, start_index, deletion_length, bytes_deleted);
         return FALSE;
     }
 
     // Case 3: The paragraph contains multiple runs
     {
         int run_length;
+        int run_bytes_deleted;
         TextFragment *iter;
         int cur_deleted;
-        int offset_within_run;
+        int index_within_run;
 
         run_length = text_fragment_get_length (TEXT_FRAGMENT (start));
-        offset_within_run = start_index - start_run_offset;
+        index_within_run = start_index - start_run_offset;
         cur_deleted = 0;
 
         iter = start;
 
         // If only part of the first run should be erased, handle it here.
-        if (offset_within_run != 0 || deletion_length != run_length)
+        if (index_within_run != 0 || deletion_length != run_length)
         {
             int to_delete;
-            to_delete = MIN (deletion_length, run_length - offset_within_run);
+            to_delete = MIN (deletion_length, run_length - _get_offset (paragraph, index_within_run));
 
             cur_deleted += to_delete;
             iter = walk_until_next_fragment(TEXT_ITEM(start));
 
             // Delete part of run
-            _erase_content (start, offset_within_run, to_delete);
+            _erase_content (start, index_within_run, to_delete, &run_bytes_deleted);
+            *bytes_deleted += run_bytes_deleted;
         }
 
         // Iterate over the remaining runs
@@ -741,24 +807,27 @@ _delete_within_paragraph (TextParagraph *paragraph,
         {
             g_assert (iter != NULL);
 
+            run_bytes_deleted = text_fragment_get_size_bytes (TEXT_FRAGMENT (iter));
             run_length = text_fragment_get_length (TEXT_FRAGMENT (iter));
 
             // Check if the run is entirely contained within the deletion
             if (cur_deleted + run_length <= deletion_length)
             {
-                TextRun *next;
+                TextFragment *next;
 
                 next = walk_until_next_fragment(TEXT_ITEM(iter));
                 text_node_delete (TEXT_NODE (iter));
 
                 cur_deleted += run_length;
+                *bytes_deleted += run_bytes_deleted;
                 iter = next;
 
                 continue;
             }
 
             // Handle last element
-            _erase_content (start, 0, deletion_length - cur_deleted);
+            _erase_content (start, 0, deletion_length - cur_deleted, &run_bytes_deleted);
+            *bytes_deleted += run_bytes_deleted;
             break;
         }
     }
@@ -798,9 +867,9 @@ _distribute_mark (TextMark      *mark,
 
 static void
 _offset_mark (TextMark *mark,
-              int       offset)
+              int       byte_offset)
 {
-    mark->index += offset;
+    mark->index += byte_offset;
 }
 
 void
@@ -810,6 +879,8 @@ text_editor_delete_at_mark (TextEditor *self,
 {
     TextParagraph *paragraph;
     int num_indices;
+    int start_char_offset;
+    const char *text;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
@@ -825,19 +896,25 @@ text_editor_delete_at_mark (TextEditor *self,
         // Handles case where the cursor cannot be moved by the
         // full '-length' because the start of document is reached
         // TODO: Should this refer to cursor directly?
-        remaining = _try_move_mark_left  (self, self->document->cursor, -length);
+        remaining = _try_move_mark_left  (self->document->cursor, -length);
         text_editor_delete_at_mark (self, start, (-length - remaining));
         return;
     }
+
+    text = text_paragraph_get_text (start->paragraph);
+
+    // Calculate how many characters into the paragraph the mark is
+    start_char_offset = (int) g_utf8_strlen (text, start->index);
 
     // Account for final index at the end of a paragraph
     num_indices = text_paragraph_get_length (start->paragraph) + 1;
 
     // Case 1: Deletion affects a single paragraph
     // Any portion of a paragraph up to the entire thing
-    if (start->index + length < num_indices)
+    if (start_char_offset + length < num_indices)
     {
         int new_index;
+        int bytes_deleted;
         TextParagraph *new_para;
         TextParagraph *prev;
 
@@ -846,12 +923,12 @@ text_editor_delete_at_mark (TextEditor *self,
         new_index = start->index;
 
         // True if paragraph was deleted
-        if (_delete_within_paragraph (start->paragraph, start->index, length))
+        if (_delete_within_paragraph (start->paragraph, start->index, length, &bytes_deleted))
         {
             if (prev)
             {
                 new_para = prev;
-                new_index = text_paragraph_get_length (prev);
+                new_index = text_paragraph_get_size_bytes (prev);
             }
             else
             {
@@ -887,7 +964,7 @@ text_editor_delete_at_mark (TextEditor *self,
             else if (mark->paragraph == start->paragraph &&
                 start->index + length < mark->index)
             {
-                _offset_mark (mark, -length);
+                _offset_mark (mark, -bytes_deleted);
             }
         }
 
@@ -903,6 +980,7 @@ text_editor_delete_at_mark (TextEditor *self,
         TextParagraph *iter;
         int cur_deleted;
         int paragraph_length;
+        int bytes_deleted;
         int to_delete;
         int remaining;
 
@@ -914,8 +992,8 @@ text_editor_delete_at_mark (TextEditor *self,
 
         // Handle first paragraph
         // Erase part or all of the first paragraph but do not delete it
-        to_delete = paragraph_length - start->index;
-        _delete_within_paragraph (iter, start->index, to_delete);
+        to_delete = paragraph_length - start_char_offset;
+        _delete_within_paragraph (iter, start->index, to_delete, &bytes_deleted);
         cur_deleted += to_delete;
 
         // As the deletion affects multiple paragraphs, we also
@@ -940,7 +1018,7 @@ text_editor_delete_at_mark (TextEditor *self,
 
             // Delete a portion of the end paragraph
             remaining = length - cur_deleted;
-            _delete_within_paragraph (iter, 0, remaining);
+            _delete_within_paragraph (iter, 0, remaining, &bytes_deleted);
             break;
         }
 
@@ -992,8 +1070,9 @@ text_editor_delete_at_mark (TextEditor *self,
                 // as we join them (see below)
                 mark->paragraph = start->paragraph;
 
-                offset = text_paragraph_get_length (start->paragraph);
-                _offset_mark (mark, offset - remaining);
+                // TODO: Does this actually work?
+                offset = text_paragraph_get_size_bytes (start->paragraph);
+                _offset_mark (mark, offset - bytes_deleted);
             }
         }
 
@@ -1088,13 +1167,17 @@ _length_between_marks (TextMark *start,
                        TextMark *end)
 {
     TextParagraph *iter;
+    const char *text;
     int length;
 
     g_return_val_if_fail (start != NULL, 0);
     g_return_val_if_fail (end != NULL, 0);
 
     if (start->paragraph == end->paragraph)
-        return end->index - start->index;
+    {
+        text = text_paragraph_get_text (start->paragraph);
+        return (int) (g_utf8_pointer_to_offset (text + start->index, text + end->index));
+    }
 
     iter = start->paragraph;
     length = text_paragraph_get_length (iter) + 1 - start->index;
@@ -1103,7 +1186,8 @@ _length_between_marks (TextMark *start,
     {
         if (iter == end->paragraph)
         {
-            length += end->index;
+            text = text_paragraph_get_text (end->paragraph);
+            length += (int) g_utf8_strlen (text, end->index);
             break;
         }
 
@@ -1145,6 +1229,7 @@ _ensure_ordered (TextMark **start,
     }
 }
 
+// TODO: All usages must use offsets
 void
 split_run_at_offset (TextRun  *run,
                      TextRun **new,
@@ -1170,6 +1255,7 @@ split_run_at_offset (TextRun  *run,
     text_run_set_style_underline (*new, text_run_get_style_underline (run));
 }
 
+// TODO: All usages must use offsets
 void
 split_run_in_place (TextRun *run,
                     TextRun **new,
@@ -1200,11 +1286,11 @@ text_editor_split_at_mark (TextEditor *self,
     current = split->paragraph;
 
     // Case 1: Split is happening on the last index
-    if (split->index == text_paragraph_get_length (current))
+    if (split->index == text_paragraph_get_size_bytes (current))
     {
         // Append a new paragraph with empty run
         new = text_paragraph_new ();
-        text_paragraph_append_fragment(new, text_run_new(""));
+        text_paragraph_append_fragment(new, TEXT_FRAGMENT (text_run_new("")));
 
         parent = text_node_get_parent (TEXT_NODE (current));
         text_node_insert_child_after (parent, TEXT_NODE (new), TEXT_NODE (current));
@@ -1215,15 +1301,15 @@ text_editor_split_at_mark (TextEditor *self,
     {
         TextFragment *start;
         TextNode *iter;
-        int run_offset;
+        int index_within_run;
 
         new = text_paragraph_new ();
-        start = text_paragraph_get_item_at_index (current, split->index, &run_offset);
+        start = text_paragraph_get_item_at_index (current, split->index, &index_within_run);
 
         iter = TEXT_NODE (start);
 
-        // Split first run if run offset is not at beginning
-        if (split->index != run_offset)
+        // Split first run if index is not at beginning
+        if (split->index != index_within_run)
         {
             int split_index_within_run;
             TextRun *new_run;
@@ -1235,9 +1321,9 @@ text_editor_split_at_mark (TextEditor *self,
             }
             else
             {
-                split_index_within_run = split->index - run_offset;
-                split_run_at_offset (start, &new_run, split_index_within_run);
-                text_paragraph_append_fragment(new, new_run);
+                split_index_within_run = split->index - index_within_run;
+                split_run_at_offset (TEXT_RUN (start), &new_run, _get_offset (split->paragraph, split_index_within_run));
+                text_paragraph_append_fragment(new, TEXT_FRAGMENT (new_run));
             }
 
             // Move to next run
@@ -1261,10 +1347,10 @@ text_editor_split_at_mark (TextEditor *self,
 
         // Ensure the original paragraph has at least one run (all runs may be
         // moved when the split index is at the start of the paragraph)
-        if (text_node_get_num_children (TEXT_PARAGRAPH (current)) == 0)
+        if (text_node_get_num_children (TEXT_NODE (current)) == 0)
         {
             // Add empty run
-            text_paragraph_append_fragment(current, text_run_new(""));
+            text_paragraph_append_fragment(current, TEXT_FRAGMENT (text_run_new("")));
         }
 
         // Append paragraph to document tree
@@ -1337,7 +1423,7 @@ text_editor_insert_text_at_mark (TextEditor *self,
     TextFragment *item;
     TextRun *run;
     int run_start_index;
-    int run_offset;
+    int index_within_run;
     int length;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
@@ -1346,20 +1432,20 @@ text_editor_insert_text_at_mark (TextEditor *self,
 
     item = text_paragraph_get_item_at_index (start->paragraph, start->index, &run_start_index);
 
-    run_offset = start->index - run_start_index;
+    index_within_run = start->index - run_start_index;
 
     if (!TEXT_IS_RUN (item))
     {
-        if (run_offset == 0)
+        if (index_within_run == 0)
         {
             run = text_run_new ("");
             text_node_insert_child_before (TEXT_NODE (start->paragraph), TEXT_NODE (run), TEXT_NODE (item));
         }
-        else if (run_offset == text_fragment_get_length (item))
+        else if (index_within_run == text_fragment_get_size_bytes(item))
         {
             run = text_run_new ("");
             text_node_insert_child_after (TEXT_NODE (start->paragraph), TEXT_NODE (run), TEXT_NODE (item));
-            run_offset = 0;
+            index_within_run = 0;
         }
         else
         {
@@ -1376,11 +1462,11 @@ text_editor_insert_text_at_mark (TextEditor *self,
     // Textual data is stored in buffers and indexed by the tree
     g_object_get (run, "text", &text, NULL);
     modified = g_string_new (text);
-    modified = g_string_insert (modified, run_offset, str);
+    modified = g_string_insert (modified, index_within_run, str);
     g_object_set (run, "text", modified->str, NULL);
     g_string_free (modified, TRUE);
 
-    length = strlen (str);
+    length = (int) strlen (str);
 
     // Adjust marks according to gravity
     marks = text_document_get_all_marks (self->document);
@@ -1426,8 +1512,8 @@ text_editor_insert_fragment_at_mark (TextEditor *self,
     GSList *marks;
     TextFragment *item;
     int run_start_index;
-    int run_offset;
-    int length;
+    int index_within_run;
+    int size;
 
     g_return_if_fail (TEXT_IS_EDITOR (self));
     g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
@@ -1435,20 +1521,20 @@ text_editor_insert_fragment_at_mark (TextEditor *self,
 
     item = text_paragraph_get_item_at_index (start->paragraph, start->index, &run_start_index);
 
-    run_offset = start->index - run_start_index;
+    index_within_run = start->index - run_start_index;
 
-    if (run_offset == 0)
+    if (index_within_run == 0)
     {
         text_node_insert_child_before (TEXT_NODE (start->paragraph), TEXT_NODE (fragment), TEXT_NODE (item));
     }
-    else if (run_offset == text_fragment_get_length (item))
+    else if (index_within_run == text_fragment_get_size_bytes(item))
     {
         text_node_insert_child_after (TEXT_NODE (start->paragraph), TEXT_NODE (fragment), TEXT_NODE (item));
     }
     else if (TEXT_IS_RUN (item))
     {
         TextRun *new_run;
-        split_run_in_place (TEXT_RUN (item), &new_run, run_offset);
+        split_run_in_place (TEXT_RUN (item), &new_run, _get_offset (start->paragraph, index_within_run));
         text_node_insert_child_before (TEXT_NODE (start->paragraph), TEXT_NODE (fragment), TEXT_NODE (new_run));
     }
     else
@@ -1457,7 +1543,7 @@ text_editor_insert_fragment_at_mark (TextEditor *self,
         return;
     }
 
-    length = text_fragment_get_length (fragment);
+    size = text_fragment_get_size_bytes (fragment);
 
     // Adjust marks according to gravity
     marks = text_document_get_all_marks (self->document);
@@ -1476,7 +1562,7 @@ text_editor_insert_fragment_at_mark (TextEditor *self,
         {
             _distribute_mark (mark,
                               start->paragraph, start->index,
-                              start->paragraph, start->index + length);
+                              start->paragraph, start->index + size);
             continue;
         }
 
@@ -1484,7 +1570,7 @@ text_editor_insert_fragment_at_mark (TextEditor *self,
         if (mark->paragraph == start->paragraph &&
             mark->index > start->index)
         {
-            _offset_mark (mark, length);
+            _offset_mark (mark, size);
         }
     }
 
@@ -1703,14 +1789,14 @@ void
 text_editor_move_first (TextEditor         *self,
                         TextEditorMarkType  type)
 {
-    text_editor_move_mark_first (self, _get_mark (self, type));
+    text_editor_move_mark_first (_get_mark (self, type));
 }
 
 void
 text_editor_move_last (TextEditor         *self,
                        TextEditorMarkType  type)
 {
-    text_editor_move_mark_last (self, _get_mark (self, type));
+    text_editor_move_mark_last (_get_mark (self, type));
 }
 
 void
@@ -1718,7 +1804,7 @@ text_editor_move_right (TextEditor         *self,
                         TextEditorMarkType  type,
                         int                 amount)
 {
-    text_editor_move_mark_right (self, _get_mark (self, type), amount);
+    text_editor_move_mark_right (_get_mark (self, type), amount);
 }
 
 void
@@ -1726,7 +1812,7 @@ text_editor_move_left (TextEditor         *self,
                        TextEditorMarkType  type,
                        int                 amount)
 {
-    text_editor_move_mark_left (self, _get_mark (self, type), amount);
+    text_editor_move_mark_left (_get_mark (self, type), amount);
 }
 
 void
@@ -1734,7 +1820,7 @@ text_editor_insert_text (TextEditor         *self,
                          TextEditorMarkType  type,
                          gchar              *str)
 {
-    text_editor_insert_text_at_mark(self, _get_mark(self, type), str);
+    text_editor_insert_text_at_mark (self, _get_mark(self, type), str);
 }
 
 void
@@ -1742,7 +1828,7 @@ text_editor_insert_fragment (TextEditor         *self,
                              TextEditorMarkType  type,
                              TextFragment         *fragment)
 {
-    text_editor_insert_fragment_at_mark(self, _get_mark(self, type), fragment);
+    text_editor_insert_fragment_at_mark (self, _get_mark(self, type), fragment);
 }
 
 void

@@ -23,10 +23,11 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (TextParagraph, text_paragraph, TEXT, PARAGRAPH, TextBlock)
 
-TextParagraph * text_paragraph_new                   (void);
-void            text_paragraph_append_fragment         (TextParagraph *self, TextFragment *fragment);
-TextFragment     *text_paragraph_get_item_at_index     (TextParagraph *self, int index, int *starting_index);
-int             text_paragraph_get_length            (TextParagraph *self);
-char           *text_paragraph_get_text              (TextParagraph *self);
+TextParagraph  *text_paragraph_new                  (void);
+void            text_paragraph_append_fragment      (TextParagraph *self, TextFragment *fragment);
+TextFragment   *text_paragraph_get_item_at_index    (TextParagraph *self, int byte_index, int *starting_index);
+int             text_paragraph_get_length           (TextParagraph *self);
+int             text_paragraph_get_size_bytes       (TextParagraph *self);
+char           *text_paragraph_get_text             (TextParagraph *self);
 
 G_END_DECLS

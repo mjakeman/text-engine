@@ -29,10 +29,12 @@ typedef enum
 
 TextEditor *text_editor_new        (TextDocument *document);
 
-void        text_editor_move_mark_first         (TextEditor *self, TextMark *mark);
-void        text_editor_move_mark_last          (TextEditor *self, TextMark *mark);
-void        text_editor_move_mark_right         (TextEditor *self, TextMark *mark, int amount);
-void        text_editor_move_mark_left          (TextEditor *self, TextMark *mark, int amount);
+// TODO: Refactor into TextMark
+void        text_editor_move_mark_first         (TextMark *mark);
+void        text_editor_move_mark_last          (TextMark *mark);
+void        text_editor_move_mark_right         (TextMark *mark, int amount);
+void        text_editor_move_mark_left          (TextMark *mark, int amount);
+
 void        text_editor_insert_text_at_mark     (TextEditor *self, TextMark *start, gchar *str);
 void        text_editor_insert_fragment_at_mark (TextEditor *self, TextMark *start, TextFragment *fragment);
 void        text_editor_delete_at_mark          (TextEditor *self, TextMark *start, int length);

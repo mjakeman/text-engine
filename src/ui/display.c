@@ -307,7 +307,7 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
 
         bbox = text_layout_box_get_bbox(box);
 
-        if (TEXT_IS_RUN (inline_item))
+        // if (TEXT_IS_RUN (inline_item))
         {
             layout = text_layout_box_get_pango_layout(box);
 
@@ -322,7 +322,7 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
             height = cursor_rect.height / PANGO_SCALE;
             width = 1;
         }
-        else if (inline_item != NULL)
+        /*else if (inline_item != NULL)
         {
             // Treat object as opaque with start and end cursor positions
             // TODO: Make this far more robust e.g. for editable inlines
@@ -346,7 +346,7 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
                 height = (int) inline_bbox->height;
                 width = 1;
             }
-        }
+        }*/
 
         gtk_snapshot_append_color (snapshot, color, &GRAPHENE_RECT_INIT (bbox->x + x, bbox->y + y, width, height));
     }

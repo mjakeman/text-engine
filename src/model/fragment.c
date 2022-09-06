@@ -14,14 +14,12 @@
 typedef struct
 {
     int _padding;
-    gchar *text;
 } TextFragmentPrivate;
 
 G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (TextFragment, text_fragment, TEXT_TYPE_ITEM)
 
 enum {
     PROP_0,
-    PROP_TEXT,
     N_PROPS
 };
 
@@ -47,9 +45,6 @@ text_fragment_get_property (GObject    *object,
 
     switch (prop_id)
     {
-        case PROP_TEXT:
-            g_value_set_string (value, priv->text);
-            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -66,40 +61,40 @@ text_fragment_set_property (GObject      *object,
 
     switch (prop_id)
     {
-        case PROP_TEXT:
-            if (priv->text)
-                g_free (priv->text);
-            priv->text = g_value_dup_string (value);
-            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
-}
-
-int
-text_fragment_real_get_length (TextFragment *self)
-{
-    g_return_val_if_fail (TEXT_IS_FRAGMENT (self), -1);
-
-    TextFragmentPrivate *priv = text_fragment_get_instance_private (self);
-
-    if (priv->text)
-        return (int) strlen (priv->text);
-
-    return 0;
 }
 
 const char *
 text_fragment_real_get_text (TextFragment *self)
 {
     TextFragmentPrivate *priv = text_fragment_get_instance_private (self);
-    return priv->text;
+    return "";
 }
 
 int
 text_fragment_get_length (TextFragment *self)
 {
-    return TEXT_FRAGMENT_CLASS (G_OBJECT_GET_CLASS (self))->get_length (self);
+    const char *text;
+
+    g_return_val_if_fail (TEXT_IS_FRAGMENT (self), -1);
+
+    text = text_fragment_get_text (self);
+    // g_print ("Length of %s is %d\n", g_type_name_from_instance (self), (int) g_utf8_strlen (text, -1));
+    return (int) g_utf8_strlen (text, -1);
+}
+
+int
+text_fragment_get_size_bytes (TextFragment *self)
+{
+    const char *text;
+
+    g_return_val_if_fail (TEXT_IS_FRAGMENT (self), -1);
+
+    text = text_fragment_get_text (self);
+    // g_print ("Size of %s is %d\n", g_type_name_from_instance (self), (int) strlen (text));
+    return (int) strlen (text);
 }
 
 const char *
@@ -111,7 +106,6 @@ text_fragment_get_text (TextFragment *self)
 static void
 text_fragment_class_init (TextFragmentClass *klass)
 {
-    klass->get_length = text_fragment_real_get_length;
     klass->get_text = text_fragment_real_get_text;
 
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -119,15 +113,6 @@ text_fragment_class_init (TextFragmentClass *klass)
     object_class->finalize = text_fragment_finalize;
     object_class->get_property = text_fragment_get_property;
     object_class->set_property = text_fragment_set_property;
-
-    properties [PROP_TEXT]
-            = g_param_spec_string ("text",
-                                   "Text",
-                                   "Text",
-                                   NULL,
-                                   G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
-
-    g_object_class_install_properties (object_class, N_PROPS, properties);
 }
 
 static void
