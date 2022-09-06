@@ -11,12 +11,12 @@
 
 #include "layout.h"
 
-struct _TextLayout
+typedef struct
 {
-    GObject parent_instance;
-};
+    int padding;
+} TextLayoutPrivate;
 
-G_DEFINE_FINAL_TYPE (TextLayout, text_layout, G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_PRIVATE (TextLayout, text_layout, G_TYPE_OBJECT)
 
 enum {
     PROP_0,
@@ -69,73 +69,74 @@ text_layout_set_property (GObject      *object,
     }
 }
 
-static void
-do_layout_recursive (TextLayout    *self,
-                     TextLayoutBox *parent,
-                     PangoContext  *context,
-                     TextItem      *item,
-                     int            width,
-                     int            child_offset_x,
-                     int            child_offset_y)
+TextLayoutBox *
+build_layout_tree_recursive (TextLayout    *self,
+                             PangoContext  *context,
+                             TextItem      *item)
 {
-    // TODO: Remove these when actually recursive
-    child_offset_x = 0;
-    child_offset_y = 0;
+    TextLayoutBox *box;
+    TextNode *iter;
 
-    g_return_if_fail (TEXT_IS_LAYOUT (self));
-    g_return_if_fail (TEXT_IS_LAYOUT_BOX (parent));
-    g_return_if_fail (TEXT_IS_ITEM (item));
+    g_return_val_if_fail (TEXT_IS_LAYOUT (self), NULL);
+    g_return_val_if_fail (PANGO_IS_CONTEXT (context), NULL);
+    g_return_val_if_fail (TEXT_IS_ITEM (item), NULL);
+
+    // Construct a layout item for this node using the item factory
+    // Subclasses can override this to add and use their own items
+    box = TEXT_LAYOUT_GET_CLASS (self)->item_factory (TEXT_ITEM (item));
+
+    // For now, if a node does not provide a LayoutBox then we assume
+    // it and its children are invisible. Perhaps we want to introduce
+    // some kind of LayoutAnonymousBox which is transparently skipped by
+    // the layout engine.
+    if (!TEXT_IS_LAYOUT_BOX (box))
+        return NULL;
+
+    // Setup Box
+    text_layout_box_set_item (box, item);
+    text_item_detach (TEXT_ITEM (item)); // TODO: Move to a 'cleanup_tree' function?
+    text_item_attach (TEXT_ITEM (item), TEXT_NODE (box));
 
     // Append children (in future, recursively)
-    for (TextNode *node = text_node_get_first_child (TEXT_NODE (item));
-         node != NULL;
-         node = text_node_get_next (node))
+    for (iter = text_node_get_first_child (TEXT_NODE (item));
+         iter != NULL;
+         iter = text_node_get_next (iter))
     {
-        g_assert (TEXT_IS_ITEM (node));
+        TextLayoutBox *child_box;
 
-        g_debug ("Counting child %s\n", g_type_name_from_instance (node));
+        g_assert (TEXT_IS_ITEM(iter));
 
-        // Let's treat paragraphs opaquely for now. In the future, we need
-        // to manually consider each text run in order for inline equations
-        // and images.
-        if (TEXT_IS_RUN (node) || TEXT_IS_IMAGE (node))
-            return;
-        /*else if (TEXT_IS_IMAGE (node))
+        child_box = build_layout_tree_recursive (self, context, TEXT_ITEM (iter));
+
+        if (TEXT_IS_LAYOUT_BOX (child_box))
         {
-            TextLayoutBox *box = text_layout_box_new ();
-            text_layout_box_set_item (box, TEXT_ITEM (node));
-            text_item_detach (TEXT_ITEM (node)); // TODO: Don't do this
-            text_item_attach (TEXT_ITEM (node), TEXT_NODE (box));
-
-            text_node_append_child (TEXT_NODE (parent), TEXT_NODE (box));
-            g_debug ("Added child %s\n", g_type_name_from_instance (node));
-
-            // TODO: This should be done recursively
-            text_layout_box_layout (box, context, width, child_offset_x, child_offset_y);
-            child_offset_y += text_layout_box_get_bbox (box)->height;
-        }*/
-        else if (TEXT_IS_PARAGRAPH (node))
-        {
-            TextLayoutBox *box = text_layout_box_new ();
-            text_layout_box_set_item (box, TEXT_ITEM (node));
-            text_item_detach (TEXT_ITEM (node)); // TODO: Don't do this
-            text_item_attach (TEXT_ITEM (node), TEXT_NODE (box));
-
-            text_node_append_child (TEXT_NODE (parent), TEXT_NODE (box));
-            g_debug ("Added child %s\n", g_type_name_from_instance (node));
-
-            // TODO: This function should be properly recursive in the future,
-            // so avoid calling it here. Below should be the only time it is
-            // called (i.e. post-order traversal).
-            do_layout_recursive (self, box, context, node, width, child_offset_x, child_offset_y);
-            text_layout_box_layout (box, context, width, child_offset_x, child_offset_y);
-            child_offset_y += text_layout_box_get_bbox (box)->height;
+            text_node_append_child (TEXT_NODE (box), TEXT_NODE (child_box));
         }
     }
 
-    // When we make this recursive, should pass in offsets
-    text_layout_box_layout (parent, context, width, 0, 0);
-    g_debug ("Layout for %s\n", g_type_name_from_instance (parent));
+    return box;
+}
+
+TextLayoutBox *
+text_layout_default_item_factory (TextItem *item)
+{
+    GType type;
+    type = G_TYPE_FROM_INSTANCE (item);
+
+    // Go from most specific to least specific, otherwise
+    // we could accidentally create the wrong layout box
+    // by taking the base class instead of the subclass
+    if (type == TEXT_TYPE_IMAGE)
+        return NULL;
+
+    if (type == TEXT_TYPE_PARAGRAPH)
+        return text_layout_box_new ();
+
+    if (type == TEXT_TYPE_RUN)
+        return NULL;
+
+    if (type == TEXT_TYPE_FRAME)
+        return text_layout_box_new ();
 }
 
 TextLayoutBox *
@@ -144,32 +145,36 @@ text_layout_build_layout_tree (TextLayout   *self,
                                TextFrame    *frame,
                                int           width)
 {
+    TextLayoutBox *root;
+
     g_return_val_if_fail (TEXT_IS_LAYOUT (self), NULL);
     g_return_val_if_fail (TEXT_IS_FRAME (frame), NULL);
 
-    TextLayoutBox *root = text_layout_box_new ();
-    do_layout_recursive (self, root, context, TEXT_ITEM (frame), width, 0, 0);
+    root = build_layout_tree_recursive (self, context, TEXT_ITEM (frame));
+    text_layout_box_layout (root, context, width, 0, 0);
     return root;
 }
 
 TextLayoutBox *
 text_layout_find_above (TextLayoutBox *item)
 {
-    return TEXT_LAYOUT_BOX (text_node_get_previous (TEXT_LAYOUT_BOX (item)));
+    g_return_val_if_fail (TEXT_IS_LAYOUT_BOX (item), NULL);
+    return TEXT_LAYOUT_BOX (text_node_get_previous (TEXT_NODE (item)));
 }
 
 TextLayoutBox *
 text_layout_find_below (TextLayoutBox *item)
 {
-    return TEXT_LAYOUT_BOX (text_node_get_next (TEXT_LAYOUT_BOX (item)));
+    g_return_val_if_fail (TEXT_IS_LAYOUT_BOX (item), NULL);
+    return TEXT_LAYOUT_BOX (text_node_get_next (TEXT_NODE (item)));
 }
 
 TextLayoutBox *
-text_layout_pick_internal (TextLayoutBox *root,
-                           int            x,
-                           int            y,
-                           double        *min_y_distance,
-                           TextNode     **min_y_layout)
+text_layout_pick_internal (TextLayoutBox  *root,
+                           double          x,
+                           double          y,
+                           double         *min_y_distance,
+                           TextLayoutBox **min_y_layout)
 {
     // Note: 'x' and 'y' are relative to the document origin
     TextNode *child;
@@ -192,7 +197,7 @@ text_layout_pick_internal (TextLayoutBox *root,
         found = TEXT_NODE (text_layout_pick_internal (layout_item, x - bbox->x, y - bbox->y, min_y_distance, min_y_layout));
 
         if (found) {
-            return found;
+            return TEXT_LAYOUT_BOX (found);
         }
 
         // Check if the cursor is fully within the bounding box
@@ -209,7 +214,7 @@ text_layout_pick_internal (TextLayoutBox *root,
             y <= bbox->y + bbox->height)
         {
             *min_y_distance = 0;
-            *min_y_layout = TEXT_NODE (layout_item);
+            *min_y_layout = layout_item;
             continue;
         }
 
@@ -221,7 +226,7 @@ text_layout_pick_internal (TextLayoutBox *root,
 
         if (dist_to_y < *min_y_distance) {
             *min_y_distance = dist_to_y;
-            *min_y_layout = TEXT_NODE (layout_item);
+            *min_y_layout = layout_item;
         }
     }
 
@@ -234,8 +239,8 @@ text_layout_pick (TextLayoutBox *root,
                   int            y)
 {
     double min_y_distance = G_MAXDOUBLE;
-    TextNode *min_y_layout = NULL;
-    TextNode *result;
+    TextLayoutBox *min_y_layout = NULL;
+    TextLayoutBox *result;
 
     result = text_layout_pick_internal(root, x, y, &min_y_distance, &min_y_layout);
 
@@ -250,6 +255,8 @@ text_layout_pick (TextLayoutBox *root,
 static void
 text_layout_class_init (TextLayoutClass *klass)
 {
+    klass->item_factory = text_layout_default_item_factory;
+
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
     object_class->finalize = text_layout_finalize;

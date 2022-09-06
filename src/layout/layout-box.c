@@ -231,6 +231,8 @@ text_layout_box_layout (TextLayoutBox *self,
     // Account for children (should we force elements to choose between
     // children and text? seems like a sensible simplification)
 
+    int child_offset_y = 0;
+
     for (TextNode *node = text_node_get_first_child (TEXT_NODE (self));
          node != NULL;
          node = text_node_get_next (node))
@@ -239,13 +241,17 @@ text_layout_box_layout (TextLayoutBox *self,
 
         g_debug (" - Found child\n");
 
+        text_layout_box_layout (child_box, context, width, offset_x, offset_y + child_offset_y);
+
         // We can assume bbox already exists by now, as the layout() method
         // has been called already in the layout manager.
 
         TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (child_box);
-        height += priv->bbox.height;
+        offset_y += priv->bbox.height;
         g_debug (" - Child height %d\n", height);
     }
+
+    height += child_offset_y;
 
     priv->bbox.x = offset_x;
     priv->bbox.y = offset_y;

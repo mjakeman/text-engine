@@ -26,7 +26,13 @@ G_BEGIN_DECLS
 
 #define TEXT_TYPE_LAYOUT (text_layout_get_type())
 
-G_DECLARE_FINAL_TYPE (TextLayout, text_layout, TEXT, LAYOUT, GObject)
+G_DECLARE_DERIVABLE_TYPE (TextLayout, text_layout, TEXT, LAYOUT, GObject)
+
+struct _TextLayoutClass
+{
+    GObjectClass parent_class;
+    TextLayoutBox *(*item_factory)(TextItem *item);
+};
 
 TextLayout *text_layout_new (void);
 
