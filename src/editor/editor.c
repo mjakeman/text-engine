@@ -1501,8 +1501,8 @@ text_editor_insert_text_at_mark (TextEditor *self,
 }
 
 void
-text_editor_insert_fragment_at_mark (TextEditor *self,
-                                     TextMark   *start,
+text_editor_insert_fragment_at_mark (TextEditor   *self,
+                                     TextMark     *start,
                                      TextFragment *fragment)
 {
     // Encapsulates insertion inside an editor module/object.
@@ -1534,7 +1534,12 @@ text_editor_insert_fragment_at_mark (TextEditor *self,
     else if (TEXT_IS_RUN (item))
     {
         TextRun *new_run;
-        split_run_in_place (TEXT_RUN (item), &new_run, _get_offset (start->paragraph, index_within_run));
+        const char *text;
+        int offset_within_run;
+
+        text = text_fragment_get_text (TEXT_FRAGMENT (item));
+        offset_within_run = (int) g_utf8_pointer_to_offset (text, text + index_within_run);
+        split_run_in_place (TEXT_RUN (item), &new_run, offset_within_run);
         text_node_insert_child_before (TEXT_NODE (start->paragraph), TEXT_NODE (fragment), TEXT_NODE (new_run));
     }
     else
