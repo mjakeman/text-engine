@@ -640,6 +640,8 @@ _erase_text (TextRun *run,
     // Calculate length (in bytes) to erase
     length_bytes = (int) (g_utf8_offset_to_pointer (text + index, num_chars) - (text + index));
 
+    g_assert (index + length_bytes <= strlen (text));
+
     // Assumes index and length are within range
     modified = g_string_new (text);
     modified = g_string_erase (modified, index, length_bytes);
@@ -1180,7 +1182,7 @@ _length_between_marks (TextMark *start,
     }
 
     iter = start->paragraph;
-    length = text_paragraph_get_length (iter) + 1 - start->index;
+    length = text_paragraph_get_length (iter) + 1 - _get_offset (start->paragraph, start->index);
 
     while ((iter = walk_until_next_paragraph (TEXT_ITEM (iter))) != NULL)
     {
