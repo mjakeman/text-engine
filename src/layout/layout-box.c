@@ -247,7 +247,7 @@ text_layout_box_layout (TextLayoutBox *self,
         // has been called already in the layout manager.
 
         TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (child_box);
-        offset_y += priv->bbox.height;
+        child_offset_y += priv->bbox.height;
         g_debug (" - Child height %d\n", height);
     }
 
