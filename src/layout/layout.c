@@ -126,17 +126,29 @@ text_layout_default_item_factory (TextItem *item)
     // Go from most specific to least specific, otherwise
     // we could accidentally create the wrong layout box
     // by taking the base class instead of the subclass
+
+    // Images
     if (type == TEXT_TYPE_IMAGE)
         return NULL;
 
+    // Paragraphs
     if (type == TEXT_TYPE_PARAGRAPH)
-        return text_layout_box_new ();
+        return TEXT_LAYOUT_BOX (text_layout_block_new ());
 
+    // Text Runs
     if (type == TEXT_TYPE_RUN)
         return NULL;
 
+    // Frames
     if (type == TEXT_TYPE_FRAME)
-        return text_layout_box_new ();
+        return TEXT_LAYOUT_BOX (text_layout_block_new ());
+
+    // It is an error to provide a type for which no layout
+    // item exists - we cannot display it.
+    g_critical ("Cannot create layout item for type '%s'.",
+                g_type_name (type));
+
+    return NULL;
 }
 
 TextLayoutBox *

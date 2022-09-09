@@ -15,7 +15,8 @@
 #include <pango/pango.h>
 #include <graphene.h>
 
-#include "layout-box.h"
+#include "layoutbox.h"
+#include "layoutblock.h"
 
 #include "../model/frame.h"
 #include "../model/paragraph.h"

@@ -1,4 +1,4 @@
-/* layout-box.c
+/* layoutblock.c
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -9,19 +9,17 @@
  * SPDX-License-Identifier: MPL-2.0 OR LGPL-2.1-or-later
  */
 
-#include "layout-box.h"
+#include "layoutblock.h"
 
 #include "../model/paragraph.h"
 #include "../model/image.h"
 
 typedef struct
 {
-    TextItem *item;
     PangoLayout *layout;
-    TextDimensions bbox;
-} TextLayoutBoxPrivate;
+} TextLayoutBlockPrivate;
 
-G_DEFINE_FINAL_TYPE_WITH_PRIVATE (TextLayoutBox, text_layout_box, TEXT_TYPE_NODE)
+G_DEFINE_TYPE_WITH_PRIVATE (TextLayoutBlock, text_layout_block, TEXT_TYPE_LAYOUT_BOX)
 
 enum {
     PROP_0,
@@ -30,43 +28,28 @@ enum {
 
 static GParamSpec *properties [N_PROPS];
 
-/**
- * text_layout_box_new:
- *
- * Create a new #TextLayoutBox.
- *
- * Returns: (transfer full): a newly created #TextLayoutBox
- */
-TextLayoutBox *
-text_layout_box_new (void)
+TextLayoutBlock *
+text_layout_block_new ()
 {
-    return g_object_new (TEXT_TYPE_LAYOUT_BOX, NULL);
+    return TEXT_LAYOUT_BLOCK (g_object_new (TEXT_TYPE_LAYOUT_BLOCK, NULL));
 }
 
 static void
-text_layout_box_finalize (GObject *object)
+text_layout_block_finalize (GObject *object)
 {
-    TextLayoutBox *self = (TextLayoutBox *)object;
-    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
+    TextLayoutBlock *self = (TextLayoutBlock *)object;
+    TextLayoutBlockPrivate *priv = text_layout_block_get_instance_private (self);
 
-    // Dispose of children
-    for (TextNode *child = text_node_get_first_child (TEXT_NODE (self));
-         child != NULL;
-         child = text_node_get_next (TEXT_NODE (self)))
-    {
-        g_clear_object (&child);
-    }
-
-    G_OBJECT_CLASS (text_layout_box_parent_class)->finalize (object);
+    G_OBJECT_CLASS (text_layout_block_parent_class)->finalize (object);
 }
 
 static void
-text_layout_box_get_property (GObject    *object,
+text_layout_block_get_property (GObject    *object,
                               guint       prop_id,
                               GValue     *value,
                               GParamSpec *pspec)
 {
-    TextLayoutBox *self = TEXT_LAYOUT_BOX (object);
+    TextLayoutBlock *self = TEXT_LAYOUT_BLOCK (object);
 
     switch (prop_id)
     {
@@ -76,18 +59,18 @@ text_layout_box_get_property (GObject    *object,
 }
 
 static void
-text_layout_box_set_property (GObject      *object,
+text_layout_block_set_property (GObject      *object,
                               guint         prop_id,
                               const GValue *value,
                               GParamSpec   *pspec)
 {
-    TextLayoutBox *self = TEXT_LAYOUT_BOX (object);
+    TextLayoutBlock *self = TEXT_LAYOUT_BLOCK (object);
 
     switch (prop_id)
-      {
-      default:
+    {
+    default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      }
+    }
 }
 
 
@@ -187,28 +170,34 @@ _set_attributes (TextParagraph *paragraph,
     pango_layout_set_attributes (pango_layout, list);
 }
 
-void
-text_layout_box_layout (TextLayoutBox *self,
-                        PangoContext  *context,
-                        int            width,
-                        int            offset_x,
-                        int            offset_y)
+static void
+text_layout_block_layout (TextLayoutBox *self,
+                          PangoContext  *context,
+                          int            width,
+                          int            offset_x,
+                          int            offset_y)
 {
-    g_return_if_fail (TEXT_IS_LAYOUT_BOX (self));
+    TextLayoutBlockPrivate *priv;
+    TextDimensions *bbox;
+    TextItem *item;
 
-    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
+    g_return_if_fail (TEXT_IS_LAYOUT_BLOCK (self));
+
+    priv = text_layout_block_get_instance_private (TEXT_LAYOUT_BLOCK (self));
+    bbox = text_layout_box_get_mutable_bbox (self);
+    item = text_layout_box_get_item (self);
 
     int height = 0;
 
     g_debug ("Starting for %s\n", g_type_name_from_instance (self));
 
-    g_debug ("Has item: %d\n", priv->item != NULL);
-    g_debug ("Has paragraph: %d\n", TEXT_IS_PARAGRAPH (priv->item));
+    g_debug ("Has item: %d\n", item != NULL);
+    g_debug ("Has paragraph: %d\n", TEXT_IS_PARAGRAPH (item));
 
-    if (priv->item && TEXT_IS_PARAGRAPH (priv->item))
+    if (item && TEXT_IS_PARAGRAPH (item))
     {
         gchar *text;
-        text = text_paragraph_get_text (TEXT_PARAGRAPH (priv->item));
+        text = text_paragraph_get_text (TEXT_PARAGRAPH (item));
         g_debug (" - String %s\n", text);
 
         if (!priv->layout)
@@ -216,7 +205,7 @@ text_layout_box_layout (TextLayoutBox *self,
 
         // Set style information
         // TODO: Matching from ruleset
-        _set_attributes (TEXT_PARAGRAPH (priv->item), priv->layout);
+        _set_attributes (TEXT_PARAGRAPH (item), priv->layout);
 
         // Determine height (must be done *after* attributes are set)
         pango_layout_set_text (priv->layout, text, -1);
@@ -237,71 +226,52 @@ text_layout_box_layout (TextLayoutBox *self,
          node != NULL;
          node = text_node_get_next (node))
     {
+        const TextDimensions *child_bbox;
         TextLayoutBox *child_box = TEXT_LAYOUT_BOX (node);
 
         g_debug (" - Found child\n");
 
         text_layout_box_layout (child_box, context, width, offset_x, offset_y + child_offset_y);
 
-        // We can assume bbox already exists by now, as the layout() method
+        // We can assume bblock already exists by now, as the layout() method
         // has been called already in the layout manager.
 
-        TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (child_box);
-        child_offset_y += priv->bbox.height;
+        child_bbox = text_layout_box_get_bbox (child_box);
+        child_offset_y += (int) child_bbox->height;
         g_debug (" - Child height %d\n", height);
     }
 
     height += child_offset_y;
 
-    priv->bbox.x = offset_x;
-    priv->bbox.y = offset_y;
-    priv->bbox.width = width;
-    priv->bbox.height = height;
-}
-
-void
-text_layout_box_set_item (TextLayoutBox *self,
-                          TextItem      *item)
-{
-    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
-    priv->item = item;
-    g_debug ("Set item to non null: %d\n", priv->item != NULL);
-}
-
-TextItem *
-text_layout_box_get_item (TextLayoutBox *self)
-{
-    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
-    return priv->item;
-}
-
-const TextDimensions *
-text_layout_box_get_bbox (TextLayoutBox *self)
-{
-    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
-
-    return &priv->bbox;
+    bbox->x = offset_x;
+    bbox->y = offset_y;
+    bbox->width = width;
+    bbox->height = height;
 }
 
 PangoLayout *
-text_layout_box_get_pango_layout (TextLayoutBox *self)
+text_layout_block_get_pango_layout (TextLayoutBlock *self)
 {
-    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
+    TextLayoutBlockPrivate *priv = text_layout_block_get_instance_private (self);
     return priv->layout;
 }
 
 static void
-text_layout_box_class_init (TextLayoutBoxClass *klass)
+text_layout_block_class_init (TextLayoutBlockClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-    object_class->finalize = text_layout_box_finalize;
-    object_class->get_property = text_layout_box_get_property;
-    object_class->set_property = text_layout_box_set_property;
+    object_class->finalize = text_layout_block_finalize;
+    object_class->get_property = text_layout_block_get_property;
+    object_class->set_property = text_layout_block_set_property;
+
+    TextLayoutBoxClass *layout_box_class = TEXT_LAYOUT_BOX_CLASS (klass);
+
+    layout_box_class->layout = text_layout_block_layout;
 }
 
 static void
-text_layout_box_init (TextLayoutBox *self)
+text_layout_block_init (TextLayoutBlock *self)
 {
-    TextLayoutBoxPrivate *priv = text_layout_box_get_instance_private (self);
+    TextLayoutBlockPrivate *priv = text_layout_block_get_instance_private (self);
 }

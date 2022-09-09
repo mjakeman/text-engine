@@ -1,11 +1,13 @@
 text_engine_sources += files([
   'layout.c',
-  'layout-box.c'
+  'layoutbox.c',
+  'layoutblock.c'
 ])
 
 layout_headers = [
   'layout.h',
-  'layout-box.h',
+  'layoutbox.h',
+  'layoutblock.h',
   'types.h'
 ]
 
