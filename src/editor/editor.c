@@ -786,6 +786,8 @@ _delete_within_paragraph (TextParagraph *paragraph,
 
         iter = start;
 
+        *bytes_deleted = 0;
+
         // If only part of the first run should be erased, handle it here.
         if (index_within_run != 0 || deletion_length != run_length)
         {
@@ -952,7 +954,7 @@ text_editor_delete_at_mark (TextEditor *self,
             // Marks within affected area
             if (mark->paragraph == start->paragraph &&
                 start->index <= mark->index &&
-                mark->index <= start->index + length)
+                mark->index <= start->index + bytes_deleted)
             {
                 _distribute_mark (mark, new_para, new_index,
                                   new_para, new_index);
@@ -960,7 +962,7 @@ text_editor_delete_at_mark (TextEditor *self,
 
             // Marks after affected area
             else if (mark->paragraph == start->paragraph &&
-                start->index + length < mark->index)
+                start->index + bytes_deleted < mark->index)
             {
                 _offset_mark (mark, -bytes_deleted);
             }

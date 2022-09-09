@@ -590,7 +590,7 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
             // Draw partial start segment
             draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
                                                     cursor->index,
-                                                    text_paragraph_get_length(cursor->paragraph),
+                                                    text_paragraph_get_size_bytes (cursor->paragraph),
                                                     selection_color);
         }
         else if (current == selection->paragraph)
