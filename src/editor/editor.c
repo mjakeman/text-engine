@@ -414,7 +414,6 @@ _try_move_mark_left (TextMark   *mark,
         text = text_paragraph_get_text (iter);
         mark->index = (int) (g_utf8_offset_to_pointer (text, num_indices - (amount - amount_moved)) - text);
         mark->paragraph = iter;
-        g_print ("Index: %d\n", mark->index);
         return 0;
     }
 
@@ -518,7 +517,6 @@ _try_move_mark_right (TextMark   *mark,
         text = text_paragraph_get_text (iter);
         mark->index = (int) (g_utf8_offset_to_pointer (text, (amount - amount_moved) - 1) - text);
         mark->paragraph = iter;
-        g_print ("Index: %d\n", mark->index);
         return 0;
     }
 
@@ -758,7 +756,7 @@ _delete_within_paragraph (TextParagraph *paragraph,
     g_assert (start_index <= end_index);
 
     // Case 1: The whole paragraph is to be deleted
-    if (start_index == 0 && deletion_length == paragraph_length)
+    if (start_index == 0 && deletion_length == paragraph_length + 1)
     {
         text_node_delete (TEXT_NODE (paragraph));
         *bytes_deleted = 0;
@@ -826,7 +824,7 @@ _delete_within_paragraph (TextParagraph *paragraph,
             }
 
             // Handle last element
-            _erase_content (start, 0, deletion_length - cur_deleted, &run_bytes_deleted);
+            _erase_content (iter, 0, deletion_length - cur_deleted, &run_bytes_deleted);
             *bytes_deleted += run_bytes_deleted;
             break;
         }
