@@ -192,7 +192,7 @@ text_display_set_property (GObject      *object,
         if (adj)
         {
             self->hadjustment = g_object_ref_sink (adj);
-            g_signal_connect_swapped (self->vadjustment, "value-changed", G_CALLBACK (gtk_widget_queue_draw), self);
+            g_signal_connect_swapped (self->hadjustment, "value-changed", G_CALLBACK (gtk_widget_queue_draw), self);
         }
         gtk_widget_queue_allocate (GTK_WIDGET (self));
         break;
