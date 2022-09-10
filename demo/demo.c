@@ -112,6 +112,7 @@ demo_window_init (DemoWindow *self)
 
     GFile *file;
     GError *error;
+    gchar *test;
 
     error = NULL;
 
@@ -138,25 +139,8 @@ demo_window_init (DemoWindow *self)
         contents = g_strdup ("Unable to load demo.html content.");
     }
 
-    // test = "<p>There was an <b>Old Man</b> with a <i>beard</i></p><p>Who said, &quot;<u>It is just as I feared!</u></p><p> &gt; Two Owls and a Hen,<br> &gt; Four Larks and a Wren,</p><p>Have all built their nests <b><u><i>in my beard!</i></u></b>&quot;</p>";
-    // frame = format_parse_html (contents);
-    frame = text_frame_new ();
-
-    TextParagraph *paragraph = text_paragraph_new ();
-    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new("Hello World. ")));
-    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new("This is some text")));
-    text_frame_append_block (frame, TEXT_BLOCK (paragraph));
-
-    paragraph = text_paragraph_new ();
-    // text_paragraph_append_fragment (paragraph, TEXT_FRAGMENT (text_run_new ("")));
-    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_image_new("screenshot.png")));
-    // text_paragraph_append_fragment (paragraph, TEXT_FRAGMENT (text_run_new ("")));
-    text_frame_append_block (frame, TEXT_BLOCK (paragraph));
-
-    paragraph = text_paragraph_new ();
-    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new("And some more text... ")));
-    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new(":)")));
-    text_frame_append_block (frame, TEXT_BLOCK (paragraph));
+    test = "<p>There was an <b>Old Man</b> with a <i>beard</i></p><p>Who said, &quot;<u>It is just as I feared!</u></p><p> &gt; Two Owls and a Hen,<br> &gt; Four Larks and a Wren,</p><p>Have all built their nests <b><u><i>in my beard!</i></u></b>&quot;</p>";
+    frame = format_parse_html (contents);
 
     document = text_document_new ();
     document->frame = frame;
@@ -165,7 +149,7 @@ demo_window_init (DemoWindow *self)
     scroll_area = gtk_scrolled_window_new();
     display = text_display_new (document);
 
-    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll_area), display);
+    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll_area), GTK_WIDGET (display));
     gtk_widget_set_vexpand (scroll_area, TRUE);
 
     gtk_box_append (GTK_BOX (vbox), header_bar);
