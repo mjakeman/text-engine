@@ -17,6 +17,7 @@
 #include "../model/paragraph.h"
 #include "../model/block.h"
 #include "../model/run.h"
+#include "../model/image.h"
 
 // Style Info
 // TODO: Refactor this into a stylesheet module rather than setting it on runs directly
@@ -48,6 +49,27 @@ build_text_frame_recursive (xmlNode        *nodes,
                 *current = text_paragraph_new ();
                 text_frame_append_block (frame, TEXT_BLOCK (*current));
             }
+            if (g_str_equal (cur_node->name, "img"))
+            {
+                TextImage *image;
+                xmlAttr *iter;
+                char *img_src;
+
+                *current = text_paragraph_new ();
+                text_frame_append_block (frame, TEXT_BLOCK (*current));
+
+                img_src = NULL;
+
+                for (iter = cur_node->properties; iter != NULL; iter = iter->next)
+                {
+                    if (g_str_equal (iter->name, "src"))
+                        img_src = g_strdup (iter->name);
+                }
+
+                image = text_image_new (img_src);
+                text_paragraph_append_fragment(*current, TEXT_FRAGMENT(image));
+
+            }
             else if (g_str_equal (cur_node->name, "b"))
                 is_bold = TRUE;
             else if (g_str_equal (cur_node->name, "i"))
@@ -70,7 +92,7 @@ build_text_frame_recursive (xmlNode        *nodes,
             text_run_set_style_bold (new_run, is_bold);
             text_run_set_style_italic (new_run, is_italic);
             text_run_set_style_underline (new_run, is_underline);
-            text_paragraph_append_run (*current, new_run);
+            text_paragraph_append_fragment(*current, new_run);
         }
 
         // PROCESS CHILDREN

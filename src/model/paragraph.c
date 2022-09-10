@@ -70,13 +70,13 @@ text_paragraph_set_property (GObject      *object,
 }
 
 void
-text_paragraph_append_run (TextParagraph *self,
-                           TextRun       *run)
+text_paragraph_append_fragment (TextParagraph *self,
+                                TextFragment  *fragment)
 {
     g_return_if_fail (TEXT_IS_PARAGRAPH (self));
-    g_return_if_fail (TEXT_IS_RUN (run));
+    g_return_if_fail (TEXT_IS_FRAGMENT (fragment));
 
-    text_node_append_child (TEXT_NODE (self), TEXT_NODE (run));
+    text_node_append_child (TEXT_NODE (self), TEXT_NODE (fragment));
 }
 
 /**
@@ -107,9 +107,9 @@ text_paragraph_get_text (TextParagraph *self)
     {
         const gchar *run_text;
 
-        g_assert (TEXT_IS_RUN (child));
+        g_assert (TEXT_IS_FRAGMENT (child));
 
-        g_object_get (child, "text", &run_text, NULL);
+        run_text = text_fragment_get_text (TEXT_FRAGMENT (child));
         g_string_append (str, run_text);
     }
 
@@ -130,17 +130,36 @@ text_paragraph_get_length (TextParagraph *self)
          child != NULL;
          child = text_node_get_next (child))
     {
-        g_assert (TEXT_IS_RUN (child));
-        length += text_run_get_length (TEXT_RUN (child));
+        length += text_fragment_get_length (TEXT_FRAGMENT (child));
     }
 
     return length;
 }
 
-TextRun *
-text_paragraph_get_run_at_index (TextParagraph *self,
-                                 int            index,
-                                 int           *starting_index)
+int
+text_paragraph_get_size_bytes (TextParagraph *self)
+{
+    TextNode *child;
+    int length;
+
+    g_return_val_if_fail (TEXT_IS_PARAGRAPH (self), -1);
+
+    length = 0;
+
+    for (child = text_node_get_first_child (TEXT_NODE (self));
+         child != NULL;
+         child = text_node_get_next (child))
+    {
+        length += (int) strlen (text_fragment_get_text ((TEXT_FRAGMENT (child))));
+    }
+
+    return length;
+}
+
+TextFragment *
+text_paragraph_get_item_at_index (TextParagraph *self,
+                                  int            byte_index,
+                                  int           *starting_index)
 {
     TextNode *child;
     int length;
@@ -149,23 +168,23 @@ text_paragraph_get_run_at_index (TextParagraph *self,
 
     g_return_val_if_fail (TEXT_IS_PARAGRAPH (self), NULL);
 
-    if (index == 0)
+    if (byte_index == 0)
     {
         TextNode *first;
         first = text_node_get_first_child (TEXT_NODE (self));
 
         if (starting_index)
             *starting_index = 0;
-        return TEXT_RUN (first);
+        return TEXT_FRAGMENT (first);
     }
 
     for (child = text_node_get_first_child (TEXT_NODE (self));
          child != NULL;
          child = text_node_get_next (child))
     {
-        int delta_length;
-        g_assert (TEXT_IS_RUN (child));
-        delta_length = text_run_get_length (TEXT_RUN (child));
+        int delta_size;
+        g_assert (TEXT_IS_FRAGMENT (child));
+        delta_size = text_fragment_get_size_bytes (TEXT_FRAGMENT (child));
 
         // Index is considered part of a run if it is immediately
         // after the last character in the run. For example:
@@ -175,15 +194,17 @@ text_paragraph_get_run_at_index (TextParagraph *self,
         //                                               ^
         //                 this index is part of the run /
         //
-        if (length < index && index <= length + delta_length)
+        if (length < byte_index && byte_index <= length + delta_size)
         {
             if (starting_index)
                 *starting_index = length;
-            return TEXT_RUN (child);
+            return TEXT_FRAGMENT (child);
         }
 
-        length += delta_length;
+        length += delta_size;
     }
+
+    g_critical ("Invalid index: %d passed to text_paragraph_get_item_at_index ()\n", byte_index);
 
     if (starting_index)
         *starting_index = -1;

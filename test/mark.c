@@ -50,19 +50,19 @@ mark_fixture_set_up (MarkFixture   *fixture,
     run1 = text_run_new (RUN1);
     run2 = text_run_new (RUN2);
     run3 = text_run_new (RUN3);
-    text_paragraph_append_run (para1, run1);
-    text_paragraph_append_run (para1, run2);
-    text_paragraph_append_run (para1, run3);
+    text_paragraph_append_fragment(para1, run1);
+    text_paragraph_append_fragment(para1, run2);
+    text_paragraph_append_fragment(para1, run3);
     text_frame_append_block (frame, TEXT_BLOCK (para1));
 
     para2 = text_paragraph_new ();
     run4 = text_run_new (RUN4);
-    text_paragraph_append_run (para2, run4);
+    text_paragraph_append_fragment(para2, run4);
     text_frame_append_block (frame, TEXT_BLOCK (para2));
 
     para3 = text_paragraph_new ();
     run5 = text_run_new (RUN5);
-    text_paragraph_append_run (para3, run5);
+    text_paragraph_append_fragment(para3, run5);
     text_frame_append_block (frame, TEXT_BLOCK (para3));
 
     fixture->doc = text_document_new ();
@@ -307,7 +307,7 @@ test_insert_on (MarkFixture   *fixture,
 
     // Perform insertion
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 9);
-    text_editor_insert (fixture->editor, TEXT_EDITOR_CURSOR, "Hello");
+    text_editor_insert_text(fixture->editor, TEXT_EDITOR_CURSOR, "Hello");
 
     // before:
     //      cursor >< mark
@@ -341,7 +341,7 @@ test_insert_after (MarkFixture   *fixture,
 
     // Perform insertion
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 9);
-    text_editor_insert (fixture->editor, TEXT_EDITOR_CURSOR, "Hello");
+    text_editor_insert_text(fixture->editor, TEXT_EDITOR_CURSOR, "Hello");
 
     // before:
     //      cursor ><      >< mark

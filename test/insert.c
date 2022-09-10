@@ -42,13 +42,13 @@ insert_fixture_set_up (InsertFixture *fixture,
     para1 = text_paragraph_new ();
     run1 = text_run_new (RUN1);
     run2 = text_run_new (RUN2);
-    text_paragraph_append_run (para1, run1);
-    text_paragraph_append_run (para1, run2);
+    text_paragraph_append_fragment(para1, run1);
+    text_paragraph_append_fragment(para1, run2);
     text_frame_append_block (frame, TEXT_BLOCK (para1));
 
     para2 = text_paragraph_new ();
     run3 = text_run_new (RUN3);
-    text_paragraph_append_run (para2, run3);
+    text_paragraph_append_fragment(para2, run3);
     text_frame_append_block (frame, TEXT_BLOCK (para2));
 
     fixture->doc = text_document_new ();
@@ -79,7 +79,7 @@ test_insert_test_start (InsertFixture *fixture,
 
     gchar *text;
 
-    text_editor_insert (fixture->editor, TEXT_EDITOR_CURSOR, "Alas! ");
+    text_editor_insert_text(fixture->editor, TEXT_EDITOR_CURSOR, "Alas! ");
 
     // changed
     g_object_get (fixture->run1, "text", &text, NULL);
@@ -106,7 +106,7 @@ test_insert_test_middle (InsertFixture *fixture,
     gchar *text;
 
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 26);
-    text_editor_insert (fixture->editor, TEXT_EDITOR_CURSOR, "n't");
+    text_editor_insert_text(fixture->editor, TEXT_EDITOR_CURSOR, "n't");
 
     // changed
     g_object_get (fixture->run1, "text", &text, NULL);
@@ -133,7 +133,7 @@ test_insert_test_end (InsertFixture *fixture,
     gchar *text;
 
     text_editor_move_right (fixture->editor, TEXT_EDITOR_CURSOR, 41);
-    text_editor_insert (fixture->editor, TEXT_EDITOR_CURSOR, "or at least I thought so...");
+    text_editor_insert_text(fixture->editor, TEXT_EDITOR_CURSOR, "or at least I thought so...");
 
     // changed
     g_object_get (fixture->run1, "text", &text, NULL);
@@ -157,7 +157,7 @@ test_insert_test_nothing (InsertFixture *fixture,
 {
     gchar *text;
 
-    text_editor_insert (fixture->editor, TEXT_EDITOR_CURSOR, "");
+    text_editor_insert_text(fixture->editor, TEXT_EDITOR_CURSOR, "");
 
     // changed
     g_object_get (fixture->run1, "text", &text, NULL);

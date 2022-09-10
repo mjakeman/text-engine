@@ -13,15 +13,15 @@
 
 struct _TextRun
 {
-    TextItem parent_instance;
-    gchar *text;
+    TextFragment parent_instance;
+    char *text;
     gboolean is_bold;
     gboolean is_italic;
     gboolean is_underline;
 };
 
 
-G_DEFINE_FINAL_TYPE (TextRun, text_run, TEXT_TYPE_ITEM)
+G_DEFINE_FINAL_TYPE (TextRun, text_run, TEXT_TYPE_FRAGMENT)
 
 enum {
     PROP_0,
@@ -57,11 +57,11 @@ text_run_get_property (GObject    *object,
 
     switch (prop_id)
     {
-    case PROP_TEXT:
-        g_value_set_string (value, self->text);
-        break;
-    default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+        case PROP_TEXT:
+            g_value_set_string (value, self->text);
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
 }
 
@@ -75,22 +75,14 @@ text_run_set_property (GObject      *object,
 
     switch (prop_id)
     {
-    case PROP_TEXT:
-        if (self->text)
-            g_free (self->text);
-        self->text = g_value_dup_string (value);
-        break;
-    default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+        case PROP_TEXT:
+            if (self->text)
+                g_free (self->text);
+            self->text = g_value_dup_string (value);
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
-}
-
-int
-text_run_get_length (TextRun *self)
-{
-    g_return_val_if_fail (TEXT_IS_RUN (self), -1);
-
-    return strlen (self->text);
 }
 
 gboolean
@@ -132,6 +124,12 @@ text_run_set_style_underline (TextRun  *self,
     self->is_underline = is_underline;
 }
 
+const char*
+text_run_get_text (TextFragment *self)
+{
+    return (TEXT_RUN (self))->text;
+}
+
 static void
 text_run_class_init (TextRunClass *klass)
 {
@@ -142,13 +140,17 @@ text_run_class_init (TextRunClass *klass)
     object_class->set_property = text_run_set_property;
 
     properties [PROP_TEXT]
-        = g_param_spec_string ("text",
-                               "Text",
-                               "Text",
-                               NULL,
-                               G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
+            = g_param_spec_string ("text",
+                                   "Text",
+                                   "Text",
+                                   NULL,
+                                   G_PARAM_READWRITE|G_PARAM_CONSTRUCT);
 
     g_object_class_install_properties (object_class, N_PROPS, properties);
+
+    TextFragmentClass *fragment_class = TEXT_FRAGMENT_CLASS (klass);
+
+    fragment_class->get_text = text_run_get_text;
 }
 
 static void

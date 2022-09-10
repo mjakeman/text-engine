@@ -14,13 +14,14 @@
 #include "display.h"
 #include "../model/document.h"
 #include "../model/run.h"
+#include "../model/image.h"
 
 struct _TextInspector
 {
     GtkWidget parent_instance;
 
     GObject *object;
-    TextFrame *frame;
+    TextDocument *document;
 
     GtkWidget *vbox;
     GtkWidget *colview;
@@ -39,9 +40,7 @@ static GParamSpec *properties [N_PROPS];
 
 #define TITLE "Text Engine"
 
-static void
-bind_frame (TextInspector *inspector,
-            TextFrame     *frame);
+static void populate_data_from_frame (TextInspector *inspector);
 
 TextInspector *
 text_inspector_new (void)
@@ -96,11 +95,9 @@ text_inspector_set_property (GObject      *object,
         if (TEXT_IS_DISPLAY (self->object))
         {
             TextDocument *document;
-
             g_object_get (self->object, "document", &document, NULL);
-
-            if (TEXT_IS_FRAME (document->frame))
-                bind_frame (self, document->frame);
+            self->document = document;
+            populate_data_from_frame (self);
         }
         break;
     default:
@@ -114,7 +111,7 @@ create_list_model (TextItem *item)
     GListStore *store;
     TextNode *node;
 
-    if (TEXT_IS_RUN (item))
+    if (TEXT_IS_FRAGMENT (item))
         return NULL;
 
     store = g_list_store_new (TEXT_TYPE_ITEM);
@@ -132,18 +129,18 @@ create_list_model (TextItem *item)
 }
 
 static void
-bind_frame (TextInspector *self,
-            TextFrame     *frame)
+populate_data_from_frame (TextInspector *self)
 {
     GtkTreeListModel *tree_model;
     GtkSingleSelection *selection_model;
     GListStore *root;
 
     g_return_if_fail (TEXT_IS_INSPECTOR (self));
-    g_return_if_fail (TEXT_IS_FRAME (frame));
+    g_return_if_fail (TEXT_IS_DOCUMENT (self->document));
+    g_return_if_fail (TEXT_IS_FRAME (self->document->frame));
 
     root = g_list_store_new (TEXT_TYPE_ITEM);
-    g_list_store_append (root, TEXT_ITEM (frame));
+    g_list_store_append (root, TEXT_ITEM (self->document->frame));
 
     tree_model = gtk_tree_list_model_new (G_LIST_MODEL (root), FALSE, TRUE,
                                           (GtkTreeListModelCreateModelFunc) create_list_model,
@@ -231,17 +228,27 @@ type_bind (GtkSignalListItemFactory *self,
 }
 
 void
-text_setup (GtkSignalListItemFactory *self,
-            GtkListItem              *listitem,
-            gpointer                  user_data)
+common_setup (GtkSignalListItemFactory *self,
+              GtkListItem              *listitem,
+              gpointer                  user_data)
 {
-    GtkWidget *label;
+    GtkWidget *label, *tag;
+    GtkWidget *hbox;
+
+    hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 4);
+
+    tag = gtk_label_new ("");
+    gtk_label_set_xalign (GTK_LABEL (tag), 0.5f);
+    gtk_widget_add_css_class (tag, "inspector-tag");
+    gtk_box_append (GTK_BOX (hbox), tag);
+    gtk_widget_hide (tag);
 
     label = gtk_label_new ("");
     gtk_label_set_xalign (GTK_LABEL (label), 0);
     gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
+    gtk_box_append (GTK_BOX (hbox), label);
 
-    gtk_list_item_set_child (listitem, label);
+    gtk_list_item_set_child (listitem, hbox);
 }
 
 void
@@ -249,18 +256,22 @@ text_bind (GtkSignalListItemFactory *self,
            GtkListItem              *listitem,
            gpointer                  user_data)
 {
-    GtkWidget *label;
+    GtkWidget *hbox, *tag, *label;
     GtkTreeListRow *row;
     TextItem *item;
-    const gchar *type;
 
-    label = gtk_list_item_get_child (listitem);
+    hbox = gtk_list_item_get_child (listitem);
     row = GTK_TREE_LIST_ROW (gtk_list_item_get_item (listitem));
 
     item = gtk_tree_list_row_get_item (row);
 
+    tag = gtk_widget_get_first_child ( hbox);
+    label = gtk_widget_get_next_sibling (tag);
+
     g_assert (GTK_IS_TREE_LIST_ROW (row));
     g_assert (TEXT_IS_ITEM (item));
+
+    gtk_widget_hide (tag);
 
     if (TEXT_IS_RUN (item))
     {
@@ -268,6 +279,59 @@ text_bind (GtkSignalListItemFactory *self,
 
         g_object_get (item, "text", &text, NULL);
         gtk_label_set_text (GTK_LABEL (label), text);
+    }
+    else if (TEXT_IS_IMAGE (item))
+    {
+        const gchar *src;
+
+        g_object_get (item, "src", &src, NULL);
+        gtk_label_set_text (GTK_LABEL (label), src);
+
+        gtk_widget_show (tag);
+        gtk_label_set_text (GTK_LABEL (tag), "image");
+    }
+    else
+    {
+        gtk_label_set_text (GTK_LABEL (label), NULL);
+    }
+}
+
+void
+style_bind (GtkSignalListItemFactory *self,
+            GtkListItem              *listitem,
+            gpointer                  user_data)
+{
+    GtkWidget *hbox, *tag, *label;
+    GtkTreeListRow *row;
+    TextItem *item;
+
+    hbox = gtk_list_item_get_child (listitem);
+    row = GTK_TREE_LIST_ROW (gtk_list_item_get_item (listitem));
+
+    item = gtk_tree_list_row_get_item (row);
+
+    tag = gtk_widget_get_first_child ( hbox);
+    label = gtk_widget_get_next_sibling (tag);
+
+    g_assert (GTK_IS_TREE_LIST_ROW (row));
+    g_assert (TEXT_IS_ITEM (item));
+
+    if (TEXT_IS_RUN (item))
+    {
+        GString *string;
+        char *text;
+
+        string = g_string_new ("");
+        if (text_run_get_style_bold (TEXT_RUN (item)))
+            string = g_string_append (string, "bold ");
+        if (text_run_get_style_italic (TEXT_RUN (item)))
+            string = g_string_append (string, "italic ");
+        if (text_run_get_style_underline (TEXT_RUN (item)))
+            string = g_string_append (string, "underline ");
+
+        text = g_string_free (string, FALSE);
+        gtk_label_set_text (GTK_LABEL (label), text);
+        g_free (text);
     }
     else
     {
@@ -298,10 +362,19 @@ setup_colview ()
     gtk_column_view_append_column (GTK_COLUMN_VIEW (colview), column);
 
     factory = gtk_signal_list_item_factory_new ();
-    g_signal_connect (factory, "setup", G_CALLBACK (text_setup), NULL);
+    g_signal_connect (factory, "setup", G_CALLBACK (common_setup), NULL);
     g_signal_connect (factory, "bind", G_CALLBACK (text_bind), NULL);
 
     column = gtk_column_view_column_new ("Contents", factory);
+    gtk_column_view_column_set_expand (column, TRUE);
+    gtk_column_view_column_set_resizable (column, TRUE);
+    gtk_column_view_append_column (GTK_COLUMN_VIEW (colview), column);
+
+    factory = gtk_signal_list_item_factory_new ();
+    g_signal_connect (factory, "setup", G_CALLBACK (common_setup), NULL);
+    g_signal_connect (factory, "bind", G_CALLBACK (style_bind), NULL);
+
+    column = gtk_column_view_column_new ("Style", factory);
     gtk_column_view_column_set_expand (column, TRUE);
     gtk_column_view_column_set_resizable (column, TRUE);
     gtk_column_view_append_column (GTK_COLUMN_VIEW (colview), column);
@@ -314,6 +387,7 @@ text_inspector_init (TextInspector *self)
 {
     GtkWidget *infobar;
     GtkWidget *label;
+    GtkWidget *scroll_area;
 
     self->vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_parent (self->vbox, GTK_WIDGET (self));
@@ -323,8 +397,13 @@ text_inspector_init (TextInspector *self)
 
     infobar = gtk_info_bar_new ();
     gtk_info_bar_add_child (GTK_INFO_BAR (infobar), label);
+    gtk_info_bar_add_button (GTK_INFO_BAR (infobar), "Refresh Model", GTK_BUTTONS_OK);
+    g_signal_connect_swapped (infobar, "response", G_CALLBACK (populate_data_from_frame), self);
     gtk_box_append (GTK_BOX (self->vbox), infobar);
 
+    scroll_area = gtk_scrolled_window_new ();
+    gtk_box_append (GTK_BOX (self->vbox), scroll_area);
+
     self->colview = setup_colview ();
-    gtk_box_append (GTK_BOX (self->vbox), self->colview);
+    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll_area), self->colview);
 }

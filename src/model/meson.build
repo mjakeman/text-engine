@@ -5,7 +5,10 @@ text_engine_sources += files([
   'frame.c',
   'paragraph.c',
   'mark.c',
-  'document.c'
+  'document.c',
+  'fragment.c',
+  'image.c',
+  'opaque.c'
 ])
 
 model_headers = [
@@ -15,7 +18,10 @@ model_headers = [
   'frame.h',
   'paragraph.h',
   'mark.h',
-  'document.h'
+  'document.h',
+  'fragment.h',
+  'image.h',
+  'opaque.h'
 ]
 
 install_headers(model_headers, subdir : header_dir / 'model')

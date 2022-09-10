@@ -29,6 +29,7 @@
 
 #include <ui/display.h>
 #include <format/import.h>
+#include <model/image.h>
 
 #define DEMO_TYPE_WINDOW demo_window_get_type ()
 G_DECLARE_FINAL_TYPE (DemoWindow, demo_window, DEMO, WINDOW, AdwApplicationWindow)
@@ -138,7 +139,25 @@ demo_window_init (DemoWindow *self)
     }
 
     // test = "<p>There was an <b>Old Man</b> with a <i>beard</i></p><p>Who said, &quot;<u>It is just as I feared!</u></p><p> &gt; Two Owls and a Hen,<br> &gt; Four Larks and a Wren,</p><p>Have all built their nests <b><u><i>in my beard!</i></u></b>&quot;</p>";
-    frame = format_parse_html (contents);
+    // frame = format_parse_html (contents);
+    frame = text_frame_new ();
+
+    TextParagraph *paragraph = text_paragraph_new ();
+    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new("Hello World. ")));
+    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new("This is some text")));
+    text_frame_append_block (frame, TEXT_BLOCK (paragraph));
+
+    paragraph = text_paragraph_new ();
+    // text_paragraph_append_fragment (paragraph, TEXT_FRAGMENT (text_run_new ("")));
+    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_image_new("screenshot.png")));
+    // text_paragraph_append_fragment (paragraph, TEXT_FRAGMENT (text_run_new ("")));
+    text_frame_append_block (frame, TEXT_BLOCK (paragraph));
+
+    paragraph = text_paragraph_new ();
+    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new("And some more text... ")));
+    text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT(text_run_new(":)")));
+    text_frame_append_block (frame, TEXT_BLOCK (paragraph));
+
     document = text_document_new ();
     document->frame = frame;
 

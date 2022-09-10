@@ -1,4 +1,4 @@
-/* layout-box.h
+/* layoutbox.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -28,9 +28,8 @@ G_DECLARE_DERIVABLE_TYPE (TextLayoutBox, text_layout_box, TEXT, LAYOUT_BOX, Text
 struct _TextLayoutBoxClass
 {
     TextNodeClass parent_class;
+    void (*layout)(TextLayoutBox *self, PangoContext *context, int width, int offset_x, int offset_y);
 };
-
-TextLayoutBox *text_layout_box_new (void);
 
 void
 text_layout_box_set_item (TextLayoutBox *self,
@@ -48,16 +47,5 @@ text_layout_box_layout (TextLayoutBox *self,
 
 const TextDimensions *
 text_layout_box_get_bbox (TextLayoutBox *self);
-
-PangoLayout *
-text_layout_box_get_pango_layout (TextLayoutBox *self);
-
-void
-text_layout_box_set_cursor (TextLayoutBox *self,
-                            int index);
-
-gboolean
-text_layout_box_get_cursor (TextLayoutBox         *self,
-                            const TextDimensions **cursor);
 
 G_END_DECLS

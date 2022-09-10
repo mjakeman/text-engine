@@ -1,4 +1,4 @@
-/* types.h
+/* image.h
  *
  * Copyright 2022 Matthew Jakeman <mjakeman26@outlook.co.nz>
  *
@@ -9,18 +9,19 @@
  * SPDX-License-Identifier: MPL-2.0 OR LGPL-2.1-or-later
  */
 
-/* TODO: Make these GBoxed for introspection support! */
-
 #pragma once
 
 #include <glib-object.h>
 
-typedef struct
-{
-    gdouble x;
-    gdouble y;
-    gdouble width;
-    gdouble height;
+#include "item.h"
+#include "opaque.h"
 
-    // TODO: Also consider padding/margin/border?
-} TextDimensions;
+G_BEGIN_DECLS
+
+#define TEXT_TYPE_IMAGE (text_image_get_type())
+
+G_DECLARE_FINAL_TYPE (TextImage, text_image, TEXT, IMAGE, TextOpaque)
+
+TextImage *text_image_new        (const gchar *src);
+
+G_END_DECLS

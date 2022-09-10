@@ -153,7 +153,8 @@ text_display_set_property (GObject      *object,
     switch (prop_id)
     {
     case PROP_DOCUMENT:
-        text_node_clear (&self->layout_tree);
+        if (self->layout_tree)
+            text_node_clear (&self->layout_tree);
         self->document = g_value_get_object (value);
 
         if (self->document)
@@ -191,7 +192,7 @@ text_display_set_property (GObject      *object,
         if (adj)
         {
             self->hadjustment = g_object_ref_sink (adj);
-            g_signal_connect_swapped (self->vadjustment, "value-changed", G_CALLBACK (gtk_widget_queue_draw), self);
+            g_signal_connect_swapped (self->hadjustment, "value-changed", G_CALLBACK (gtk_widget_queue_draw), self);
         }
         gtk_widget_queue_allocate (GTK_WIDGET (self));
         break;
@@ -225,7 +226,9 @@ _rebuild_layout_tree (TextDisplay *self, int width)
 {
     g_print ("Rebuilding layout tree\n");
 
-    text_node_clear (&self->layout_tree);
+    if (self->layout_tree)
+        text_node_clear (&self->layout_tree);
+
     self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                        gtk_widget_get_pango_context (GTK_WIDGET (self)),
                                                        self->document->frame,
@@ -233,41 +236,107 @@ _rebuild_layout_tree (TextDisplay *self, int width)
 }
 
 static void
-layout_snapshot_recursive (GtkWidget     *widget,
-                           TextLayoutBox *layout_box,
-                           GtkSnapshot   *snapshot,
-                           GdkRGBA       *fg_color,
-                           int           *delta_height)
+draw_box_recursive (GtkWidget     *widget,
+                    TextLayoutBox *layout_box,
+                    GtkSnapshot   *snapshot,
+                    GdkRGBA       *fg_color,
+                    int           *delta_height);
+
+static void
+draw_block (GtkWidget     *widget,
+            TextLayoutBox *layout_box,
+            GtkSnapshot   *snapshot,
+            GdkRGBA       *fg_color,
+            int           *delta_height)
 {
     int offset = 0;
+    TextItem *item;
+    const TextDimensions *bbox;
 
+    // Get bounding box
+    bbox = text_layout_box_get_bbox (layout_box);
+
+    // Draw children first
+    gtk_snapshot_save (snapshot);
     for (TextNode *node = text_node_get_first_child (TEXT_NODE (layout_box));
          node != NULL;
          node = text_node_get_next (node))
     {
         g_assert (TEXT_IS_LAYOUT_BOX (node));
 
-        int delta_height;
-        layout_snapshot_recursive (widget, TEXT_LAYOUT_BOX (node), snapshot, fg_color, &delta_height);
-        offset += delta_height;
+        int child_delta_height;
+
+        draw_box_recursive(widget, TEXT_LAYOUT_BOX(node), snapshot, fg_color, &child_delta_height);
+        offset += child_delta_height;
     }
+    gtk_snapshot_restore (snapshot);
 
-    PangoLayout *layout = text_layout_box_get_pango_layout (layout_box);
-    const TextDimensions *bbox = text_layout_box_get_bbox (layout_box);
-
-    if (layout)
+    // Draw Text (if applicable)
+    if (TEXT_IS_LAYOUT_BLOCK (layout_box))
     {
-        gtk_snapshot_save (snapshot);
-        gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, offset));
-        gtk_snapshot_append_layout (snapshot, layout, fg_color);
-        gtk_snapshot_restore (snapshot);
+        PangoLayout *layout;
 
-        offset = bbox->height;
+        layout = text_layout_block_get_pango_layout (TEXT_LAYOUT_BLOCK (layout_box));
+
+        if (layout)
+        {
+            gtk_snapshot_save (snapshot);
+            gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, offset));
+            gtk_snapshot_append_layout (snapshot, layout, fg_color);
+            // item = text_layout_box_get_item (layout_box);
+            // draw_inline_elements (snapshot, layout, item, bbox->x, bbox->y);
+            gtk_snapshot_restore (snapshot);
+        }
     }
 
     gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->height));
 
-    *delta_height = bbox->height;
+    *delta_height = (int) bbox->height;
+}
+
+static void
+draw_inline (GtkWidget    *widget,
+            TextLayoutBox *layout_box,
+            GtkSnapshot   *snapshot,
+            GdkRGBA       *fg_color)
+{
+    GdkRGBA placeholder;
+    const TextDimensions *bbox;
+
+    gdk_rgba_parse (&placeholder, "red");
+
+    // Get bounding box
+    bbox = text_layout_box_get_bbox (layout_box);
+
+    // Draw bounding box as solid colour (for now)
+    gtk_snapshot_save (snapshot);
+    gtk_snapshot_append_color (snapshot, &placeholder,
+                               &GRAPHENE_RECT_INIT (
+                                       bbox->x,
+                                       bbox->y,
+                                       bbox->width,
+                                       bbox->height));
+    gtk_snapshot_restore (snapshot);
+}
+
+static void
+draw_box_recursive (GtkWidget     *widget,
+                    TextLayoutBox *layout_box,
+                    GtkSnapshot   *snapshot,
+                    GdkRGBA       *fg_color,
+                    int           *delta_height)
+{
+    int offset = 0;
+    TextItem *item;
+    const TextDimensions *bbox;
+
+    *delta_height = 0;
+
+    // For block elements, draw content and children
+    if (TEXT_IS_LAYOUT_BLOCK (layout_box))
+        draw_block (widget, layout_box, snapshot, fg_color, delta_height);
+    else if (TEXT_IS_LAYOUT_INLINE (layout_box))
+        draw_inline (widget, layout_box, snapshot, fg_color);
 }
 
 static void
@@ -275,33 +344,65 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
                       TextMark *cursor,
                       GdkRGBA *color)
 {
-    TextLayoutBox *box;
+    TextLayoutBlock *block;
     TextParagraph *item;
+    TextFragment *inline_item;
     int index;
 
     item = cursor->paragraph;
     index = cursor->index;
 
-    box = TEXT_LAYOUT_BOX (text_item_get_attachment (item));
+    inline_item = text_paragraph_get_item_at_index (item, index, NULL);
+    block = TEXT_LAYOUT_BLOCK (text_item_get_attachment (item));
 
-    if (TEXT_IS_LAYOUT_BOX (box)) {
+    if (TEXT_IS_LAYOUT_BOX (block))
+    {
         int x, y, height, width;
         const TextDimensions *bbox;
         PangoLayout *layout;
 
-        bbox = text_layout_box_get_bbox(box);
-        layout = text_layout_box_get_pango_layout(box);
+        bbox = text_layout_box_get_bbox (block);
 
-        PangoRectangle cursor_rect;
-        pango_layout_index_to_pos (layout,
-                                   index,
-                                   &cursor_rect);
+        // if (TEXT_IS_RUN (inline_item))
+        {
+            layout = text_layout_block_get_pango_layout (block);
 
-        // Hardcode width to 1
-        x = cursor_rect.x / PANGO_SCALE;
-        y = cursor_rect.y / PANGO_SCALE;
-        height = cursor_rect.height / PANGO_SCALE;
-        width = 1;
+            PangoRectangle cursor_rect;
+            pango_layout_index_to_pos (layout,
+                                       index,
+                                       &cursor_rect);
+
+            // Hardcode width to 1
+            x = cursor_rect.x / PANGO_SCALE;
+            y = cursor_rect.y / PANGO_SCALE;
+            height = cursor_rect.height / PANGO_SCALE;
+            width = 1;
+        }
+        /*else if (inline_item != NULL)
+        {
+            // Treat object as opaque with start and end cursor positions
+            // TODO: Make this far more robust e.g. for editable inlines
+            // TODO: What even is an inline_box? Give this a proper name
+            TextLayoutBox *inline_box;
+            const TextDimensions *inline_bbox;
+            inline_box = TEXT_LAYOUT_BOX (text_item_get_attachment (inline_item));
+            inline_bbox = text_layout_box_get_bbox (inline_box);
+
+            if (index == 0)
+            {
+                x = 0;
+                y = 0;
+                height = (int) inline_bbox->height;
+                width = 1;
+            }
+            else
+            {
+                x = (int) inline_bbox->width;
+                y = 0;
+                height = (int) inline_bbox->height;
+                width = 1;
+            }
+        }*/
 
         gtk_snapshot_append_color (snapshot, color, &GRAPHENE_RECT_INIT (bbox->x + x, bbox->y + y, width, height));
     }
@@ -470,7 +571,7 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
                          TextMark    *cursor,
                          TextMark    *selection)
 {
-    TextLayoutBox *layout;
+    TextLayoutBlock *layout;
     TextParagraph *current;
     const TextDimensions *bbox;
     gboolean draw_selection;
@@ -478,11 +579,11 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
     // Check if cursor and selection are within the same paragraph
     if (cursor->paragraph == selection->paragraph)
     {
-        layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (cursor->paragraph)));
-        bbox = text_layout_box_get_bbox (layout);
+        layout = TEXT_LAYOUT_BLOCK (text_item_get_attachment (TEXT_ITEM (cursor->paragraph)));
+        bbox = text_layout_box_get_bbox (TEXT_LAYOUT_BOX (layout));
 
         gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->y));
-        draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
+        draw_selection_partial_layout_snapshot (snapshot, text_layout_block_get_pango_layout (layout),
                                                 cursor->index, selection->index,
                                                 selection_color);
 
@@ -502,8 +603,8 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
         if (!current)
             break;
 
-        layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (current)));
-        bbox = text_layout_box_get_bbox (layout);
+        layout = TEXT_LAYOUT_BLOCK (text_item_get_attachment (TEXT_ITEM (current)));
+        bbox = text_layout_box_get_bbox (TEXT_LAYOUT_BOX (layout));
 
         gtk_snapshot_save (snapshot);
         gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->y));
@@ -511,15 +612,15 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
         if (current == cursor->paragraph)
         {
             // Draw partial start segment
-            draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
+            draw_selection_partial_layout_snapshot (snapshot, text_layout_block_get_pango_layout (layout),
                                                     cursor->index,
-                                                    text_paragraph_get_length(cursor->paragraph),
+                                                    text_paragraph_get_size_bytes (cursor->paragraph),
                                                     selection_color);
         }
         else if (current == selection->paragraph)
         {
             // Draw partial end segment
-            draw_selection_partial_layout_snapshot (snapshot, text_layout_box_get_pango_layout (layout),
+            draw_selection_partial_layout_snapshot (snapshot, text_layout_block_get_pango_layout (layout),
                                                     0,
                                                     selection->index,
                                                     selection_color);
@@ -531,7 +632,7 @@ draw_selection_snapshot (GtkSnapshot *snapshot,
         {
             // Draw full segment
             draw_selection_layout_snapshot (snapshot,
-                                            text_layout_box_get_pango_layout (layout),
+                                            text_layout_block_get_pango_layout (layout),
                                             selection_color);
         }
 
@@ -590,7 +691,7 @@ text_display_snapshot (GtkWidget   *widget,
 
     // Draw layout tree
     gtk_snapshot_save (snapshot);
-    layout_snapshot_recursive (widget, self->layout_tree, snapshot, &fg_color, &delta_height);
+    draw_box_recursive(widget, self->layout_tree, snapshot, &fg_color, &delta_height);
     gtk_snapshot_restore (snapshot);
 
     // Draw cursors
@@ -624,7 +725,9 @@ text_display_measure (GtkWidget      *widget,
         // Account for start/end margins
         for_size -= self->margin_start + self->margin_end;
 
-        text_node_clear (&self->layout_tree);
+        if (self->layout_tree)
+            text_node_clear (&self->layout_tree);
+
         self->layout_tree = text_layout_build_layout_tree (self->layout,
                                                            context,
                                                            self->document->frame,
@@ -797,7 +900,7 @@ commit (GtkIMContext *context,
 
     self->document->selection != NULL
         ? text_editor_replace (self->editor, TEXT_EDITOR_CURSOR, TEXT_EDITOR_SELECTION, str)
-        : text_editor_insert (self->editor, TEXT_EDITOR_CURSOR, str);
+        : text_editor_insert_text(self->editor, TEXT_EDITOR_CURSOR, str);
 
     _unset_selection (self->document);
 
@@ -816,17 +919,17 @@ static gboolean
 _move_cursor_home (TextMark *cursor)
 {
     TextParagraph *para;
-    TextLayoutBox *layout;
+    TextLayoutBlock *layout;
     int index;
 
     index = cursor->index;
     para = cursor->paragraph;
-    layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+    layout = TEXT_LAYOUT_BLOCK (text_item_get_attachment (TEXT_ITEM (para)));
 
     if (layout) {
         PangoLayout *pango;
         GSList *iter;
-        pango = text_layout_box_get_pango_layout (layout);
+        pango = text_layout_block_get_pango_layout (layout);
         int base_index = 0;
 
         for (iter = pango_layout_get_lines (pango);
@@ -866,17 +969,17 @@ static gboolean
 _move_cursor_end (TextMark *cursor)
 {
     TextParagraph *para;
-    TextLayoutBox *layout;
+    TextLayoutBlock *layout;
     int index;
 
     index = cursor->index;
     para = cursor->paragraph;
-    layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
+    layout = TEXT_LAYOUT_BLOCK (text_item_get_attachment (TEXT_ITEM (para)));
 
     if (layout) {
         PangoLayout *pango;
         GSList *iter;
-        pango = text_layout_box_get_pango_layout (layout);
+        pango = text_layout_block_get_pango_layout (layout);
         iter = pango_layout_get_lines (pango);
         int base_index = 0;
 
@@ -917,7 +1020,7 @@ _move_cursor_vertically (TextMark *cursor,
                          gboolean  up)
 {
     TextParagraph *para;
-    TextLayoutBox *box_layout;
+    TextLayoutBlock *block_layout;
     PangoLayout *pango_layout;
     PangoLayoutLine *line;
     PangoRectangle position;
@@ -927,8 +1030,8 @@ _move_cursor_vertically (TextMark *cursor,
 
     index = cursor->index;
     para = cursor->paragraph;
-    box_layout = TEXT_LAYOUT_BOX (text_item_get_attachment (TEXT_ITEM (para)));
-    pango_layout = text_layout_box_get_pango_layout(box_layout);
+    block_layout = TEXT_LAYOUT_BLOCK (text_item_get_attachment (TEXT_ITEM (para)));
+    pango_layout = text_layout_block_get_pango_layout(block_layout);
 
     // First try move within the paragraph
     pango_layout_index_to_line_x (pango_layout, index, FALSE, &cur_line_index, &x_pos);
@@ -945,18 +1048,18 @@ _move_cursor_vertically (TextMark *cursor,
     // If there are no more lines left, move to above or below box_layout
     pango_layout_index_to_pos(pango_layout, index, &position);
 
-    box_layout = up
-        ? text_layout_find_above (box_layout)
-        : text_layout_find_below (box_layout);
+    block_layout = up
+        ? TEXT_LAYOUT_BLOCK (text_layout_find_above (TEXT_LAYOUT_BOX (block_layout)))
+        : TEXT_LAYOUT_BLOCK (text_layout_find_below (TEXT_LAYOUT_BOX (block_layout)));
 
-    if (!box_layout)
+    if (!block_layout)
         return FALSE;
 
-    pango_layout = text_layout_box_get_pango_layout(box_layout);
+    pango_layout = text_layout_block_get_pango_layout (block_layout);
     line = pango_layout_get_line(pango_layout, up ? pango_layout_get_line_count (pango_layout) - 1 : 0);
     pango_layout_line_x_to_index (line, position.x, &index, NULL);
 
-    para = TEXT_PARAGRAPH (text_layout_box_get_item (box_layout));
+    para = TEXT_PARAGRAPH (text_layout_box_get_item (TEXT_LAYOUT_BOX (block_layout)));
 
     cursor->index = index;
     cursor->paragraph = para;
@@ -1118,6 +1221,18 @@ key_pressed (GtkEventControllerKey *controller,
         goto reallocate;
     }
 
+    // Select all
+    if (keyval == GDK_KEY_a && ctrl_pressed)
+    {
+        if (!selection)
+            _set_selection (self->document);
+
+        text_editor_move_first (self->editor, TEXT_EDITOR_SELECTION);
+        text_editor_move_last (self->editor, TEXT_EDITOR_CURSOR);
+
+        goto reallocate;
+    }
+
     // Handle formatting
     if (keyval == GDK_KEY_b && ctrl_pressed)
     {
@@ -1128,6 +1243,40 @@ key_pressed (GtkEventControllerKey *controller,
                                        self->document->cursor,
                                        self->document->selection,
                                        !is_bold);
+        goto reallocate;
+    }
+
+    if (keyval == GDK_KEY_i && ctrl_pressed)
+    {
+        gboolean is_italic;
+
+        is_italic = text_editor_get_format_italic_at_mark (self->editor, self->document->cursor);
+        text_editor_apply_format_italic (self->editor,
+                                         self->document->cursor,
+                                         self->document->selection,
+                                         !is_italic);
+        goto reallocate;
+    }
+
+    if (keyval == GDK_KEY_u && ctrl_pressed)
+    {
+        gboolean is_underline;
+
+        is_underline = text_editor_get_format_underline_at_mark (self->editor, self->document->cursor);
+        text_editor_apply_format_underline (self->editor,
+                                            self->document->cursor,
+                                            self->document->selection,
+                                            !is_underline);
+        goto reallocate;
+    }
+
+    // Insert image
+    if (keyval == GDK_KEY_1 && ctrl_pressed)
+    {
+        TextImage *img;
+        img = text_image_new ("placeholder.png");
+        text_editor_insert_fragment(self->editor, TEXT_EDITOR_CURSOR, TEXT_FRAGMENT(img));
+
         goto reallocate;
     }
 
@@ -1170,18 +1319,29 @@ set_mark_from_cursor (TextDisplay *self,
 
             // TODO: Properly find the nearest leaf node
             // when we have more complex renderers
-            g_return_if_fail (TEXT_IS_PARAGRAPH (item));
 
-            int index, trailing;
+            if (TEXT_IS_PARAGRAPH (item))
+            {
+                int index, trailing;
 
-            // Pango automatically clamps the coordinates to the layout for us
-            pango_layout_xy_to_index (text_layout_box_get_pango_layout (box),
-                                      (x - bbox->x) * PANGO_SCALE,
-                                      (y - bbox->y) * PANGO_SCALE,
-                                      &index, &trailing);
+                // Pango automatically clamps the coordinates to the layout for us
+                pango_layout_xy_to_index (text_layout_block_get_pango_layout (TEXT_LAYOUT_BLOCK (box)),
+                                          (int)((x - bbox->x) * (double)PANGO_SCALE),
+                                          (int)((y - bbox->y) * (double)PANGO_SCALE),
+                                          &index, &trailing);
 
-            mark->paragraph = TEXT_PARAGRAPH (item);
-            mark->index = index;
+                mark->paragraph = TEXT_PARAGRAPH (item);
+                mark->index = index;
+            }
+            else if (TEXT_IS_IMAGE (item))
+            {
+                // Treat bounding box opaquely
+                mark->index = 0;
+                mark->paragraph = TEXT_PARAGRAPH (text_node_get_parent (TEXT_NODE (item)));
+                if ((x - bbox->x) > (bbox->width / 2))
+                    mark->index = 1;
+
+            }
         }
     }
 }

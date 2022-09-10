@@ -50,19 +50,19 @@ delete_fixture_set_up (DeleteFixture *fixture,
     run1 = text_run_new (RUN1);
     run2 = text_run_new (RUN2);
     run3 = text_run_new (RUN3);
-    text_paragraph_append_run (para1, run1);
-    text_paragraph_append_run (para1, run2);
-    text_paragraph_append_run (para1, run3);
+    text_paragraph_append_fragment(para1, run1);
+    text_paragraph_append_fragment(para1, run2);
+    text_paragraph_append_fragment(para1, run3);
     text_frame_append_block (frame, TEXT_BLOCK (para1));
 
     para2 = text_paragraph_new ();
     run4 = text_run_new (RUN4);
-    text_paragraph_append_run (para2, run4);
+    text_paragraph_append_fragment(para2, run4);
     text_frame_append_block (frame, TEXT_BLOCK (para2));
 
     para3 = text_paragraph_new ();
     run5 = text_run_new (RUN5);
-    text_paragraph_append_run (para3, run5);
+    text_paragraph_append_fragment(para3, run5);
     text_frame_append_block (frame, TEXT_BLOCK (para3));
 
     fixture->doc = text_document_new ();
@@ -115,7 +115,7 @@ test_whole_run_others_in_paragraph (DeleteFixture *fixture,
     text_editor_delete (fixture->editor, TEXT_EDITOR_CURSOR, 10);
 
     // run 2 should no longer exist
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run1);
     g_assert_cmpint (fixture->doc->cursor->index, ==, 10);
 
     // check length
@@ -150,7 +150,7 @@ test_whole_run_last_in_paragraph (DeleteFixture *fixture,
     g_assert_cmpint (length, ==, 0);
 
     // check cursor position
-    g_assert_true (text_editor_get_run (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run4);
+    g_assert_true (text_editor_get_item (fixture->editor, TEXT_EDITOR_CURSOR) == fixture->run4);
     g_assert_cmpint (fixture->doc->cursor->index, ==, 0);
 
     // check text

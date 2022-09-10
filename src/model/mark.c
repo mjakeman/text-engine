@@ -21,13 +21,15 @@ G_DEFINE_BOXED_TYPE (TextMark, text_mark, text_mark_copy, text_mark_free)
  * Returns: (transfer full): A newly created #TextMark
  */
 TextMark *
-text_mark_new (TextParagraph *paragraph,
-               int            index,
-               TextGravity    gravity)
+text_mark_new (struct _TextDocument *document,
+               TextParagraph        *paragraph,
+               int                   index,
+               TextGravity           gravity)
 {
     TextMark *self;
 
     self = g_slice_new0 (TextMark);
+    self->document = document;
     self->paragraph = paragraph;
     self->index = index;
     self->gravity = gravity;
@@ -51,7 +53,7 @@ text_mark_copy (TextMark *self)
 
     g_return_val_if_fail (self, NULL);
 
-    copy = text_mark_new (self->paragraph, self->index, self->gravity);
+    copy = text_mark_new (self->document, self->paragraph, self->index, self->gravity);
 
     return copy;
 }

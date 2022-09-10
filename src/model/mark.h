@@ -25,16 +25,19 @@ typedef enum
 } TextGravity;
 
 typedef struct _TextMark TextMark;
+struct _TextDocument;
 
 struct _TextMark
 {
+    struct _TextDocument *document;
+
     TextParagraph *paragraph;
-    int index;
+    int index; // byte index (i.e. NOT unicode)
     TextGravity gravity;
 };
 
 GType         text_mark_get_type (void) G_GNUC_CONST;
-TextMark     *text_mark_new      (TextParagraph *paragraph, int index, TextGravity gravity);
+TextMark     *text_mark_new      (struct _TextDocument *document, TextParagraph *paragraph, int index, TextGravity gravity);
 TextMark     *text_mark_copy     (TextMark *self);
 void          text_mark_free     (TextMark *self);
 

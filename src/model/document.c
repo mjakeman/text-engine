@@ -99,7 +99,7 @@ text_document_create_mark (TextDocument  *doc,
     g_return_val_if_fail (TEXT_IS_DOCUMENT (doc), NULL);
     g_return_val_if_fail (TEXT_IS_PARAGRAPH (paragraph), NULL);
 
-    new = text_mark_new (paragraph, index, gravity);
+    new = text_mark_new (doc, paragraph, index, gravity);
     doc->marks = g_slist_append (doc->marks, new);
 
     return new;
@@ -144,5 +144,5 @@ text_document_clear_mark (TextDocument *doc,
 static void
 text_document_init (TextDocument *self)
 {
-    self->cursor = text_mark_new (NULL, 0, TEXT_GRAVITY_RIGHT);
+    self->cursor = text_mark_new (self, NULL, 0, TEXT_GRAVITY_RIGHT);
 }

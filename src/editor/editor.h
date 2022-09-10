@@ -29,26 +29,30 @@ typedef enum
 
 TextEditor *text_editor_new        (TextDocument *document);
 
-void        text_editor_move_mark_first (TextEditor *self, TextMark *mark);
-void        text_editor_move_mark_last  (TextEditor *self, TextMark *mark);
-void        text_editor_move_mark_right (TextEditor *self, TextMark *mark, int amount);
-void        text_editor_move_mark_left  (TextEditor *self, TextMark *mark, int amount);
-void        text_editor_insert_at_mark  (TextEditor *self, TextMark *start, gchar *str);
-void        text_editor_delete_at_mark  (TextEditor *self, TextMark *start, int length);
-void        text_editor_replace_at_mark (TextEditor *self, TextMark *start, TextMark *end, gchar *text);
-void        text_editor_split_at_mark   (TextEditor *self, TextMark *mark);
+// TODO: Refactor into TextMark
+void        text_editor_move_mark_first         (TextMark *mark);
+void        text_editor_move_mark_last          (TextMark *mark);
+void        text_editor_move_mark_right         (TextMark *mark, int amount);
+void        text_editor_move_mark_left          (TextMark *mark, int amount);
+
+void        text_editor_insert_text_at_mark     (TextEditor *self, TextMark *start, gchar *str);
+void        text_editor_insert_fragment_at_mark (TextEditor *self, TextMark *start, TextFragment *fragment);
+void        text_editor_delete_at_mark          (TextEditor *self, TextMark *start, int length);
+void        text_editor_replace_at_mark         (TextEditor *self, TextMark *start, TextMark *end, gchar *text);
+void        text_editor_split_at_mark           (TextEditor *self, TextMark *mark);
 
 void        text_editor_move_first      (TextEditor *self, TextEditorMarkType type);
 void        text_editor_move_last       (TextEditor *self, TextEditorMarkType type);
 void        text_editor_move_right      (TextEditor *self, TextEditorMarkType type, int amount);
 void        text_editor_move_left       (TextEditor *self, TextEditorMarkType type, int amount);
-void        text_editor_insert          (TextEditor *self, TextEditorMarkType type, gchar *str);
+void        text_editor_insert_text     (TextEditor *self, TextEditorMarkType type, gchar *str);
+void        text_editor_insert_fragment (TextEditor *self, TextEditorMarkType type, TextFragment *fragment);
 void        text_editor_delete          (TextEditor *self, TextEditorMarkType type, int length);
 void        text_editor_replace         (TextEditor *self, TextEditorMarkType start_type, TextEditorMarkType end_type, gchar *text);
 void        text_editor_split           (TextEditor *self, TextEditorMarkType type);
 
-TextRun    *text_editor_get_run         (TextEditor *self, TextEditorMarkType type);
-TextRun    *text_editor_get_run_at_mark (TextEditor *self, TextMark *mark);
+TextFragment *text_editor_get_item         (TextEditor *self, TextEditorMarkType type);
+TextFragment *text_editor_get_item_at_mark (TextEditor *self, TextMark *mark);
 
 gchar      *text_editor_dump_plain_text (TextEditor *self);
 
@@ -60,7 +64,11 @@ TextParagraph  *text_editor_previous_paragraph  (TextParagraph *paragraph);
 
 // Format Helpers
 // TODO: Make this more abstract
-void            text_editor_apply_format_bold       (TextEditor *self, TextMark *start, TextMark *end, gboolean is_bold);
-gboolean        text_editor_get_format_bold_at_mark (TextEditor *self, TextMark *mark);
+void            text_editor_apply_format_bold               (TextEditor *self, TextMark *start, TextMark *end, gboolean is_bold);
+gboolean        text_editor_get_format_bold_at_mark         (TextEditor *self, TextMark *mark);
+void            text_editor_apply_format_italic             (TextEditor *self, TextMark *start, TextMark *end, gboolean is_italic);
+gboolean        text_editor_get_format_italic_at_mark       (TextEditor *self, TextMark *mark);
+void            text_editor_apply_format_underline          (TextEditor *self, TextMark *start, TextMark *end, gboolean is_underline);
+gboolean        text_editor_get_format_underline_at_mark    (TextEditor *self, TextMark *mark);
 
 G_END_DECLS
