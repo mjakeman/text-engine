@@ -96,7 +96,7 @@ text_layout_inline_layout (TextLayoutBox *self,
 
     bbox->x = offset_x;
     bbox->y = offset_y;
-    bbox->width = 100;
+    bbox->width = 200;
     bbox->height = 100;
 }
 
