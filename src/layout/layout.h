@@ -17,6 +17,7 @@
 
 #include "layoutbox.h"
 #include "layoutblock.h"
+#include "layoutinline.h"
 
 #include "../model/frame.h"
 #include "../model/paragraph.h"

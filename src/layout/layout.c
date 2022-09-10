@@ -97,7 +97,7 @@ build_layout_tree_recursive (TextLayout    *self,
     text_item_detach (TEXT_ITEM (item)); // TODO: Move to a 'cleanup_tree' function?
     text_item_attach (TEXT_ITEM (item), TEXT_NODE (box));
 
-    // Append children (in future, recursively)
+    // Append children
     for (iter = text_node_get_first_child (TEXT_NODE (item));
          iter != NULL;
          iter = text_node_get_next (iter))
@@ -129,7 +129,7 @@ text_layout_default_item_factory (TextItem *item)
 
     // Images
     if (type == TEXT_TYPE_IMAGE)
-        return NULL;
+        return TEXT_LAYOUT_BOX (text_layout_inline_new ());
 
     // Paragraphs
     if (type == TEXT_TYPE_PARAGRAPH)

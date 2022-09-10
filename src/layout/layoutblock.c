@@ -14,6 +14,8 @@
 #include "../model/paragraph.h"
 #include "../model/image.h"
 
+#include "layoutinline.h"
+
 typedef struct
 {
     PangoLayout *layout;
@@ -181,24 +183,25 @@ text_layout_block_layout (TextLayoutBox *self,
     TextDimensions *bbox;
     TextItem *item;
 
+    int height;
+
+    TextNode *iter;
+    TextNode *fragment_iter;
+    int byte_offset;
+    int child_offset_y;
+
     g_return_if_fail (TEXT_IS_LAYOUT_BLOCK (self));
 
     priv = text_layout_block_get_instance_private (TEXT_LAYOUT_BLOCK (self));
     bbox = text_layout_box_get_mutable_bbox (self);
     item = text_layout_box_get_item (self);
 
-    int height = 0;
-
-    g_debug ("Starting for %s\n", g_type_name_from_instance (self));
-
-    g_debug ("Has item: %d\n", item != NULL);
-    g_debug ("Has paragraph: %d\n", TEXT_IS_PARAGRAPH (item));
+    height = 0;
 
     if (item && TEXT_IS_PARAGRAPH (item))
     {
         gchar *text;
         text = text_paragraph_get_text (TEXT_PARAGRAPH (item));
-        g_debug (" - String %s\n", text);
 
         if (!priv->layout)
             priv->layout = pango_layout_new (context);
@@ -212,33 +215,65 @@ text_layout_block_layout (TextLayoutBox *self,
         pango_layout_set_wrap (priv->layout, PANGO_WRAP_WORD_CHAR);
         pango_layout_set_width (priv->layout, PANGO_SCALE * width);
         pango_layout_get_pixel_size (priv->layout, NULL, &height);
-        g_debug (" - Height %d\n", height);
 
         g_free (text);
     }
 
-    // Account for children (should we force elements to choose between
-    // children and text? seems like a sensible simplification)
+    // Account for children
 
-    int child_offset_y = 0;
+    byte_offset = 0;
+    child_offset_y = 0;
+    fragment_iter = text_node_get_first_child (TEXT_NODE (item));
 
-    for (TextNode *node = text_node_get_first_child (TEXT_NODE (self));
-         node != NULL;
-         node = text_node_get_next (node))
+    for (iter = text_node_get_first_child (TEXT_NODE (self));
+         iter != NULL;
+         iter = text_node_get_next (TEXT_NODE (iter)))
     {
         const TextDimensions *child_bbox;
-        TextLayoutBox *child_box = TEXT_LAYOUT_BOX (node);
+        TextLayoutBox *child_box = TEXT_LAYOUT_BOX (iter);
 
-        g_debug (" - Found child\n");
+        // Treat children differently depending on whether they
+        // are inline or block elements
+        // TODO: Force to choose between inline OR block children
+        if (TEXT_IS_LAYOUT_BLOCK (iter))
+        {
+            text_layout_box_layout (child_box, context, width, offset_x, offset_y + child_offset_y);
 
-        text_layout_box_layout (child_box, context, width, offset_x, offset_y + child_offset_y);
+            child_bbox = text_layout_box_get_bbox (child_box);
+            child_offset_y += (int) child_bbox->height;
+        }
+        else if (TEXT_IS_LAYOUT_INLINE (iter))
+        {
+            PangoRectangle rect;
+            TextItem *fragment;
 
-        // We can assume bblock already exists by now, as the layout() method
-        // has been called already in the layout manager.
+            fragment = text_layout_box_get_item (TEXT_LAYOUT_BOX (iter));
 
-        child_bbox = text_layout_box_get_bbox (child_box);
-        child_offset_y += (int) child_bbox->height;
-        g_debug (" - Child height %d\n", height);
+            // Check pango layout
+            if (!PANGO_IS_LAYOUT (priv->layout))
+            {
+                g_warning ("%s has inline child but no text layout.\n",
+                           g_type_name (text_layout_block_get_type()));
+                continue;
+            }
+
+            // Get correct byte_index for fragment
+            while (TEXT_FRAGMENT (fragment_iter) != TEXT_FRAGMENT (fragment))
+            {
+                byte_offset += text_fragment_get_size_bytes (TEXT_FRAGMENT (fragment_iter));
+                fragment_iter = text_node_get_next (fragment_iter);
+
+                // InlineBox must point to a valid item in the paragraph
+                g_assert (fragment_iter != NULL);
+            }
+
+            // Get starting x,y position of run at this index
+            pango_layout_index_to_pos (priv->layout, byte_offset, &rect);
+
+            text_layout_box_layout (TEXT_LAYOUT_BOX (iter), context, width,
+                                    rect.x / PANGO_SCALE,
+                                    rect.y / PANGO_SCALE);
+        }
     }
 
     height += child_offset_y;

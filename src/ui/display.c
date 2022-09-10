@@ -236,49 +236,18 @@ _rebuild_layout_tree (TextDisplay *self, int width)
 }
 
 static void
-draw_inline_elements (GtkSnapshot   *snapshot,
-                      PangoLayout   *layout,
-                      TextItem      *item,
-                      double         x,
-                      double         y)
-{
-    TextNode *iter;
-    int byte_offset;
-
-    byte_offset = 0;
-
-    for (iter = text_node_get_first_child (TEXT_NODE (item));
-         iter != NULL;
-         iter = text_node_get_next (TEXT_NODE (iter)))
-    {
-        // TODO: Replace with render style?
-        // Or perhaps custom renderer/layout component
-        if (TEXT_IS_IMAGE (iter))
-        {
-            GdkRGBA placeholder;
-            PangoRectangle rect;
-
-            gdk_rgba_parse (&placeholder, "red");
-            pango_layout_index_to_pos (layout, byte_offset, &rect);
-
-            gtk_snapshot_append_color (snapshot, &placeholder,
-                                       &GRAPHENE_RECT_INIT (
-                                               (float) rect.x / PANGO_SCALE,
-                                               (float) rect.y / PANGO_SCALE,
-                                               100.0f,
-                                               100.0f));
-        }
-
-        byte_offset += text_fragment_get_size_bytes (TEXT_FRAGMENT (iter));
-    }
-}
+draw_box_recursive (GtkWidget     *widget,
+                    TextLayoutBox *layout_box,
+                    GtkSnapshot   *snapshot,
+                    GdkRGBA       *fg_color,
+                    int           *delta_height);
 
 static void
-layout_snapshot_recursive (GtkWidget     *widget,
-                           TextLayoutBox *layout_box,
-                           GtkSnapshot   *snapshot,
-                           GdkRGBA       *fg_color,
-                           int           *delta_height)
+draw_block (GtkWidget     *widget,
+            TextLayoutBox *layout_box,
+            GtkSnapshot   *snapshot,
+            GdkRGBA       *fg_color,
+            int           *delta_height)
 {
     int offset = 0;
     TextItem *item;
@@ -287,46 +256,87 @@ layout_snapshot_recursive (GtkWidget     *widget,
     // Get bounding box
     bbox = text_layout_box_get_bbox (layout_box);
 
-    // For block elements, draw content and children
+    // Draw children first
+    gtk_snapshot_save (snapshot);
+    for (TextNode *node = text_node_get_first_child (TEXT_NODE (layout_box));
+         node != NULL;
+         node = text_node_get_next (node))
+    {
+        g_assert (TEXT_IS_LAYOUT_BOX (node));
+
+        int child_delta_height;
+
+        draw_box_recursive(widget, TEXT_LAYOUT_BOX(node), snapshot, fg_color, &child_delta_height);
+        offset += child_delta_height;
+    }
+    gtk_snapshot_restore (snapshot);
+
+    // Draw Text (if applicable)
     if (TEXT_IS_LAYOUT_BLOCK (layout_box))
     {
-        // Draw children first
-        gtk_snapshot_save (snapshot);
-        for (TextNode *node = text_node_get_first_child (TEXT_NODE (layout_box));
-             node != NULL;
-             node = text_node_get_next (node))
+        PangoLayout *layout;
+
+        layout = text_layout_block_get_pango_layout (TEXT_LAYOUT_BLOCK (layout_box));
+
+        if (layout)
         {
-            g_assert (TEXT_IS_LAYOUT_BOX (node));
-
-            int child_delta_height;
-
-            layout_snapshot_recursive (widget, TEXT_LAYOUT_BOX (node), snapshot, fg_color, &child_delta_height);
-            offset += child_delta_height;
-        }
-        gtk_snapshot_restore (snapshot);
-
-        // Draw Text (if applicable)
-        if (TEXT_IS_LAYOUT_BLOCK (layout_box))
-        {
-            PangoLayout *layout;
-
-            layout = text_layout_block_get_pango_layout (TEXT_LAYOUT_BLOCK (layout_box));
-
-            if (layout)
-            {
-                gtk_snapshot_save (snapshot);
-                gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, offset));
-                gtk_snapshot_append_layout (snapshot, layout, fg_color);
-                item = text_layout_box_get_item (layout_box);
-                draw_inline_elements (snapshot, layout, item, bbox->x, bbox->y);
-                gtk_snapshot_restore (snapshot);
-            }
+            gtk_snapshot_save (snapshot);
+            gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, offset));
+            gtk_snapshot_append_layout (snapshot, layout, fg_color);
+            // item = text_layout_box_get_item (layout_box);
+            // draw_inline_elements (snapshot, layout, item, bbox->x, bbox->y);
+            gtk_snapshot_restore (snapshot);
         }
     }
 
     gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, bbox->height));
 
-    *delta_height = bbox->height;
+    *delta_height = (int) bbox->height;
+}
+
+static void
+draw_inline (GtkWidget    *widget,
+            TextLayoutBox *layout_box,
+            GtkSnapshot   *snapshot,
+            GdkRGBA       *fg_color)
+{
+    GdkRGBA placeholder;
+    const TextDimensions *bbox;
+
+    gdk_rgba_parse (&placeholder, "red");
+
+    // Get bounding box
+    bbox = text_layout_box_get_bbox (layout_box);
+
+    // Draw bounding box as solid colour (for now)
+    gtk_snapshot_save (snapshot);
+    gtk_snapshot_append_color (snapshot, &placeholder,
+                               &GRAPHENE_RECT_INIT (
+                                       bbox->x,
+                                       bbox->y,
+                                       bbox->width,
+                                       bbox->height));
+    gtk_snapshot_restore (snapshot);
+}
+
+static void
+draw_box_recursive (GtkWidget     *widget,
+                    TextLayoutBox *layout_box,
+                    GtkSnapshot   *snapshot,
+                    GdkRGBA       *fg_color,
+                    int           *delta_height)
+{
+    int offset = 0;
+    TextItem *item;
+    const TextDimensions *bbox;
+
+    *delta_height = 0;
+
+    // For block elements, draw content and children
+    if (TEXT_IS_LAYOUT_BLOCK (layout_box))
+        draw_block (widget, layout_box, snapshot, fg_color, delta_height);
+    else if (TEXT_IS_LAYOUT_INLINE (layout_box))
+        draw_inline (widget, layout_box, snapshot, fg_color);
 }
 
 static void
@@ -681,7 +691,7 @@ text_display_snapshot (GtkWidget   *widget,
 
     // Draw layout tree
     gtk_snapshot_save (snapshot);
-    layout_snapshot_recursive (widget, self->layout_tree, snapshot, &fg_color, &delta_height);
+    draw_box_recursive(widget, self->layout_tree, snapshot, &fg_color, &delta_height);
     gtk_snapshot_restore (snapshot);
 
     // Draw cursors
