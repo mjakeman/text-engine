@@ -794,7 +794,9 @@ _delete_within_paragraph (TextParagraph *paragraph,
         if (index_within_run != 0 || deletion_length != run_length)
         {
             int to_delete;
-            to_delete = MIN (deletion_length, run_length - _get_offset (paragraph, index_within_run));
+            // Get index within RUN not PARAGRAPH
+            // TODO: Quite ugly - tidy up run offsets vs byte indices
+            to_delete = MIN (deletion_length, run_length - (_get_offset (paragraph, start_run_offset + index_within_run) - _get_offset (paragraph, start_run_offset)));
 
             cur_deleted += to_delete;
             iter = walk_until_next_fragment(TEXT_ITEM(start));
