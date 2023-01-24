@@ -1,3 +1,6 @@
+use std::collections::LinkedList;
+use std::fmt::{Display, Formatter};
+
 pub struct Run {
     pub(crate) start_index : usize,
     pub(crate) end_index : usize,
@@ -61,26 +64,37 @@ pub fn insert(document: &mut Document, index: usize, text: &str) {
     let append_buffer_index = document.append.len();
     document.append.push_str(text);
 
-    let mut iter = 0;
-    let mut run_to_split = None;
+    let run_to_split = document.runs.iter_mut()
+        .position(|run| run.start_index <= index && run.end_index > index);
 
-    for run in &mut document.runs {
-        if iter > index {
-            run_to_split = Some(run);
-            break
+    if let Some(run_index) = run_to_split {
+
+        let (split_index, end_index, append_buffer) = {
+            let run = document.runs.get(run_index).unwrap();
+
+            let index_within_run = index - run.start_index;
+            let split_index = run.start_index + index_within_run;
+
+            (split_index, run.end_index, run.append_buffer)
+        };
+
+        if let Some(run) = document.runs.get_mut(run_index) {
+            run.end_index = split_index;
         }
-        iter += run.length();
-    }
 
-    if let Some(mut run) = run_to_split {
-        let end_index = run.end_index;
-        run.end_index = index;
-
-        let mut new_run = Run {
+        let mut insert_run = Run {
             start_index: append_buffer_index,
             end_index: append_buffer_index + text.len(),
             append_buffer: true
         };
+        document.runs.insert(run_index + 1, insert_run);
+
+        let mut after_run = Run {
+            start_index: split_index,
+            end_index,
+            append_buffer: append_buffer
+        };
+        document.runs.insert(run_index + 2, after_run);
 
         return
     }
