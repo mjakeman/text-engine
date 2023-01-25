@@ -1,25 +1,26 @@
-use crate::table::{Document, get_all_text, insert};
+use crate::table::Document;
 
 mod table;
+mod cursor;
 
 fn main() {
     let mut document = Document::new(Some("Hell🌍 World"));
 
-    let text = get_all_text(&document);
+    let text = document.get_all_text();
     println!("Version 0: {}", text);
 
-    insert(&mut document, 15, ", again!");
+    document.insert(15, ", again!");
 
-    let text = get_all_text(&document);
+    let text = document.get_all_text();
     println!("Version 1: {}", text);
 
-    insert(&mut document, 23, " (no really!)");
+    document.insert(23, " (no really!)");
 
-    let text = get_all_text(&document);
+    let text = document.get_all_text();
     println!("Version 2: {}", text);
 
-    insert(&mut document, 8, " to the entire");
+    document.insert(8, " to the entire");
 
-    let text = get_all_text(&document);
+    let text = document.get_all_text();
     println!("Version 3: {}", text);
 }

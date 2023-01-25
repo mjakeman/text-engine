@@ -41,69 +41,100 @@ impl Document {
             runs: vec![]
         }
     }
-}
 
-pub fn get_all_text<'a>(document: &Document) -> String {
-    let mut string_builder = String::new();
-    for run in &document.runs {
-        let text = get_text(document, &run);
-        string_builder.push_str(text);
-    }
-    string_builder
-}
+    pub fn insert(&mut self, byte_index: usize, text: &str) {
+        let append_buffer_index = self.append.len();
+        self.append.push_str(text);
 
-pub fn get_text<'a>(document: &'a Document, run: &Run) -> &'a str {
-    let range = run.start_index..run.end_index;
-    match run.append_buffer {
-        true => &document.append[range],
-        false => &document.buffer[range]
-    }
-}
+        let run_to_split = self.runs.iter_mut()
+            .position(|run| run.start_index <= byte_index && run.end_index > byte_index);
 
-pub fn insert(document: &mut Document, index: usize, text: &str) {
-    let append_buffer_index = document.append.len();
-    document.append.push_str(text);
+        if let Some(run_index) = run_to_split {
 
-    let run_to_split = document.runs.iter_mut()
-        .position(|run| run.start_index <= index && run.end_index > index);
+            let (split_index, end_index, append_buffer) = {
+                let run = self.runs.get(run_index).unwrap();
 
-    if let Some(run_index) = run_to_split {
+                let index_within_run = byte_index - run.start_index;
+                let split_index = run.start_index + index_within_run;
 
-        let (split_index, end_index, append_buffer) = {
-            let run = document.runs.get(run_index).unwrap();
+                (split_index, run.end_index, run.append_buffer)
+            };
 
-            let index_within_run = index - run.start_index;
-            let split_index = run.start_index + index_within_run;
+            if let Some(run) = self.runs.get_mut(run_index) {
+                run.end_index = split_index;
+            }
 
-            (split_index, run.end_index, run.append_buffer)
-        };
+            let mut insert_run = Run {
+                start_index: append_buffer_index,
+                end_index: append_buffer_index + text.len(),
+                append_buffer: true
+            };
+            self.runs.insert(run_index + 1, insert_run);
 
-        if let Some(run) = document.runs.get_mut(run_index) {
-            run.end_index = split_index;
+            let mut after_run = Run {
+                start_index: split_index,
+                end_index,
+                append_buffer: append_buffer
+            };
+            self.runs.insert(run_index + 2, after_run);
+
+            return
         }
 
-        let mut insert_run = Run {
+        let mut new_run = Run {
             start_index: append_buffer_index,
             end_index: append_buffer_index + text.len(),
             append_buffer: true
         };
-        document.runs.insert(run_index + 1, insert_run);
 
-        let mut after_run = Run {
-            start_index: split_index,
-            end_index,
-            append_buffer: append_buffer
-        };
-        document.runs.insert(run_index + 2, after_run);
-
-        return
+        self.runs.push(new_run);
     }
 
-    let mut new_run = Run {
-        start_index: append_buffer_index,
-        end_index: append_buffer_index + text.len(),
-        append_buffer: true
-    };
+    pub fn get_run_at_index(&self, index: usize) -> Option<&Run> {
+        self.runs.iter()
+            .find(|run| run.start_index <= index && run.end_index > index)
+    }
 
-    document.runs.push(new_run);
+    pub fn get_all_text<'a>(&self) -> String {
+        let mut string_builder = String::new();
+        for run in &self.runs {
+            let text = self.get_text(&run);
+            string_builder.push_str(text);
+        }
+        string_builder
+    }
+
+    pub fn get_text(&self, run: &Run) -> &str {
+        let range = run.start_index..run.end_index;
+        match run.append_buffer {
+            true => &self.append[range],
+            false => &self.buffer[range]
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Document, get_all_text, insert};
+
+    #[test]
+    fn test_insert_at_start() {
+        let mut document = Document::new(Some("Hell🌍 World"));
+        insert(&mut document, 0, "Prefix: ");
+        assert_eq!(get_all_text(&document), "Prefix: Hell🌍 World");
+    }
+
+    #[test]
+    fn test_insert_at_end() {
+        let mut document = Document::new(Some("Hell🌍 World"));
+        insert(&mut document, 15, " (Suffix)");
+        assert_eq!(get_all_text(&document), "Hell🌍 World (Suffix)");
+    }
+
+    #[test]
+    fn test_insert_middle() {
+        let mut document = Document::new(Some("Hell🌍 World"));
+        insert(&mut document, 8, " 🎶🇫🇷😔");
+        assert_eq!(get_all_text(&document), "Hell🌍 🎶🇫🇷😔 World");
+    }
 }
