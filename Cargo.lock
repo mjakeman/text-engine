@@ -3,5 +3,12 @@
 version = 3
 
 [[package]]
+name = "gtk"
+version = "0.1.0"
+dependencies = [
+ "text-engine",
+]
+
+[[package]]
 name = "text-engine"
 version = "0.1.0"
