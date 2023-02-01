@@ -115,26 +115,26 @@ impl Document {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Document, get_all_text, insert};
+    use crate::Document;
 
     #[test]
     fn test_insert_at_start() {
         let mut document = Document::new(Some("Hell🌍 World"));
-        insert(&mut document, 0, "Prefix: ");
-        assert_eq!(get_all_text(&document), "Prefix: Hell🌍 World");
+        document.insert(0, "Prefix: ");
+        assert_eq!(document.get_all_text(), "Prefix: Hell🌍 World");
     }
 
     #[test]
     fn test_insert_at_end() {
         let mut document = Document::new(Some("Hell🌍 World"));
-        insert(&mut document, 15, " (Suffix)");
-        assert_eq!(get_all_text(&document), "Hell🌍 World (Suffix)");
+        document.insert(15, " (Suffix)");
+        assert_eq!(document.get_all_text(), "Hell🌍 World (Suffix)");
     }
 
     #[test]
     fn test_insert_middle() {
         let mut document = Document::new(Some("Hell🌍 World"));
-        insert(&mut document, 8, " 🎶🇫🇷😔");
-        assert_eq!(get_all_text(&document), "Hell🌍 🎶🇫🇷😔 World");
+        document.insert(8, " 🎶🇫🇷😔");
+        assert_eq!(document.get_all_text(), "Hell🌍 🎶🇫🇷😔 World");
     }
 }

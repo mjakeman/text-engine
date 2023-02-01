@@ -1,8 +1,11 @@
+mod display;
+
 use text_engine;
 
 use gtk::prelude::*;
-use gtk::{ApplicationWindow, Button};
+use gtk::ApplicationWindow;
 use adw::Application;
+use crate::display::Display;
 
 const APP_ID: &str = "com.mattjakeman.TextEngine";
 
@@ -22,25 +25,20 @@ fn main() {
 
 fn build_ui(app: &Application) {
     // Create a button with label and margins
-    let button = Button::builder()
-        .label("Press me!")
-        .margin_top(12)
-        .margin_bottom(12)
-        .margin_start(12)
-        .margin_end(12)
-        .build();
-
-    // Connect to "clicked" signal of `button`
-    button.connect_clicked(|button| {
-        // Set the label to "Hello World!" after the button has been clicked on
-        button.set_label("Hello World!");
-    });
+    let display = Display::new();
+    display.set_margin_bottom(12);
+    display.set_margin_top(12);
+    display.set_margin_start(12);
+    display.set_margin_end(12);
+    display.set_document(text_engine::get_sample_document());
 
     // Create a window
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("My GTK App")
-        .child(&button)
+        .title("Text Engine Demo")
+        .default_width(400)
+        .default_height(400)
+        .child(&display)
         .build();
 
     // Present window

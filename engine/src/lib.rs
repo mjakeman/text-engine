@@ -1,7 +1,7 @@
 mod table;
 mod cursor;
 
-use crate::table::Document;
+pub use crate::table::Document;
 
 #[no_mangle]
 pub extern "C" fn init() {
@@ -24,4 +24,12 @@ pub extern "C" fn init() {
 
     let text = document.get_all_text();
     println!("Version 3: {}", text);
+}
+
+pub fn get_sample_document() -> Document {
+    let mut document = Document::new(Some("Hell🌍 World"));
+    document.insert(15, ", again!");
+    document.insert(23, " (no really!)");
+    document.insert(8, " to the entire");
+    document
 }
