@@ -9,20 +9,13 @@
  * SPDX-License-Identifier: MPL-2.0 OR LGPL-2.1-or-later
  */
 
-use std::collections::LinkedList;
-use std::fmt::{Display, Formatter};
+mod paragraph;
+mod block;
+mod fragment;
+mod frame;
+mod run;
 
-pub struct Run {
-    pub(crate) start_index : usize,
-    pub(crate) end_index : usize,
-    pub(crate) append_buffer : bool
-}
-
-impl Run {
-    pub fn length(&self) -> usize {
-        self.end_index - self.start_index
-    }
-}
+use crate::model::run::Run;
 
 pub struct Document {
     pub(crate) buffer : String,
