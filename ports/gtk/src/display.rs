@@ -1,7 +1,5 @@
 mod imp;
 
-use std::cell::RefCell;
-
 use glib::Object;
 use gtk::glib;
 use gtk::subclass::prelude::ObjectSubclassIsExt;

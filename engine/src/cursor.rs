@@ -38,14 +38,14 @@ impl Cursor<'_> {
                 let mut travelled = 0;
 
                 loop {
-                    if let Some(run) = self.document.get_run_at_index(index) {
+                    /*if let Some(run) = self.document.get_run_at_index(index) {
 
                         let len = self.document.get_text(run).chars().count();
                         if travelled + len > quantity {
                             // within
                         }
 
-                    } else { break }
+                    } else { break }*/
                 }
             }
             Amount::Word => {}

@@ -9,44 +9,178 @@
  * SPDX-License-Identifier: MPL-2.0 OR LGPL-2.1-or-later
  */
 
-mod paragraph;
-mod block;
-mod fragment;
-mod frame;
-mod run;
+struct TextData {
+    append: bool,
+    start_index: usize,
+    end_index: usize
+}
 
-use crate::model::run::Run;
+enum Data {
+    Text(TextData),
+    Opaque
+}
+
+type NodeId = usize;
+
+pub struct Node {
+    parent_id: Option<NodeId>,
+    next_id: Option<NodeId>,
+    prev_id: Option<NodeId>,
+    first_child_id: Option<NodeId>,
+    last_child_id: Option<NodeId>,
+    
+    data: Data
+}
+
+struct ChildrenIter<'a> {
+    tree: &'a Tree,
+    current_id: Option<NodeId>
+}
+
+impl ChildrenIter<'_> {
+    fn new(tree: &Tree, parent_id: NodeId) -> ChildrenIter {
+        
+        let current_id = tree.get(parent_id).unwrap().first_child_id;
+
+        ChildrenIter {
+            tree,
+            current_id
+        }
+    }
+}
+
+impl Iterator for ChildrenIter<'_> {
+    type Item = NodeId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+
+        if let Some(id) = self.current_id {
+            let current_item = self.tree.get(id).unwrap();
+            self.current_id = current_item.next_id;
+            return Some(id);
+        }
+
+        None
+    }
+}
+
+pub struct Tree {
+    arena: Vec<Node>,
+    root: NodeId,
+    unused: Vec<NodeId>
+}
+
+impl Tree {
+    fn new() -> Tree {
+        let node = Node {
+            parent_id: None,
+            next_id: None,
+            prev_id: None,
+            first_child_id: None,
+            last_child_id: None,
+            data: Data::Opaque 
+        };
+
+        let node_id = 0;
+
+        Tree {
+            arena: vec![node],
+            root: node_id,
+            unused: vec![]
+        }
+    }
+
+    fn create_node(&mut self, parent_id: NodeId, data: Data) -> (&mut Node, NodeId) {
+        let node = Node {
+            parent_id: Some(parent_id),
+            next_id: None,
+            prev_id: None,
+            first_child_id: None,
+            last_child_id: None,
+            data
+        };
+
+        let id = self.arena.len();
+
+        self.arena.push(node);
+        return (self.arena.get_mut(id).unwrap(), id);
+    }
+
+    fn get(&self, id: NodeId) -> Option<&Node> {
+        self.arena.get(id)
+    }
+
+    fn get_mut(&mut self, id: NodeId) -> Option<&mut Node> {
+        self.arena.get_mut(id)
+    }
+
+    fn get_children(&self, node: NodeId) -> ChildrenIter {
+        ChildrenIter::new(&self, node)
+    }
+
+    fn append_child(&mut self, parent_id: NodeId, data: Data) -> NodeId {
+        let (_, id) = self.create_node(parent_id, data);
+
+        let parent = self.arena.get_mut(parent_id).unwrap();
+        if parent.first_child_id == None {
+            parent.first_child_id = Some(id);
+        }
+        parent.last_child_id = Some(id);
+
+        return id;
+    }
+
+    fn append_sibling(&mut self, sibling_id: NodeId, data: Data) -> NodeId {
+        let parent_id = {
+            self.arena.get(sibling_id).unwrap().parent_id.unwrap()
+        };
+
+        let (node, id) = self.create_node(parent_id, data);
+        node.prev_id = Some(sibling_id);
+
+        let sibling = self.arena.get_mut(sibling_id).unwrap();
+        sibling.next_id = Some(id);
+
+        self.arena.get_mut(parent_id).unwrap().last_child_id = Some(id);
+
+        return self.arena.len() - 1;
+    }
+
+}
 
 pub struct Document {
     pub(crate) buffer : String,
     pub(crate) append : String,
-    runs: Vec<Run>
+    tree: Tree
 }
 
 impl Document {
     pub fn new(initial: Option<&str>) -> Document {
         if let Some(initial) = initial {
-            let run = Run {
+            let run = Data::Text(TextData {
                 start_index: 0,
                 end_index: initial.len(),
-                append_buffer: false
-            };
+                append: false
+            });
+
+            let mut tree = Tree::new();
+            tree.append_child(tree.root, run);
 
             return Document {
                 buffer: String::from(initial),
                 append: String::new(),
-                runs: vec![run]
+                tree
             }
         }
 
         Document {
             buffer: String::new(),
             append: String::new(),
-            runs: vec![]
+            tree: Tree::new()
         }
     }
 
-    pub fn insert(&mut self, byte_index: usize, text: &str) {
+    /*pub fn insert(&mut self, byte_index: usize, text: &str) {
         let append_buffer_index = self.append.len();
         self.append.push_str(text);
 
@@ -92,28 +226,34 @@ impl Document {
         };
 
         self.runs.push(new_run);
-    }
+    }*/
 
-    pub fn get_run_at_index(&self, index: usize) -> Option<&Run> {
-        self.runs.iter()
-            .find(|run| run.start_index <= index && run.end_index > index)
+    pub fn get_text_dfs<'a>(&self, tree: &Tree, node_id: NodeId, output: &mut String) {
+        for child in tree.get_children(node_id) {
+            self.get_text_dfs(tree, child, output);
+        }
+
+        if let Some(text) = self.get_text(tree.get(node_id).unwrap()) {
+            output.push_str(text);
+        }
+        
     }
 
     pub fn get_all_text<'a>(&self) -> String {
         let mut string_builder = String::new();
-        for run in &self.runs {
-            let text = self.get_text(&run);
-            string_builder.push_str(text);
-        }
+        self.get_text_dfs(&self.tree, self.tree.root, &mut string_builder);
         string_builder
     }
 
-    pub fn get_text(&self, run: &Run) -> &str {
-        let range = run.start_index..run.end_index;
-        match run.append_buffer {
-            true => &self.append[range],
-            false => &self.buffer[range]
+    pub fn get_text(&self, node: &Node) -> Option<&str> {
+        if let Data::Text(text_data) = &node.data {
+            let range = text_data.start_index..text_data.end_index;
+            return match text_data.append {
+                true => Some(&self.append[range]),
+                false => Some(&self.buffer[range])
+            }
         }
+        None
     }
 }
 
@@ -121,7 +261,7 @@ impl Document {
 mod tests {
     use crate::model::Document;
 
-    #[test]
+    /*#[test]
     fn test_insert_at_start() {
         let mut document = Document::new(Some("Hell🌍 World"));
         document.insert(0, "Prefix: ");
@@ -140,5 +280,5 @@ mod tests {
         let mut document = Document::new(Some("Hell🌍 World"));
         document.insert(8, " 🎶🇫🇷😔");
         assert_eq!(document.get_all_text(), "Hell🌍 🎶🇫🇷😔 World");
-    }
+    }*/
 }
