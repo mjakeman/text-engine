@@ -9,7 +9,10 @@
  * SPDX-License-Identifier: MPL-2.0 OR LGPL-2.1-or-later
  */
 
-struct TextData {
+use crate::layout::{LayoutManager, LayoutBox, DisplayList, Rectangle};
+
+#[derive(Clone, Copy)]
+pub struct TextData {
     append: bool,
     start_index: usize,
     end_index: usize
@@ -22,7 +25,90 @@ enum Data {
 
 type NodeId = usize;
 
-pub struct Node {
+/**
+ * A 'thing' in the document
+ */
+pub trait Element {
+    // TODO: Something about cursors, runs, walking to next
+    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox;
+}
+
+/** Block Elements **/
+
+pub trait Block: Element {}
+
+/**
+ * Paragraph: Block element which only contains inlines.
+ */
+pub struct Paragraph {
+    pub children: Vec<Box<dyn Inline>>
+}
+
+impl Element for Paragraph {
+    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox {
+        visitor.build_paragraph_layout_tree(self)
+    }
+}
+impl Block for Paragraph {}
+
+/**
+ * Frame: Block element which contains other blocks
+ */
+pub struct Frame {
+    pub children: Vec<Box<dyn Block>>
+}
+
+impl Element for Frame {
+    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox {
+        visitor.build_frame_layout_tree(self)
+    }
+}
+impl Block for Frame {}
+
+/**
+ * Info Box: Block element which contains a frame
+ */
+pub struct InfoBox {
+    child: Frame
+}
+
+impl Element for InfoBox {
+    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox {
+        visitor.build_info_box_layout_tree(self)
+    }
+}
+impl Block for InfoBox {}
+
+
+/** Inline Elements **/
+
+pub trait Inline: Element {}
+
+/**
+ * Run: Inline text that is contiguously formatted
+ */
+
+pub struct Run {
+    pub text: TextData,
+    // format: Style
+}
+
+impl Element for Run {
+    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox {
+        visitor.build_run_layout_tree(self)
+    }
+}
+impl Inline for Run {}
+
+/**
+ * Equation: Inline MathML equation
+ */
+
+pub struct Equation {
+    
+}
+
+/*pub struct Node {
     parent_id: Option<NodeId>,
     next_id: Option<NodeId>,
     prev_id: Option<NodeId>,
@@ -145,39 +231,56 @@ impl Tree {
 
         return self.arena.len() - 1;
     }
-
-}
+}*/
 
 pub struct Document {
     pub(crate) buffer : String,
     pub(crate) append : String,
-    tree: Tree
+    /*tree: Tree*/
+    root: Frame
 }
 
 impl Document {
     pub fn new(initial: Option<&str>) -> Document {
         if let Some(initial) = initial {
-            let run = Data::Text(TextData {
-                start_index: 0,
-                end_index: initial.len(),
-                append: false
-            });
+            let run = Run {
+                text: TextData {
+                    start_index: 0,
+                    end_index: initial.len(),
+                    append: false
+                }
+            };
 
-            let mut tree = Tree::new();
-            tree.append_child(tree.root, run);
+            let mut root = Frame {
+                children: vec![ Box::new(Paragraph { children: vec![ Box::new(run) ] }) ]
+            };
 
             return Document {
                 buffer: String::from(initial),
                 append: String::new(),
-                tree
+                root
             }
         }
 
         Document {
             buffer: String::new(),
             append: String::new(),
-            tree: Tree::new()
+            root: Frame { children: vec![] }
         }
+    }
+
+    pub fn resolve_ref(&self, data: TextData) -> Option<String> {
+        match data.append {
+            true => &self.append,
+            false => &self.buffer
+        }.get(data.start_index..data.end_index).map(|s| s.to_string())
+    }
+
+    pub fn layout(&self, width: i32, visitor: &dyn LayoutManager) -> DisplayList {
+        let layout_tree = self.root.build_layout_tree(visitor);
+        let viewport = Rectangle { x: 0, y: 0, w: width, h: -1 };
+        let (commands, _req_height) = layout_tree.layout(self, viewport);
+        DisplayList { commands }
     }
 
     /*pub fn insert(&mut self, byte_index: usize, text: &str) {
@@ -228,7 +331,7 @@ impl Document {
         self.runs.push(new_run);
     }*/
 
-    pub fn get_text_dfs<'a>(&self, tree: &Tree, node_id: NodeId, output: &mut String) {
+    /*pub fn get_text_dfs<'a>(&self, tree: &Tree, output: &mut String) {
         for child in tree.get_children(node_id) {
             self.get_text_dfs(tree, child, output);
         }
@@ -241,7 +344,7 @@ impl Document {
 
     pub fn get_all_text<'a>(&self) -> String {
         let mut string_builder = String::new();
-        self.get_text_dfs(&self.tree, self.tree.root, &mut string_builder);
+        self.get_text_dfs(&self.root, &mut string_builder);
         string_builder
     }
 
@@ -254,7 +357,7 @@ impl Document {
             }
         }
         None
-    }
+    }*/
 }
 
 #[cfg(test)]

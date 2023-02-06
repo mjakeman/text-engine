@@ -671,6 +671,9 @@ dependencies = [
 [[package]]
 name = "text-engine"
 version = "0.1.0"
+dependencies = [
+ "pango",
+]
 
 [[package]]
 name = "thiserror"

@@ -11,15 +11,17 @@
 
 mod model;
 mod cursor;
+mod layout;
 
 pub use crate::model::Document;
+pub use crate::layout::{LayoutManager, DefaultLayoutManager, RenderCommand};
 
 #[no_mangle]
 pub extern "C" fn init() {
     let mut document = Document::new(Some("Hell🌍 World"));
 
-    let text = document.get_all_text();
-    println!("Version 0: {}", text);
+    // let text = document.get_all_text();
+    // println!("Version 0: {}", text);
 
     /*document.insert(15, ", again!");
 
@@ -38,7 +40,7 @@ pub extern "C" fn init() {
 }
 
 pub fn get_sample_document() -> Document {
-    let mut document = Document::new(Some("Hell🌍 World"));
+    let mut document = Document::new(Some("The cat is white. 猫は白です。\"Meow\"「ニャア」"));
     /*document.insert(15, ", again!");
     document.insert(23, " (no really!)");
     document.insert(8, " to the entire");*/
