@@ -220,7 +220,7 @@ pub struct DisplayList {
 }
 
 pub enum RenderCommand {
-    RenderText(i32, i32, String),
+    RenderText(i32, i32, i32, String),
     RenderBox(Rectangle, Option<Colour>)
 }
 
@@ -278,7 +278,7 @@ impl <T: LayoutFlow> LayoutBox<T> {
         }
 
         let height = B::measure_height_for_paragraph(backend, &contiguous_text, rect.w);
-        commands.push(RenderCommand::RenderText(rect.x, rect.y, contiguous_text));
+        commands.push(RenderCommand::RenderText(rect.x, rect.y, rect.w, contiguous_text));
 
         (commands, height)
     }

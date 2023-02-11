@@ -12,9 +12,10 @@ use text_engine::{Colour, DefaultLayoutManager, FontBackend, Rectangle};
 use text_engine::RenderCommand::*;
 
 use std::cell::RefCell;
-use adw::gdk::pango::{Context, ffi, Layout};
+use adw::gdk::pango::{Context, ffi, Layout, WrapMode};
 use adw::gdk::RGBA;
 use adw::glib::translate::{ToGlibPtr, ToGlibPtrMut};
+use gtk::pango::ffi::PangoLayout;
 use gtk::pango::FontDescription;
 
 use text_engine::Document;
@@ -54,13 +55,12 @@ impl WidgetImpl for Display {
                             snapshot.append_color(&colour_to_gdk_rgba(colour), &rectangle_to_graphene_rect(rect));
                         }
                     },
-                    RenderText(x, y, text) => {
+                    RenderText(x, y, width, text) => {
                         // TODO: We recreate the layout here and inside the layout engine
                         // Store this as a resource in the render layer and cache it between
                         // redraws. We only want to recompute the delta.
-                        let layout = pango::Layout::new(&widget.pango_context());
-                        let font_desc = FontDescription::from_string("Noto Sans");
-                        layout.set_font_description(Some(&font_desc));
+                        let layout = PangoBackend::make_layout(&widget.pango_context());
+                        layout.set_width(width * pango::SCALE);
                         layout.set_text(text);
 
                         snapshot.translate(&Point::new(*x as f32, *y as f32));
@@ -76,13 +76,21 @@ struct PangoBackend {
     context: Context
 }
 
-impl FontBackend for PangoBackend {
-    fn measure_height_for_paragraph(&self, text: &String, width: i32) -> i32 {
-        let text_layout = Layout::new(&self.context);
+impl PangoBackend {
+    fn make_layout(context: &Context) -> Layout {
+        let text_layout = Layout::new(context);
         let font_desc = FontDescription::from_string("Noto Sans");
         text_layout.set_font_description(Some(&font_desc));
-        text_layout.set_text(&text);
+        text_layout.set_wrap(WrapMode::Word);
+        text_layout
+    }
+}
+
+impl FontBackend for PangoBackend {
+    fn measure_height_for_paragraph(&self, text: &String, width: i32) -> i32 {
+        let text_layout = PangoBackend::make_layout(&self.context);
         text_layout.set_width(width * pango::SCALE);
+        text_layout.set_text(&text);
         text_layout.pixel_size().1
     }
 }
