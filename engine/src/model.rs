@@ -9,13 +9,14 @@
  * SPDX-License-Identifier: MPL-2.0 OR LGPL-2.1-or-later
  */
 
+use crate::FontBackend;
 use crate::layout::{LayoutManager, LayoutBox, DisplayList, Rectangle, BlockFlow, InlineFlow, LayoutFlow};
 
 #[derive(Clone, Copy)]
 pub struct TextData {
-    append: bool,
-    start_index: usize,
-    end_index: usize
+    pub(crate) append: bool,
+    pub(crate) start_index: usize,
+    pub(crate) end_index: usize
 }
 
 enum Data {
@@ -65,7 +66,7 @@ impl Element<BlockFlow> for Frame {
  * Info Box: Block element which contains a frame
  */
 pub struct InfoBox {
-    child: Frame
+    pub(crate) child: Frame
 }
 
 impl Element<BlockFlow> for InfoBox {
@@ -232,7 +233,7 @@ pub struct Document {
     pub(crate) buffer : String,
     pub(crate) append : String,
     /*tree: Tree*/
-    root: Frame
+    pub root: Frame
 }
 
 impl Document {
@@ -271,10 +272,10 @@ impl Document {
         }.get(data.start_index..data.end_index).map(|s| s.to_string())
     }
 
-    pub fn layout(&self, width: i32, visitor: &dyn LayoutManager) -> DisplayList {
+    pub fn layout<B: FontBackend>(&self, backend: &B, width: i32, visitor: &dyn LayoutManager) -> DisplayList {
         let layout_tree = self.root.build_layout_tree(visitor);
         let viewport = Rectangle { x: 0, y: 0, w: width, h: -1 };
-        let (commands, _req_height) = layout_tree.layout(self, viewport);
+        let (commands, _req_height) = layout_tree.layout::<B>(self, backend, viewport);
         DisplayList { commands }
     }
 

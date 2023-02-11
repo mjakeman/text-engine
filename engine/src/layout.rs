@@ -1,6 +1,6 @@
 use std::borrow::BorrowMut;
 use std::ops::Add;
-use pango::{Layout, Context};
+use pango::{Layout, Context, FontDescription};
 
 use crate::{model::{Frame, Paragraph, Run, InfoBox, Element, TextData}, Document};
 
@@ -12,13 +12,39 @@ pub struct Rectangle {
     pub h: i32
 }
 
+#[derive(Clone, Copy)]
+pub struct Extents {
+    pub top: i32,
+    pub left: i32,
+    pub bottom: i32,
+    pub right: i32
+}
+
 impl Rectangle {
     fn empty() -> Rectangle {
         Rectangle { x: 0, y: 0, w: 0, h: 0 }
     }
 
+    fn with_equal_size(d: i32) -> Rectangle {
+        Rectangle { x: d, y: d, w: d, h: d }
+    }
+
     fn new(x: i32, y: i32, w: i32, h: i32) -> Rectangle {
         Rectangle { x, y, w, h }
+    }
+}
+
+impl Extents {
+    fn empty() -> Extents {
+        Extents { top: 0, bottom: 0, left: 0, right: 0 }
+    }
+
+    fn with_equal_size(d: i32) -> Extents {
+        Extents { top: d, bottom: d, left: d, right: d }
+    }
+
+    fn new(top: i32, bottom: i32, left: i32, right: i32) -> Extents {
+        Extents { top, bottom, left, right }
     }
 }
 
@@ -48,8 +74,10 @@ impl LayoutManager for DefaultLayoutManager {
             flow: BlockFlow {
                 is_anonymous: false
             },
-            margins: Rectangle::empty(),
-            padding: Rectangle::empty(),
+            margins: Extents::empty(),
+            padding: Extents::empty(),
+            background: None,
+            foreground: BLACK,
             children: LayoutChildren::with_block_children(children)
         }
     }
@@ -67,12 +95,12 @@ impl LayoutManager for DefaultLayoutManager {
             flow: BlockFlow {
                 is_anonymous: false
             },
-            margins: Rectangle::empty(),
-            padding: Rectangle::empty(),
+            margins: Extents::empty(),
+            padding: Extents::empty(),
+            background: None,
+            foreground: BLACK,
             children: LayoutChildren::with_inline_children(children)
         };
-
-
 
         block
     }
@@ -82,8 +110,10 @@ impl LayoutManager for DefaultLayoutManager {
             flow: InlineFlow {
                 text: run.text
             },
-            margins: Rectangle::empty(),
-            padding: Rectangle::empty(),
+            margins: Extents::empty(),
+            padding: Extents::empty(),
+            background: None,
+            foreground: BLACK,
             children: LayoutChildren::None
         };
 
@@ -91,7 +121,26 @@ impl LayoutManager for DefaultLayoutManager {
     }
 
     fn build_info_box_layout_tree(&self, infobox: &InfoBox) -> LayoutBox<BlockFlow> {
-        todo!()
+
+        let mut children: BlockChildren = vec![];
+
+        for child in &infobox.child.children {
+            let subtree = child.build_layout_tree(self);
+            children.push(subtree);
+        }
+
+        let inline = LayoutBox {
+            flow: BlockFlow {
+                is_anonymous: false
+            },
+            margins: Extents::empty(),
+            padding: Extents::with_equal_size(10),
+            background: Some(BLUE),
+            foreground: BLACK,
+            children: LayoutChildren::Block(children)
+        };
+
+        inline
     }
 }
 
@@ -143,10 +192,26 @@ impl LayoutChildren {
     }
 }
 
+#[derive(Copy, Clone)]
+pub struct Colour {
+    pub red: u32,
+    pub green: u32,
+    pub blue: u32,
+}
+
+pub static BLACK: Colour = Colour { red: 0, green: 0, blue: 0 };
+pub static WHITE: Colour = Colour { red: 255, green: 255, blue: 255 };
+
+pub static RED: Colour = Colour { red: 255, green: 0, blue: 0 };
+pub static GREEN: Colour = Colour { red: 0, green: 255, blue: 0 };
+pub static BLUE: Colour = Colour { red: 0, green: 0, blue: 255 };
+
 pub struct LayoutBox<T: LayoutFlow> {
     flow: T,
-    margins: Rectangle,
-    padding: Rectangle,
+    margins: Extents,
+    padding: Extents,
+    background: Option<Colour>,
+    foreground: Colour,
     children: LayoutChildren
 }
 
@@ -156,30 +221,52 @@ pub struct DisplayList {
 
 pub enum RenderCommand {
     RenderText(i32, i32, String),
-    RenderBox(Rectangle)
+    RenderBox(Rectangle, Option<Colour>)
+}
+
+pub trait FontBackend {
+    fn measure_height_for_paragraph(&self, text: &String, width: i32) -> i32;
 }
 
 impl <T: LayoutFlow> LayoutBox<T> {
-    pub fn layout(&self, document: &Document, rect: Rectangle) -> (Vec<RenderCommand>, i32) {
-        let mut req_height = 0;
+    pub fn layout<B: FontBackend>(&self, document: &Document, backend: &B, rect: Rectangle) -> (Vec<RenderCommand>, i32) {
         let mut commands: Vec<RenderCommand> = vec![];
+
+        let mut content_rect = rect;
 
         // TODO: Current bg, border, etc
         // commands.push(RenderRectangle);
         // commands.push(RenderIcon);
         // req_height += self.margins...
+        let offset_left = (self.margins.left + self.padding.left);
+        let offset_top = (self.margins.top + self.padding.top);
+        let offset_bottom = (self.margins.bottom + self.padding.bottom);
+        let offset_right = (self.margins.right + self.padding.right);
+        content_rect.w -= (offset_left + offset_right);
+        content_rect.x += offset_left;
+        content_rect.y += offset_top;
 
         // TODO: Account for margins/padding
-        let (commands, req_height) = match &self.children {
-            LayoutChildren::Inline(children) => self.layout_inline_children(document, children, rect),
-            LayoutChildren::Block(children) => self.layout_block_children(document, children, rect),
+        let (mut child_commands, mut req_height) = match &self.children {
+            LayoutChildren::Inline(children) => self.layout_inline_children::<B>(document, backend, children, content_rect),
+            LayoutChildren::Block(children) => self.layout_block_children::<B>(document, backend, children, content_rect),
             LayoutChildren::None => (vec![], 0)
         };
+
+        let mut margin_box = rect;
+        margin_box.y += self.margins.top;
+        margin_box.x += self.margins.left;
+        margin_box.w -= self.margins.right;
+        margin_box.h = req_height + self.padding.top + self.padding.bottom;
+
+        req_height += (offset_top + offset_bottom);
+        commands.push(RenderCommand::RenderBox(margin_box, self.background));
+        commands.append(&mut child_commands);
 
         (commands, req_height)
     }
 
-    fn layout_inline_children(&self, document: &Document, children: &InlineChildren, rect: Rectangle) -> (Vec<RenderCommand>, i32) {
+    fn layout_inline_children<B: FontBackend>(&self, document: &Document, backend: &B, children: &InlineChildren, rect: Rectangle) -> (Vec<RenderCommand>, i32) {
         let mut commands = vec![];
 
         let mut contiguous_text = String::new();
@@ -190,22 +277,24 @@ impl <T: LayoutFlow> LayoutBox<T> {
             }
         }
 
-        let text_layout = Layout::new(&Context::new());
-        text_layout.set_text(&contiguous_text);
-        text_layout.set_width(rect.w);
+        let height = B::measure_height_for_paragraph(backend, &contiguous_text, rect.w);
         commands.push(RenderCommand::RenderText(rect.x, rect.y, contiguous_text));
 
-        (commands, text_layout.height())
+        (commands, height)
     }
 
-    fn layout_block_children(&self, document: &Document, children: &BlockChildren, rect: Rectangle) -> (Vec<RenderCommand>, i32) {
+    fn layout_block_children<B: FontBackend>(&self, document: &Document, backend: &B, children: &BlockChildren, rect: Rectangle) -> (Vec<RenderCommand>, i32) {
         let mut commands = vec![];
         let mut req_height = 0;
 
+        let mut content_rect = rect;
+
         for child in children {
-            let (mut child_commands, child_req_height) = child.layout(document, rect);
+            let (mut child_commands, child_req_height) = child.layout::<B>(document, backend, content_rect);
             commands.append(&mut child_commands);
             req_height += child_req_height;
+
+            content_rect.y = rect.y + req_height;
         }
 
         (commands, req_height)
