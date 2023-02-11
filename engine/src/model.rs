@@ -9,7 +9,7 @@
  * SPDX-License-Identifier: MPL-2.0 OR LGPL-2.1-or-later
  */
 
-use crate::layout::{LayoutManager, LayoutBox, DisplayList, Rectangle};
+use crate::layout::{LayoutManager, LayoutBox, DisplayList, Rectangle, BlockFlow, InlineFlow, LayoutFlow};
 
 #[derive(Clone, Copy)]
 pub struct TextData {
@@ -28,42 +28,38 @@ type NodeId = usize;
 /**
  * A 'thing' in the document
  */
-pub trait Element {
+pub trait Element<T: LayoutFlow> {
     // TODO: Something about cursors, runs, walking to next
-    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox;
+    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox<T>;
 }
 
 /** Block Elements **/
-
-pub trait Block: Element {}
 
 /**
  * Paragraph: Block element which only contains inlines.
  */
 pub struct Paragraph {
-    pub children: Vec<Box<dyn Inline>>
+    pub children: Vec<Box<dyn Element<InlineFlow>>>
 }
 
-impl Element for Paragraph {
-    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox {
+impl Element<BlockFlow> for Paragraph {
+    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox<BlockFlow> {
         visitor.build_paragraph_layout_tree(self)
     }
 }
-impl Block for Paragraph {}
 
 /**
  * Frame: Block element which contains other blocks
  */
 pub struct Frame {
-    pub children: Vec<Box<dyn Block>>
+    pub children: Vec<Box<dyn Element<BlockFlow>>>
 }
 
-impl Element for Frame {
-    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox {
+impl Element<BlockFlow> for Frame {
+    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox<BlockFlow> {
         visitor.build_frame_layout_tree(self)
     }
 }
-impl Block for Frame {}
 
 /**
  * Info Box: Block element which contains a frame
@@ -72,17 +68,14 @@ pub struct InfoBox {
     child: Frame
 }
 
-impl Element for InfoBox {
-    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox {
+impl Element<BlockFlow> for InfoBox {
+    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox<BlockFlow> {
         visitor.build_info_box_layout_tree(self)
     }
 }
-impl Block for InfoBox {}
 
 
 /** Inline Elements **/
-
-pub trait Inline: Element {}
 
 /**
  * Run: Inline text that is contiguously formatted
@@ -90,15 +83,17 @@ pub trait Inline: Element {}
 
 pub struct Run {
     pub text: TextData,
+    //pub script: Script,
+    //pub direction: Direction,
+    // pub color: Colour,
     // format: Style
 }
 
-impl Element for Run {
-    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox {
+impl Element<InlineFlow> for Run {
+    fn build_layout_tree(&self, visitor: &dyn LayoutManager) -> LayoutBox<InlineFlow> {
         visitor.build_run_layout_tree(self)
     }
 }
-impl Inline for Run {}
 
 /**
  * Equation: Inline MathML equation
