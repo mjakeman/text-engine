@@ -1,6 +1,5 @@
 use std::borrow::BorrowMut;
 use std::ops::Add;
-use pango::{Layout, Context, FontDescription};
 
 use crate::{model::{Frame, Paragraph, Run, InfoBox, Element, TextData}, Document};
 
