@@ -56,6 +56,7 @@ pub fn build(b: *std.Build) void {
     });
     gtk.addCSourceFile("ports/gtk/main.c", &[_][]const u8{});
     gtk.linkLibC();
+    gtk.linkLibrary(lib);
     gtk.linkSystemLibrary("gtk4");
     std.Build.installArtifact(b, gtk);
 

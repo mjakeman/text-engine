@@ -1,10 +1,13 @@
 #include <gtk/gtk.h>
 
+int add(int a, int b);
+
 static void
 print_hello (GtkWidget *widget,
              gpointer   data)
 {
   g_print ("Hello World\n");
+  g_print ("12 + 24 = %d\n", add(12, 24));
 }
 
 static void
