@@ -218,7 +218,7 @@ main (int argc, char **argv)
     AdwApplication *app;
     int ret;
 
-    app = adw_application_new ("com.mattjakeman.TextEngine.Demo", G_APPLICATION_FLAGS_NONE);
+    app = adw_application_new ("com.mattjakeman.TextEngine.Demo", G_APPLICATION_DEFAULT_FLAGS);
 
     g_signal_connect (app, "activate", G_CALLBACK (demo_activate), NULL);
 
