@@ -241,7 +241,7 @@ common_setup (GtkSignalListItemFactory *self,
     gtk_label_set_xalign (GTK_LABEL (tag), 0.5f);
     gtk_widget_add_css_class (tag, "inspector-tag");
     gtk_box_append (GTK_BOX (hbox), tag);
-    gtk_widget_hide (tag);
+    gtk_widget_set_visible (tag, FALSE);
 
     label = gtk_label_new ("");
     gtk_label_set_xalign (GTK_LABEL (label), 0);
@@ -271,7 +271,7 @@ text_bind (GtkSignalListItemFactory *self,
     g_assert (GTK_IS_TREE_LIST_ROW (row));
     g_assert (TEXT_IS_ITEM (item));
 
-    gtk_widget_hide (tag);
+    gtk_widget_set_visible (tag, FALSE);
 
     if (TEXT_IS_RUN (item))
     {
@@ -287,7 +287,7 @@ text_bind (GtkSignalListItemFactory *self,
         g_object_get (item, "src", &src, NULL);
         gtk_label_set_text (GTK_LABEL (label), src);
 
-        gtk_widget_show (tag);
+        gtk_widget_set_visible (tag, TRUE);
         gtk_label_set_text (GTK_LABEL (tag), "image");
     }
     else
@@ -387,19 +387,37 @@ text_inspector_init (TextInspector *self)
 {
     GtkWidget *infobar;
     GtkWidget *label;
+    GtkWidget *button;
+    GtkWidget *separator;
     GtkWidget *scroll_area;
 
     self->vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_parent (self->vbox, GTK_WIDGET (self));
 
+    infobar = g_object_new (GTK_TYPE_BOX,
+                            "orientation", GTK_ORIENTATION_HORIZONTAL,
+                            "margin-start", 6,
+                            "margin-end", 6,
+                            "margin-top", 6,
+                            "margin-bottom", 6,
+                            NULL);
+
     label = gtk_label_new ("Select a TextDisplay widget to view its document");
     gtk_label_set_xalign (GTK_LABEL (label), 0);
+    gtk_widget_set_hexpand (label, TRUE);
+    gtk_widget_add_css_class (GTK_WIDGET (label), "heading");
 
-    infobar = gtk_info_bar_new ();
-    gtk_info_bar_add_child (GTK_INFO_BAR (infobar), label);
-    gtk_info_bar_add_button (GTK_INFO_BAR (infobar), "Refresh Model", GTK_BUTTONS_OK);
-    g_signal_connect_swapped (infobar, "response", G_CALLBACK (populate_data_from_frame), self);
+    button = gtk_button_new_with_label ("Refresh Model");
+    g_signal_connect_swapped (button, "clicked", G_CALLBACK (populate_data_from_frame), self);
+
+    separator = gtk_separator_new (GTK_ORIENTATION_HORIZONTAL);
+
+    gtk_box_append (GTK_BOX (infobar), label);
+    gtk_box_append (GTK_BOX (infobar), button);
+
     gtk_box_append (GTK_BOX (self->vbox), infobar);
+
+    gtk_box_append (GTK_BOX (self->vbox), separator);
 
     scroll_area = gtk_scrolled_window_new ();
     gtk_box_append (GTK_BOX (self->vbox), scroll_area);
