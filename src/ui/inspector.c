@@ -241,7 +241,7 @@ common_setup (GtkSignalListItemFactory *self,
     gtk_label_set_xalign (GTK_LABEL (tag), 0.5f);
     gtk_widget_add_css_class (tag, "inspector-tag");
     gtk_box_append (GTK_BOX (hbox), tag);
-    gtk_widget_hide (tag);
+    gtk_widget_set_visible (tag, FALSE);
 
     label = gtk_label_new ("");
     gtk_label_set_xalign (GTK_LABEL (label), 0);
@@ -271,7 +271,7 @@ text_bind (GtkSignalListItemFactory *self,
     g_assert (GTK_IS_TREE_LIST_ROW (row));
     g_assert (TEXT_IS_ITEM (item));
 
-    gtk_widget_hide (tag);
+    gtk_widget_set_visible (tag, FALSE);
 
     if (TEXT_IS_RUN (item))
     {
@@ -287,7 +287,7 @@ text_bind (GtkSignalListItemFactory *self,
         g_object_get (item, "src", &src, NULL);
         gtk_label_set_text (GTK_LABEL (label), src);
 
-        gtk_widget_show (tag);
+        gtk_widget_set_visible (tag, TRUE);
         gtk_label_set_text (GTK_LABEL (tag), "image");
     }
     else
