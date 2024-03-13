@@ -190,14 +190,6 @@ demo_activate (GApplication *app)
     // Initialise text-engine for inspector page
     text_engine_init ();
 
-    // Add CSS Stylesheet
-    GtkCssProvider *css_provider = gtk_css_provider_new ();
-    gtk_css_provider_load_from_resource (css_provider, "/com/mattjakeman/TextEngine/Demo/style.css");
-
-    GdkDisplay *display = gdk_display_get_default ();
-    gtk_style_context_add_provider_for_display (display, GTK_STYLE_PROVIDER (css_provider),
-                                                GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-
     // Get the current window or create one if necessary.
     window = gtk_application_get_active_window (GTK_APPLICATION (app));
 
