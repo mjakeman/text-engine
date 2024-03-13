@@ -165,7 +165,7 @@ demo_window_init (DemoWindow *self)
     scroll_area = gtk_scrolled_window_new();
     display = text_display_new (document);
 
-    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll_area), display);
+    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll_area), GTK_WIDGET (display));
     gtk_widget_set_vexpand (scroll_area, TRUE);
 
     adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (toolbar_view), header_bar);
