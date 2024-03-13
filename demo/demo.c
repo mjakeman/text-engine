@@ -106,7 +106,7 @@ demo_window_init (DemoWindow *self)
     gsize contents_length;
 
     GtkWidget *header_bar;
-    GtkWidget *vbox;
+    GtkWidget *toolbar_view;
     GtkWidget *inspector_btn;
     GtkWidget *scroll_area;
 
@@ -115,8 +115,8 @@ demo_window_init (DemoWindow *self)
 
     error = NULL;
 
-    vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-    adw_application_window_set_content (ADW_APPLICATION_WINDOW (self), vbox);
+    toolbar_view = adw_toolbar_view_new ();
+    adw_application_window_set_content (ADW_APPLICATION_WINDOW (self), toolbar_view);
 
     // Example rich text document (uses html subset)
     file = g_file_new_for_uri ("resource:///com/mattjakeman/TextEngine/Demo/demo.html");
@@ -168,8 +168,8 @@ demo_window_init (DemoWindow *self)
     gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll_area), display);
     gtk_widget_set_vexpand (scroll_area, TRUE);
 
-    gtk_box_append (GTK_BOX (vbox), header_bar);
-    gtk_box_append (GTK_BOX (vbox), GTK_WIDGET (scroll_area));
+    adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (toolbar_view), header_bar);
+    adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (toolbar_view), GTK_WIDGET (scroll_area));
 
     inspector_btn = gtk_button_new_with_label ("Inspector");
     g_signal_connect_swapped (inspector_btn,
