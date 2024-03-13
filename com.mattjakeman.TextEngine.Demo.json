@@ -1,7 +1,7 @@
 {
     "app-id" : "com.mattjakeman.TextEngine.Demo",
     "runtime" : "org.gnome.Platform",
-    "runtime-version" : "42",
+    "runtime-version" : "46",
     "sdk" : "org.gnome.Sdk",
     "command" : "text-engine-demo",
     "finish-args" : [
