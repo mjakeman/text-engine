@@ -24,7 +24,7 @@ struct _TextDisplay
     TextDocument *document;
     TextEditor *editor;
     TextLayout *layout;
-    TextLayoutBox *layout_tree;
+    TextNode *layout_tree;
 
     GtkIMContext *context;
 
@@ -229,10 +229,10 @@ _rebuild_layout_tree (TextDisplay *self, int width)
     if (self->layout_tree)
         text_node_clear (&self->layout_tree);
 
-    self->layout_tree = text_layout_build_layout_tree (self->layout,
-                                                       gtk_widget_get_pango_context (GTK_WIDGET (self)),
-                                                       self->document->frame,
-                                                       width);
+    self->layout_tree = TEXT_NODE (text_layout_build_layout_tree (self->layout,
+                                                                  gtk_widget_get_pango_context (GTK_WIDGET (self)),
+                                                                  self->document->frame,
+                                                                  width));
 }
 
 static void
@@ -353,7 +353,7 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
     index = cursor->index;
 
     inline_item = text_paragraph_get_item_at_index (item, index, NULL);
-    block = TEXT_LAYOUT_BLOCK (text_item_get_attachment (item));
+    block = TEXT_LAYOUT_BLOCK (text_item_get_attachment (TEXT_ITEM (item)));
 
     if (TEXT_IS_LAYOUT_BOX (block))
     {
@@ -361,7 +361,7 @@ draw_cursor_snapshot (GtkSnapshot *snapshot,
         const TextDimensions *bbox;
         PangoLayout *layout;
 
-        bbox = text_layout_box_get_bbox (block);
+        bbox = text_layout_box_get_bbox (TEXT_LAYOUT_BOX (block));
 
         // if (TEXT_IS_RUN (inline_item))
         {
@@ -691,7 +691,7 @@ text_display_snapshot (GtkWidget   *widget,
 
     // Draw layout tree
     gtk_snapshot_save (snapshot);
-    draw_box_recursive(widget, self->layout_tree, snapshot, &fg_color, &delta_height);
+    draw_box_recursive (widget, TEXT_LAYOUT_BOX (self->layout_tree), snapshot, &fg_color, &delta_height);
     gtk_snapshot_restore (snapshot);
 
     // Draw cursors
@@ -728,12 +728,12 @@ text_display_measure (GtkWidget      *widget,
         if (self->layout_tree)
             text_node_clear (&self->layout_tree);
 
-        self->layout_tree = text_layout_build_layout_tree (self->layout,
-                                                           context,
-                                                           self->document->frame,
-                                                           for_size);
+        self->layout_tree = TEXT_NODE (text_layout_build_layout_tree (self->layout,
+                                                                      context,
+                                                                      self->document->frame,
+                                                                      for_size));
 
-        *minimum = *natural = text_layout_box_get_bbox (self->layout_tree)->height;
+        *minimum = *natural = text_layout_box_get_bbox (TEXT_LAYOUT_BOX (self->layout_tree))->height;
 
         g_debug ("Height: %d\n", *minimum);
     }
@@ -765,7 +765,7 @@ text_display_size_allocate (GtkWidget *widget,
 
     _rebuild_layout_tree (self, widget_width - self->margin_start - self->margin_end);
 
-    bbox = text_layout_box_get_bbox (self->layout_tree);
+    bbox = text_layout_box_get_bbox (TEXT_LAYOUT_BOX (self->layout_tree));
 
     content_height = bbox->height + self->margin_top + self->margin_bottom;
     content_height = MAX (content_height, widget_height);
@@ -1308,7 +1308,7 @@ set_mark_from_cursor (TextDisplay *self,
 
         y -= displacement;
 
-        box = text_layout_pick (self->layout_tree, x - self->margin_start, y - self->margin_top);
+        box = text_layout_pick (TEXT_LAYOUT_BOX (self->layout_tree), x - self->margin_start, y - self->margin_top);
 
         if (box) {
             TextItem *item;
