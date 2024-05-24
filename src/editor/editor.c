@@ -595,7 +595,7 @@ _ensure_paragraph (TextEditor *self)
     {
         paragraph = text_paragraph_new ();
         text_frame_append_block (document_frame, TEXT_BLOCK (paragraph));
-        text_paragraph_append_fragment(paragraph, text_run_new(""));
+        text_paragraph_append_fragment(paragraph, TEXT_FRAGMENT (text_run_new ("")));
     }
 }
 
@@ -1631,8 +1631,8 @@ text_editor_apply_format (TextEditor *self,
     // Check if start and end indices are in the same run
     if (iter == last)
     {
-        TextFragment *first_split;
-        TextFragment *second_split;
+        TextRun *first_split;
+        TextRun *second_split;
         int start_index_offset;
         int end_index_offset;
 
@@ -1642,7 +1642,7 @@ text_editor_apply_format (TextEditor *self,
         end_index_offset = end->index - end_run_index;
 
         // Split first run
-        split_run_in_place (iter, &first_split, start_index_offset);
+        split_run_in_place (TEXT_RUN (iter), &first_split, start_index_offset);
 
         // Calculate offset into new run and split again
         end_index_offset -= start_index_offset;
@@ -1656,22 +1656,22 @@ text_editor_apply_format (TextEditor *self,
     // Check if we need to split the first run
     if (start->index - start_run_index != 0)
     {
-        TextFragment *new_run;
-        split_run_in_place (iter, &new_run, start->index - start_run_index);
+        TextRun *new_run;
+        split_run_in_place (TEXT_RUN (iter), &new_run, start->index - start_run_index);
 
         // Apply format to new run
         set_run_format (new_run, format, in_use);
-        iter = new_run;
+        iter = TEXT_FRAGMENT (new_run);
     }
 
     // Check if we need to split the last run
     if (end->index - end_run_index != 0)
     {
         TextRun *new_run;
-        split_run_in_place (last, &new_run, end->index - end_run_index);
+        split_run_in_place (TEXT_RUN (last), &new_run, end->index - end_run_index);
 
         // Apply format to old run
-        set_run_format (last, format, in_use);
+        set_run_format (TEXT_RUN (last), format, in_use);
     }
 
     while (iter != NULL)
@@ -1679,7 +1679,7 @@ text_editor_apply_format (TextEditor *self,
         if (iter == last)
             break;
 
-        set_run_format (iter, format, in_use);
+        set_run_format (TEXT_RUN (iter), format, in_use);
 
         iter = walk_until_next_fragment(TEXT_ITEM(iter));
     }
