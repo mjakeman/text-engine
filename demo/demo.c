@@ -106,7 +106,7 @@ demo_window_init (DemoWindow *self)
     gsize contents_length;
 
     GtkWidget *header_bar;
-    GtkWidget *vbox;
+    GtkWidget *toolbar_view;
     GtkWidget *inspector_btn;
     GtkWidget *scroll_area;
 
@@ -115,8 +115,8 @@ demo_window_init (DemoWindow *self)
 
     error = NULL;
 
-    vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-    adw_application_window_set_content (ADW_APPLICATION_WINDOW (self), vbox);
+    toolbar_view = adw_toolbar_view_new ();
+    adw_application_window_set_content (ADW_APPLICATION_WINDOW (self), toolbar_view);
 
     // Example rich text document (uses html subset)
     file = g_file_new_for_uri ("resource:///com/mattjakeman/TextEngine/Demo/demo.html");
@@ -165,11 +165,11 @@ demo_window_init (DemoWindow *self)
     scroll_area = gtk_scrolled_window_new();
     display = text_display_new (document);
 
-    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll_area), display);
+    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll_area), GTK_WIDGET (display));
     gtk_widget_set_vexpand (scroll_area, TRUE);
 
-    gtk_box_append (GTK_BOX (vbox), header_bar);
-    gtk_box_append (GTK_BOX (vbox), GTK_WIDGET (scroll_area));
+    adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (toolbar_view), header_bar);
+    adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (toolbar_view), GTK_WIDGET (scroll_area));
 
     inspector_btn = gtk_button_new_with_label ("Inspector");
     g_signal_connect_swapped (inspector_btn,
@@ -189,14 +189,6 @@ demo_activate (GApplication *app)
 
     // Initialise text-engine for inspector page
     text_engine_init ();
-
-    // Add CSS Stylesheet
-    GtkCssProvider *css_provider = gtk_css_provider_new ();
-    gtk_css_provider_load_from_resource (css_provider, "/com/mattjakeman/TextEngine/Demo/style.css");
-
-    GdkDisplay *display = gdk_display_get_default ();
-    gtk_style_context_add_provider_for_display (display, GTK_STYLE_PROVIDER (css_provider),
-                                                GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
     // Get the current window or create one if necessary.
     window = gtk_application_get_active_window (GTK_APPLICATION (app));
@@ -218,7 +210,7 @@ main (int argc, char **argv)
     AdwApplication *app;
     int ret;
 
-    app = adw_application_new ("com.mattjakeman.TextEngine.Demo", G_APPLICATION_FLAGS_NONE);
+    app = adw_application_new ("com.mattjakeman.TextEngine.Demo", G_APPLICATION_DEFAULT_FLAGS);
 
     g_signal_connect (app, "activate", G_CALLBACK (demo_activate), NULL);
 

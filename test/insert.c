@@ -42,13 +42,13 @@ insert_fixture_set_up (InsertFixture *fixture,
     para1 = text_paragraph_new ();
     run1 = text_run_new (RUN1);
     run2 = text_run_new (RUN2);
-    text_paragraph_append_fragment(para1, run1);
-    text_paragraph_append_fragment(para1, run2);
+    text_paragraph_append_fragment(para1, TEXT_FRAGMENT (run1));
+    text_paragraph_append_fragment(para1, TEXT_FRAGMENT (run2));
     text_frame_append_block (frame, TEXT_BLOCK (para1));
 
     para2 = text_paragraph_new ();
     run3 = text_run_new (RUN3);
-    text_paragraph_append_fragment(para2, run3);
+    text_paragraph_append_fragment(para2, TEXT_FRAGMENT (run3));
     text_frame_append_block (frame, TEXT_BLOCK (para2));
 
     fixture->doc = text_document_new ();
