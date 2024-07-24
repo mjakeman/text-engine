@@ -79,7 +79,7 @@ build_text_frame_recursive (xmlNode        *nodes,
             else
             {
                 // Catch-all for not-yet implemented elements
-                g_print ("Ignored element %s\n", cur_node->name);
+                g_info ("Ignored element %s\n", cur_node->name);
             }
         }
         else if (cur_node->type == XML_TEXT_NODE)
@@ -134,7 +134,7 @@ format_parse_html (const gchar *html)
     xmlNode *root;
     TextFrame *frame;
 
-    g_print ("%s\n", html);
+    g_info ("%s\n", html);
 
     doc = htmlParseDoc ((const guchar *)html, "utf-8");
 
@@ -156,7 +156,7 @@ format_parse_html (const gchar *html)
 
     frame = text_frame_new ();
 
-    g_print ("Root Node discovered: %s\n", root->name);
+    g_info ("Root Node discovered: %s\n", root->name);
 
     build_text_frame (root, frame);
 

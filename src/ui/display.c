@@ -224,7 +224,7 @@ text_display_set_property (GObject      *object,
 static void
 _rebuild_layout_tree (TextDisplay *self, int width)
 {
-    g_print ("Rebuilding layout tree\n");
+    g_info ("Rebuilding layout tree\n");
 
     if (self->layout_tree)
         text_node_clear (&self->layout_tree);
@@ -912,7 +912,7 @@ commit (GtkIMContext *context,
     gtk_widget_queue_allocate (GTK_WIDGET (self));
     gtk_widget_queue_draw (GTK_WIDGET (self));
 
-    g_print ("commit: %s\n", str);
+    g_info ("commit: %s\n", str);
 }
 
 static gboolean
@@ -1103,7 +1103,7 @@ key_pressed (GtkEventControllerKey *controller,
         clipboard = gdk_display_get_clipboard (display);
 
         text = text_editor_dump_plain_text (self->editor);
-        g_print ("Saving to clipboard:\nSTART\n%s\nEND\n", text);
+        g_info ("Saving to clipboard:\nSTART\n%s\nEND\n", text);
 
         // "Save" to clipboard for now
         gdk_clipboard_set_text (clipboard, text);
