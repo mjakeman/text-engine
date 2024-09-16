@@ -679,7 +679,7 @@ _erase_content (TextFragment *item,
     }
     else
     {
-        g_print ("Cannot delete a non-opaque inline element");
+        g_info ("Cannot delete a non-opaque inline element");
     }
 }
 
@@ -1319,7 +1319,7 @@ text_editor_split_at_mark (TextEditor *self,
             // TODO: Make supported
             if (!TEXT_IS_RUN (start))
             {
-                g_print ("Unsupported!\n");
+                g_info ("Unsupported!\n");
             }
             else
             {
@@ -1451,7 +1451,7 @@ text_editor_insert_text_at_mark (TextEditor *self,
         }
         else
         {
-            g_print ("Not supported: Inserting into non-text run\n");
+            g_info ("Not supported: Inserting into non-text run\n");
             return;
         }
     }
@@ -1546,7 +1546,7 @@ text_editor_insert_fragment_at_mark (TextEditor   *self,
     }
     else
     {
-        g_print ("Cannot split opaque inline element!\n");
+        g_info ("Cannot split opaque inline element!\n");
         return;
     }
 
