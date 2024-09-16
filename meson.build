@@ -1,6 +1,6 @@
 project('text-engine', 'c',
           version: '0.1.0',
-    meson_version: '>= 0.50.0',
+    meson_version: '>= 0.59.0',
   default_options: [ 'warning_level=2',
                      'c_std=gnu11',
                    ],
@@ -14,7 +14,7 @@ configure_file(
   configuration: config_h,
 )
 add_project_arguments([
-  '-I' + meson.build_root(),
+  '-I' + meson.project_build_root(),
 ], language: 'c')
 
 
