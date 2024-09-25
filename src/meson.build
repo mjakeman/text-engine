@@ -40,7 +40,6 @@ configure_file(
 
 text_engine_deps = [
   dependency('gio-2.0', version: '>= 2.50'),
-  dependency('json-glib-1.0'),
   dependency('libxml-2.0'),
   dependency('gtk4')
 ]
